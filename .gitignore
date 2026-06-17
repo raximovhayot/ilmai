@@ -21,7 +21,6 @@ bootrun.log
 .env
 .env.*
 !.env.example
-!.env.prod.example
 *.pem
 
 # ===== Backend: Gradle / Java =====
@@ -78,3 +77,5 @@ pnpm-debug.log*
 docs/
 plan.md
 skills-lock.json
+AGENTS.md
+DECISIONLOG.md

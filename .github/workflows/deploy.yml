@@ -89,7 +89,7 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           port: ${{ secrets.SSH_PORT }}
-          source: "docker-compose.prod.yml,deploy/**"
+          source: "docker-compose.yml,deploy/**"
           target: "~/ilmai"
           overwrite: true
 
@@ -105,14 +105,14 @@ jobs:
             set -euo pipefail
             cd ~/ilmai
             if [ ! -f .env ]; then
-              echo "ERROR: ~/ilmai/.env is missing. Create it from .env.prod.example first." >&2
+              echo "ERROR: ~/ilmai/.env is missing. Create it from .env.example first." >&2
               exit 1
             fi
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
             export BACKEND_IMAGE="$BACKEND_REF"
             export FRONTEND_IMAGE="$FRONTEND_REF"
-            docker compose -f docker-compose.prod.yml pull
-            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+            docker compose pull
+            docker compose up -d --remove-orphans
             docker image prune -f
         env:
           GHCR_USER: ${{ github.actor }}

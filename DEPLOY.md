@@ -46,8 +46,8 @@ curl -fsSL https://get.docker.com | sh
 sudo usermod -aG docker "$USER"   # re-login afterwards
 
 mkdir -p ~/ilmai && cd ~/ilmai
-# Copy .env.prod.example from the repo to the server as .env and fill it in:
-#   scp .env.prod.example user@vps:~/ilmai/.env
+# Copy .env.example from the repo to the server as .env and fill it in:
+#   scp .env.example user@vps:~/ilmai/.env
 nano .env                          # set DOMAIN, secrets, API keys, etc.
 ```
 
@@ -88,16 +88,16 @@ by hand on the VPS instead:
 ```bash
 cd ~/ilmai
 docker login ghcr.io -u <github-user>        # if images are private
-docker compose -f docker-compose.prod.yml pull
-docker compose -f docker-compose.prod.yml up -d
-docker compose -f docker-compose.prod.yml ps
+docker compose pull
+docker compose up -d
+docker compose ps
 ```
 
 Verify:
 
 ```bash
 curl -fsS https://ilmai.uzinfoweb.uz/            # frontend
-docker compose -f docker-compose.prod.yml exec backend \
+docker compose exec backend \
   curl -fsS http://localhost:8080/actuator/health
 ```
 
