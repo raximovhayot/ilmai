@@ -1,0 +1,130 @@
+name: ilmai
+
+services:
+  pgvector:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ilmai}
+      POSTGRES_USER: ${POSTGRES_USER:-ilmai}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ilmai} -d ${POSTGRES_DB:-ilmai}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - ilmai
+
+  garage:
+    image: dxflrs/garage:v1.0.1
+    restart: unless-stopped
+    environment:
+      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET:?GARAGE_RPC_SECRET is required}
+      GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN:?GARAGE_ADMIN_TOKEN is required}
+      GARAGE_METRICS_TOKEN: ${GARAGE_METRICS_TOKEN:-}
+    volumes:
+      - ./deploy/garage/garage.toml:/etc/garage.toml:ro
+      - garage-meta:/var/lib/garage/meta
+      - garage-data:/var/lib/garage/data
+    networks:
+      - ilmai
+
+  garage-init:
+    image: alpine:3.20
+    depends_on:
+      - garage
+    entrypoint: ["/bin/sh", "/init.sh"]
+    environment:
+      BUCKET: ${STORAGE_S3_BUCKET:-ilmai-materials}
+      ACCESS_KEY_ID: ${STORAGE_S3_ACCESS_KEY:?STORAGE_S3_ACCESS_KEY is required}
+      SECRET_ACCESS_KEY: ${STORAGE_S3_SECRET_KEY:?STORAGE_S3_SECRET_KEY is required}
+      KEY_NAME: ilmai-key
+      ADMIN_URL: http://garage:3903
+      ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN:?GARAGE_ADMIN_TOKEN is required}
+    volumes:
+      - ./deploy/garage/init.sh:/init.sh:ro
+    networks:
+      - ilmai
+    restart: "no"
+
+  backend:
+    image: ${BACKEND_IMAGE:-ghcr.io/raximovhayot/ilmai-backend:latest}
+    restart: unless-stopped
+    depends_on:
+      pgvector:
+        condition: service_healthy
+    environment:
+      SPRING_DOCKER_COMPOSE_ENABLED: "false"
+      DB_URL: jdbc:postgresql://pgvector:5432/${POSTGRES_DB:-ilmai}
+      DB_USERNAME: ${POSTGRES_USER:-ilmai}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      GOOGLE_GENAI_API_KEY: ${GOOGLE_GENAI_API_KEY:-}
+      GOOGLE_GENAI_CHAT_MODEL: ${GOOGLE_GENAI_CHAT_MODEL:-gemini-3.1-flash-lite}
+      GOOGLE_GENAI_EMBEDDING_MODEL: ${GOOGLE_GENAI_EMBEDDING_MODEL:-gemini-embedding-2}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      STORAGE_S3_BUCKET: ${STORAGE_S3_BUCKET:-ilmai-materials}
+      STORAGE_S3_REGION: ${STORAGE_S3_REGION:-us-east-1}
+      STORAGE_S3_ENDPOINT: http://garage:3900
+      STORAGE_S3_ACCESS_KEY: ${STORAGE_S3_ACCESS_KEY:?STORAGE_S3_ACCESS_KEY is required}
+      STORAGE_S3_SECRET_KEY: ${STORAGE_S3_SECRET_KEY:?STORAGE_S3_SECRET_KEY is required}
+      STORAGE_S3_PATH_STYLE_ACCESS: "true"
+      CORS_ALLOWED_ORIGINS: https://${DOMAIN}
+      JOBRUNR_BACKGROUND_JOB_SERVER_ENABLED: "true"
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
+      TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
+      TELEGRAM_PUBLIC_BASE_URL: ${TELEGRAM_PUBLIC_BASE_URL:-https://${DOMAIN}}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
+      SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE:-0}
+    networks:
+      - ilmai
+
+  frontend:
+    image: ${FRONTEND_IMAGE:-ghcr.io/raximovhayot/ilmai-frontend:latest}
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET is required}
+      AUTH_GOOGLE_ID: ${AUTH_GOOGLE_ID:-}
+      AUTH_GOOGLE_SECRET: ${AUTH_GOOGLE_SECRET:-}
+      AUTH_TRUST_HOST: "true"
+      AUTH_URL: https://${DOMAIN}
+      AUTH_BACKEND_URL: http://backend:8080
+      NEXT_PUBLIC_API_BASE_URL: http://backend:8080
+    networks:
+      - ilmai
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - frontend
+      - backend
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?DOMAIN is required}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - ilmai
+
+networks:
+  ilmai:
+
+volumes:
+  pg-data:
+  garage-meta:
+  garage-data:
+  caddy-data:
+  caddy-config:

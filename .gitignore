@@ -21,6 +21,7 @@ bootrun.log
 .env
 .env.*
 !.env.example
+!.env.prod.example
 *.pem
 
 # ===== Backend: Gradle / Java =====
