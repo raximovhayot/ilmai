@@ -1,0 +1,152 @@
+package org.aiincubator.ilmai.plan.service;
+
+import lombok.RequiredArgsConstructor;
+import org.aiincubator.ilmai.common.CurrentUser;
+import org.aiincubator.ilmai.plan.PlanActivity;
+import org.aiincubator.ilmai.plan.PlanStatus;
+import org.aiincubator.ilmai.plan.PlanStepInput;
+import org.aiincubator.ilmai.plan.domain.LearningPlan;
+import org.aiincubator.ilmai.plan.domain.LearningPlanRepository;
+import org.aiincubator.ilmai.plan.domain.PlanStep;
+import org.aiincubator.ilmai.plan.payload.LearningPlanResponse;
+import org.aiincubator.ilmai.profiles.ProfileDto;
+import org.aiincubator.ilmai.profiles.ProfilesApi;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+public class PlanService {
+
+    static final ZoneId DEFAULT_ZONE = ZoneId.of("Asia/Tashkent");
+
+    private final LearningPlanRepository learningPlanRepository;
+    private final ProfilesApi profilesApi;
+    private final PlanMapper planMapper;
+    private final Clock clock;
+
+    @Transactional
+    public LearningPlan replaceActivePlan(UUID userId, String goal, LocalDate targetDate, List<PlanStepInput> steps) {
+        for (LearningPlan existing : learningPlanRepository.findByUserIdAndStatus(userId, PlanStatus.ACTIVE)) {
+            existing.setStatus(PlanStatus.SUPERSEDED);
+        }
+        LearningPlan plan = new LearningPlan();
+        plan.setUserId(userId);
+        plan.setGoal(goal);
+        plan.setTargetDate(targetDate);
+        plan.setStatus(PlanStatus.ACTIVE);
+        if (steps != null) {
+            for (PlanStepInput input : steps) {
+                plan.getSteps().add(toStep(plan, input));
+            }
+        }
+        return learningPlanRepository.save(plan);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<LearningPlan> findActivePlan(UUID userId) {
+        return learningPlanRepository.findFirstByUserIdAndStatusOrderByCreatedAtDesc(userId, PlanStatus.ACTIVE);
+    }
+
+    @Transactional
+    public Optional<LearningPlan> completeStep(UUID userId, int dayIndex) {
+        Optional<LearningPlan> active =
+                learningPlanRepository.findFirstByUserIdAndStatusOrderByCreatedAtDesc(userId, PlanStatus.ACTIVE);
+        active.ifPresent(plan -> markStepDone(plan, dayIndex));
+        return active;
+    }
+
+    @Transactional(readOnly = true)
+    public LearningPlanResponse getActivePlanResponse(CurrentUser currentUser) {
+        return findActivePlan(currentUser.getUserId())
+                .map(planMapper::toResponse)
+                .orElse(null);
+    }
+
+    @Transactional
+    public LearningPlanResponse completeStepResponse(CurrentUser currentUser, int dayIndex) {
+        return completeStep(currentUser.getUserId(), dayIndex)
+                .map(planMapper::toResponse)
+                .orElse(null);
+    }
+
+    @Transactional
+    public void markReplanNeeded(UUID userId) {
+        learningPlanRepository.findFirstByUserIdAndStatusOrderByCreatedAtDesc(userId, PlanStatus.ACTIVE)
+                .ifPresent(plan -> plan.setReplanNeeded(true));
+    }
+
+    @Transactional
+    public boolean flagIfBehind(UUID userId, int thresholdDays) {
+        if (userId == null) {
+            return false;
+        }
+        int threshold = Math.max(1, thresholdDays);
+        Optional<LearningPlan> active =
+                learningPlanRepository.findFirstByUserIdAndStatusOrderByCreatedAtDesc(userId, PlanStatus.ACTIVE);
+        if (active.isEmpty()) {
+            return false;
+        }
+        LearningPlan plan = active.get();
+        LocalDate today = LocalDate.ofInstant(clock.instant(), zoneFor(userId));
+        long overdueSteps = plan.getSteps().stream()
+                .filter(step -> !step.isDone())
+                .map(PlanStep::getScheduledDate)
+                .filter(Objects::nonNull)
+                .filter(date -> date.isBefore(today))
+                .count();
+        if (overdueSteps >= threshold) {
+            plan.setReplanNeeded(true);
+            return true;
+        }
+        return false;
+    }
+
+    private void markStepDone(LearningPlan plan, int dayIndex) {
+        OffsetDateTime now = OffsetDateTime.now();
+        for (PlanStep step : plan.getSteps()) {
+            if (step.getDayIndex() == dayIndex && !step.isDone()) {
+                step.setDone(true);
+                step.setCompletedAt(now);
+            }
+        }
+    }
+
+    private PlanStep toStep(LearningPlan plan, PlanStepInput input) {
+        PlanStep step = new PlanStep();
+        step.setPlan(plan);
+        step.setDayIndex(input.getDayIndex());
+        step.setScheduledDate(input.getScheduledDate());
+        step.setTitle(input.getTitle());
+        step.setActivity(input.getActivity() == null ? PlanActivity.READ : input.getActivity());
+        step.setMaterialIds(input.getMaterialIds());
+        step.setNote(input.getNote());
+        step.setDone(false);
+        return step;
+    }
+
+    private ZoneId zoneFor(UUID userId) {
+        return profilesApi.find(userId)
+                .map(ProfileDto::getTimezone)
+                .filter(tz -> tz != null && !tz.isBlank())
+                .map(PlanService::parseZone)
+                .orElse(DEFAULT_ZONE);
+    }
+
+    private static ZoneId parseZone(String tz) {
+        try {
+            return ZoneId.of(tz);
+        } catch (RuntimeException ex) {
+            return DEFAULT_ZONE;
+        }
+    }
+}

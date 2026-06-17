@@ -1,0 +1,39 @@
+services:
+  pgvector:
+    image: 'pgvector/pgvector:pg16'
+    environment:
+      - 'POSTGRES_DB=mydatabase'
+      - 'POSTGRES_PASSWORD=secret'
+      - 'POSTGRES_USER=myuser'
+    labels:
+      - "org.springframework.boot.service-connection=postgres"
+    ports:
+      - '5432'
+  garage:
+    image: 'dxflrs/garage:v1.0.1'
+    volumes:
+      - './garage/garage.toml:/etc/garage.toml:ro'
+      - 'garage-meta:/var/lib/garage/meta'
+      - 'garage-data:/var/lib/garage/data'
+    ports:
+      - '3900:3900'
+      - '3903:3903'
+  garage-init:
+    image: 'alpine:3.20'
+    depends_on:
+      - garage
+    entrypoint: ['/bin/sh', '/init.sh']
+    environment:
+      - 'BUCKET=ilmai-materials'
+      - 'ACCESS_KEY_ID=GK1ac1bd1ac1bd1ac1bd1ac1bd'
+      - 'SECRET_ACCESS_KEY=1ac1bd1ac1bd1ac1bd1ac1bd1ac1bd1ac1bd1ac1bd1ac1bd1ac1bd1ac1bd1ac1'
+      - 'KEY_NAME=ilmai-dev-key'
+      - 'ADMIN_URL=http://garage:3903'
+      - 'ADMIN_TOKEN=ilmai-dev-admin-token'
+    volumes:
+      - './garage/init.sh:/init.sh:ro'
+    restart: 'no'
+
+volumes:
+  garage-meta:
+  garage-data:

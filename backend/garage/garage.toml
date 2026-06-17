@@ -1,0 +1,27 @@
+metadata_dir = "/var/lib/garage/meta"
+data_dir = "/var/lib/garage/data"
+db_engine = "sqlite"
+
+replication_factor = 1
+
+rpc_bind_addr = "[::]:3901"
+rpc_public_addr = "127.0.0.1:3901"
+rpc_secret = "1799bccfd7411eedcc22a4f3017aabaa1ed8c01c2ce0c0e6f6f7f3f6f3f3f3f3"
+
+[s3_api]
+s3_region = "us-east-1"
+api_bind_addr = "[::]:3900"
+root_domain = ".s3.garage.local"
+
+[s3_web]
+bind_addr = "[::]:3902"
+root_domain = ".web.garage.local"
+index = "index.html"
+
+[k2v_api]
+api_bind_addr = "[::]:3904"
+
+[admin]
+api_bind_addr = "[::]:3903"
+admin_token = "ilmai-dev-admin-token"
+metrics_token = "ilmai-dev-metrics-token"
