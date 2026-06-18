@@ -9,6 +9,9 @@ services:
       - "org.springframework.boot.service-connection=postgres"
     ports:
       - '5432'
+    depends_on:
+      garage-init:
+        condition: service_completed_successfully
   garage:
     image: 'dxflrs/garage:v1.0.1'
     volumes:
