@@ -521,7 +521,6 @@ export const handlers = [
       username: db.user.username,
       status: db.user.status,
       createdAt: db.user.createdAt,
-      fullName: db.user.fullName,
     })
   }),
 
@@ -1464,14 +1463,6 @@ export const handlers = [
     if (body.goal !== undefined) db.plan.goal = body.goal
     if (body.targetDate !== undefined) db.plan.targetDate = body.targetDate
     return envelope(buildProfile())
-  }),
-
-  http.get(`${BASE}/stats`, async ({ request }) => {
-    const guard = requireAuth(request)
-    if (guard instanceof HttpResponse) return guard
-    db.stats.topicsCount = db.topics.length
-    db.stats.materialsCount = db.materials.length
-    return envelope(db.stats)
   }),
 
   http.post(`${BASE}/billing/checkout`, async ({ request }) => {

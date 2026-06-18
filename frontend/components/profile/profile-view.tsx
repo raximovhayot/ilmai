@@ -6,14 +6,12 @@ import { toast } from "sonner"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   BookOpen01Icon,
-  ChartBarLineIcon,
   Clock01Icon,
   Flag03Icon,
   PuzzleIcon,
   Target02Icon,
 } from "@hugeicons/core-free-icons"
 
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field, FieldLabel } from "@/components/ui/field"
@@ -131,84 +129,31 @@ export function ProfileView({ user }: Props) {
       </Card>
 
       {stats && (
-        <>
-          <section className="flex flex-col gap-3">
-            <h2 className="text-sm font-medium tracking-wider text-muted-foreground uppercase">
-              {t.profile.statsTitle}
-            </h2>
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
-              <StatTile
-                label={t.stats.knowledgeScore}
-                value={`${stats.knowledgeScore}`}
-                hint={stats.currentLevel}
-                icon={ChartBarLineIcon}
-                accent="bg-primary/10 text-primary"
-              />
-              <StatTile
-                label={t.stats.streakDays}
-                value={`${stats.streakDays}`}
-                icon={Flag03Icon}
-                accent="bg-amber-500/15 text-amber-600 dark:text-amber-400"
-              />
-              <StatTile
-                label={t.stats.sessionsCompleted}
-                value={`${stats.sessionsCompleted}`}
-                icon={PuzzleIcon}
-                accent="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-              />
-              <StatTile
-                label={t.stats.topicsCount}
-                value={`${stats.topicsCount}`}
-                icon={BookOpen01Icon}
-                accent="bg-fuchsia-500/15 text-fuchsia-600 dark:text-fuchsia-400"
-              />
-              <StatTile
-                label={t.stats.materialsCount}
-                value={`${stats.materialsCount}`}
-                icon={BookOpen01Icon}
-                accent="bg-sky-500/15 text-sky-600 dark:text-sky-400"
-              />
-              <StatTile
-                label={t.stats.weeklyMinutes}
-                value={`${stats.weeklyMinutes}`}
-                icon={Clock01Icon}
-                accent="bg-rose-500/15 text-rose-600 dark:text-rose-400"
-              />
-            </div>
-          </section>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">
-                {t.profile.trendTitle}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Sparkline points={stats.knowledgeHistory} />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">
-                {t.profile.perTopicTitle}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-3">
-              {stats.perTopic.map((row) => (
-                <div key={row.topicId} className="flex flex-col gap-1.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-medium">{row.topicName}</span>
-                    <Badge variant="outline" className="tabular-nums">
-                      {row.score}%
-                    </Badge>
-                  </div>
-                  <Progress value={row.score} />
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </>
+        <section className="flex flex-col gap-3">
+          <h2 className="text-sm font-medium tracking-wider text-muted-foreground uppercase">
+            {t.profile.statsTitle}
+          </h2>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+            <StatTile
+              label={t.stats.streakDays}
+              value={`${stats.streakDays}`}
+              icon={Flag03Icon}
+              accent="bg-amber-500/15 text-amber-600 dark:text-amber-400"
+            />
+            <StatTile
+              label={t.stats.sessionsCompleted}
+              value={`${stats.sessionsCompleted}`}
+              icon={PuzzleIcon}
+              accent="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+            />
+            <StatTile
+              label={t.stats.weeklyMinutes}
+              value={`${stats.weeklyMinutes}`}
+              icon={Clock01Icon}
+              accent="bg-rose-500/15 text-rose-600 dark:text-rose-400"
+            />
+          </div>
+        </section>
       )}
 
       <Card>
@@ -318,85 +263,6 @@ function StatTile({
         </div>
       </CardContent>
     </Card>
-  )
-}
-
-function Sparkline({ points }: { points: { date: string; score: number }[] }) {
-  if (points.length === 0) return null
-  const w = 600
-  const h = 140
-  const padding = 18
-  const xs = points.map(
-    (_, i) => padding + (i * (w - 2 * padding)) / Math.max(1, points.length - 1)
-  )
-  const max = Math.max(...points.map((p) => p.score), 1)
-  const min = Math.min(...points.map((p) => p.score), 0)
-  const range = Math.max(1, max - min)
-  const ys = points.map(
-    (p) => h - padding - ((p.score - min) / range) * (h - 2 * padding)
-  )
-  const path = points
-    .map(
-      (_, i) =>
-        `${i === 0 ? "M" : "L"} ${xs[i]?.toFixed(2)} ${ys[i]?.toFixed(2)}`
-    )
-    .join(" ")
-
-  return (
-    <div className="w-full overflow-x-auto">
-      <svg viewBox={`0 0 ${w} ${h}`} className="h-36 w-full">
-        <defs>
-          <linearGradient id="profile-spark-grad" x1="0" y1="0" x2="0" y2="1">
-            <stop
-              offset="0%"
-              stopColor="currentColor"
-              stopOpacity="0.25"
-              className="text-primary"
-            />
-            <stop
-              offset="100%"
-              stopColor="currentColor"
-              stopOpacity="0"
-              className="text-primary"
-            />
-          </linearGradient>
-        </defs>
-        <path
-          d={`${path} L ${xs[xs.length - 1]?.toFixed(2)} ${h - padding} L ${xs[0]?.toFixed(2)} ${h - padding} Z`}
-          fill="url(#profile-spark-grad)"
-          className="text-primary"
-        />
-        <path
-          d={path}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2}
-          strokeLinejoin="round"
-          strokeLinecap="round"
-          className="text-primary"
-        />
-        {points.map((p, i) => (
-          <g key={p.date}>
-            <circle
-              cx={xs[i]}
-              cy={ys[i]}
-              r={3}
-              fill="currentColor"
-              className="text-primary"
-            />
-            <text
-              x={xs[i]}
-              y={h - 4}
-              textAnchor="middle"
-              className="fill-muted-foreground"
-              fontSize="10"
-            >
-              {p.date.slice(5)}
-            </text>
-          </g>
-        ))}
-      </svg>
-    </div>
   )
 }
 

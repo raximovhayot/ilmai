@@ -5,7 +5,7 @@ import { type Feature, liveFeatures } from "@/lib/feature-flags"
 const BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080"
 
 const FEATURE_PATHS: Partial<Record<Feature, string[]>> = {
-  topics: [
+  data: [
     "/topics",
     "/topics/*",
     "/spaces",
@@ -17,7 +17,7 @@ const FEATURE_PATHS: Partial<Record<Feature, string[]>> = {
   quiz: ["/quiz", "/quiz/*"],
   gaps: ["/gaps", "/gaps/*"],
   plan: ["/plan", "/plan/*"],
-  profile: ["/profile", "/profile/*", "/stats", "/goals"],
+  profile: ["/profile", "/profile/*"],
   onboarding: ["/onboarding", "/onboarding/*"],
   premium: ["/billing", "/billing/*"],
   telegram: ["/telegram", "/telegram/*"],
