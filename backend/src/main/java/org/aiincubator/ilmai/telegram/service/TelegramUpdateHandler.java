@@ -324,19 +324,12 @@ public class TelegramUpdateHandler {
                 }
             }
         }
-        String html = flattener.flatten(textParts, locale);
-        boolean hasText = html != null && !html.isBlank();
-        if (!hasText && pollCards.isEmpty()) {
-            html = copy("telegram.bot.emptyReply", locale);
-            hasText = true;
-        }
-        if (hasText) {
-            List<InlineButton> buttons = buttonsFor(actions);
-            if (buttons.isEmpty()) {
-                send(chatId, html);
-            } else {
-                telegramApiClient.sendMessage(chatId, html, buttons);
-            }
+        String markdown = flattener.flatten(textParts, locale);
+        if (markdown != null && !markdown.isBlank()) {
+            String richMarkdown = flattener.flattenRaw(textParts, locale);
+            telegramApiClient.sendRich(chatId, richMarkdown, markdown, buttonsFor(actions));
+        } else if (pollCards.isEmpty()) {
+            send(chatId, copy("telegram.bot.emptyReply", locale));
         }
         for (QuizCardPart card : pollCards) {
             sendQuizPoll(chatId, userId, card);

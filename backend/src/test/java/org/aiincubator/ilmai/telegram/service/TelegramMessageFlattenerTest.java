@@ -9,7 +9,6 @@ import org.aiincubator.ilmai.common.i18n.SupportedLocale;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -28,20 +27,26 @@ class TelegramMessageFlattenerTest {
     @Mock
     private MessageService messageService;
 
-    @InjectMocks
     private TelegramMessageFlattener flattener;
 
     @BeforeEach
     void echoLabels() {
         lenient().when(messageService.get(anyString(), any(), any())).thenAnswer(inv -> inv.getArgument(0));
+        flattener = new TelegramMessageFlattener(messageService, new TelegramMarkdownRenderer());
     }
 
     @Test
-    void escapesHtmlSpecialCharactersInAnswerText() {
-        String result = flattener.flatten(List.<MessagePart>of(new TextPart("<b>x</b> & y")), SupportedLocale.EN);
+    void escapesMarkdownSpecialCharactersInAnswerText() {
+        String result = flattener.flatten(List.<MessagePart>of(new TextPart("price is 5.0 (cheap)!")), SupportedLocale.EN);
 
-        assertThat(result).contains("&lt;b&gt;x&lt;/b&gt; &amp; y");
-        assertThat(result).doesNotContain("<b>x");
+        assertThat(result).isEqualTo("price is 5\\.0 \\(cheap\\)\\!");
+    }
+
+    @Test
+    void leavesRawHtmlLiteralSinceItIsNotMarkdownV2() {
+        String result = flattener.flatten(List.<MessagePart>of(new TextPart("<b>x</b> and y")), SupportedLocale.EN);
+
+        assertThat(result).isEqualTo("<b\\>x</b\\> and y");
     }
 
     @Test
@@ -52,9 +57,10 @@ class TelegramMessageFlattenerTest {
 
         String result = flattener.flatten(List.of(text, citation), SupportedLocale.EN);
 
-        assertThat(result).contains("telegram.bot.flatten.sources");
+        assertThat(result).contains("telegram\\.bot\\.flatten\\.sources");
         assertThat(result).contains("Biology Notes");
         assertThat(result).contains("leaf chloroplast snippet");
+        assertThat(result).contains("\u2022 _");
     }
 
     @Test
@@ -62,12 +68,26 @@ class TelegramMessageFlattenerTest {
         String result = flattener.flatten(
                 List.<MessagePart>of(new TextPart("It might be around 1500.", TextConfidence.LOW)), SupportedLocale.EN);
 
-        assertThat(result).contains("telegram.bot.flatten.lowConfidence");
-        assertThat(result).contains("It might be around 1500.");
+        assertThat(result).contains("telegram\\.bot\\.flatten\\.lowConfidence");
+        assertThat(result).contains("It might be around 1500");
     }
 
     @Test
     void emptyPartsProduceEmptyString() {
         assertThat(flattener.flatten(List.of(), SupportedLocale.EN)).isEmpty();
+    }
+
+    @Test
+    void rendersMarkdownBodyToMarkdownV2() {
+        String result = flattener.flatten(
+                List.<MessagePart>of(new TextPart("# Title\n**bold** and *italic*\n- one\n- two")),
+                SupportedLocale.EN);
+
+        assertThat(result).contains("*Title*");
+        assertThat(result).contains("*bold*");
+        assertThat(result).contains("_italic_");
+        assertThat(result).contains("\u2022 one");
+        assertThat(result).doesNotContain("**");
+        assertThat(result).doesNotContain("# Title");
     }
 }

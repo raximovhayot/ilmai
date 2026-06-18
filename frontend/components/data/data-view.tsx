@@ -570,19 +570,19 @@ export function DataView({ initialTopics, loadError }: DataViewProps) {
                 <CardContent className="flex items-start justify-between gap-3 p-4">
                   <Link
                     href={`/data/${topic.id}`}
-                    className="flex flex-1 items-start gap-3 hover:opacity-80"
+                    className="flex min-w-0 flex-1 items-start gap-3 hover:opacity-80"
                   >
-                    <span className="mt-0.5 inline-flex size-9 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <span className="mt-0.5 inline-flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
                       <HugeiconsIcon icon={Folder01Icon} size={18} />
                     </span>
-                    <div className="flex flex-col">
-                      <span className="font-medium">{topic.name}</span>
+                    <div className="flex min-w-0 flex-col">
+                      <span className="truncate font-medium">{topic.name}</span>
                       <span className="text-xs text-muted-foreground">
                         {new Date(topic.createdAt).toLocaleDateString()}
                       </span>
                     </div>
                   </Link>
-                  <div className="flex items-center gap-1">
+                  <div className="flex shrink-0 items-center gap-1">
                     <Button
                       type="button"
                       variant="ghost"
@@ -611,12 +611,14 @@ export function DataView({ initialTopics, loadError }: DataViewProps) {
             <li key={`item-${material.id}`}>
               <Card>
                 <CardContent className="flex items-start justify-between gap-3 p-4">
-                  <div className="flex flex-1 items-start gap-3">
-                    <span className="mt-0.5 inline-flex size-9 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                  <div className="flex min-w-0 flex-1 items-start gap-3">
+                    <span className="mt-0.5 inline-flex size-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
                       <HugeiconsIcon icon={DocumentAttachmentIcon} size={18} />
                     </span>
-                    <div className="flex flex-col gap-1">
-                      <span className="font-medium">{material.title}</span>
+                    <div className="flex min-w-0 flex-col gap-1">
+                      <span className="truncate font-medium">
+                        {material.title}
+                      </span>
                       <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                         <MaterialStatusPill status={material.status} />
                         <span>
@@ -628,7 +630,7 @@ export function DataView({ initialTopics, loadError }: DataViewProps) {
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex shrink-0 items-center gap-1">
                     <Button
                       type="button"
                       variant="ghost"

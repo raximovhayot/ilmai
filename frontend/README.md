@@ -37,7 +37,7 @@ pnpm format       # prettier + tailwind plugin
 
 When `NEXT_PUBLIC_MOCK_API=1`, [MSW](https://mswjs.io/) (`mocks/handlers.ts`) intercepts every API call against an in-memory db so the whole app works without a backend.
 
-To verify a feature against the real backend while the rest stay mocked, list it in `NEXT_PUBLIC_LIVE_FEATURES` (comma-separated, or `all`) — e.g. `NEXT_PUBLIC_LIVE_FEATURES=topics`. Those requests pass through MSW to `NEXT_PUBLIC_API_BASE_URL`; everything else keeps using the mock db. With `NEXT_PUBLIC_MOCK_API` unset, all features are live. Feature names are defined in `lib/feature-flags.ts`.
+To verify a feature against the real backend while the rest stay mocked, list it in `NEXT_PUBLIC_LIVE_FEATURES` (comma-separated, or `all`) — e.g. `NEXT_PUBLIC_LIVE_FEATURES=data`. Those requests pass through MSW to `NEXT_PUBLIC_API_BASE_URL`; everything else keeps using the mock db. With `NEXT_PUBLIC_MOCK_API` unset, all features are live. Feature names are defined in `lib/feature-flags.ts`.
 
 ## Layout
 

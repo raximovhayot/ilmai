@@ -14,6 +14,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.Ordered;
 import org.springframework.stereotype.Service;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import reactor.core.publisher.Flux;
 import uz.uzinfoweb.uimessagestream.core.UiMessageStreamWriter;
@@ -130,8 +131,13 @@ public class CoachStreamService {
                                         CoachTurnSupport.PER_TURN_ESTIMATE_ILM_TOKENS);
                             }
                             if (failure != null) {
-                                log.error("Error executing coach turn for user={} session={}",
-                                        currentUser.getUserId(), sessionId, failure);
+                                if (isClientDisconnect(failure)) {
+                                    log.debug("agent.stream client disconnected user={} session={}: {}",
+                                            currentUser.getUserId(), sessionId, failure.getMessage());
+                                } else {
+                                    log.error("Error executing coach turn for user={} session={}",
+                                            currentUser.getUserId(), sessionId, failure);
+                                }
                             }
                         });
             } catch (Exception ex) {
@@ -173,6 +179,19 @@ public class CoachStreamService {
         if (delta != null) {
             aggregatedText.append(delta);
         }
+    }
+
+    private boolean isClientDisconnect(Throwable failure) {
+        for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+            if (cause instanceof AsyncRequestNotUsableException) {
+                return true;
+            }
+            String name = cause.getClass().getName();
+            if (name.endsWith("ClientAbortException")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private SseEmitter produce(Consumer<UiMessageStreamWriter> producer) {

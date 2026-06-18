@@ -2,6 +2,9 @@ package org.aiincubator.ilmai.telegram.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.aiincubator.ilmai.telegram.botapi.InputRichMessage;
+import org.aiincubator.ilmai.telegram.botapi.SendRichMessage;
+import org.aiincubator.ilmai.telegram.botapi.SendRichMessageDraft;
 import org.aiincubator.ilmai.telegram.config.TelegramProperties;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery;
@@ -30,11 +33,13 @@ import java.util.List;
 public class TelegramApiClient {
 
     private static final String PARSE_MODE_HTML = "HTML";
+    private static final String PARSE_MODE_MARKDOWN = "MarkdownV2";
     private static final int EXPLANATION_MAX = 200;
     private static final int DRAFT_TEXT_MAX = 4096;
 
     private final TelegramClient telegramClient;
     private final TelegramProperties properties;
+    private final TelegramMarkdownRenderer markdownRenderer;
 
     public boolean isEnabled() {
         return properties.getBotToken() != null && !properties.getBotToken().isBlank();
@@ -98,14 +103,38 @@ public class TelegramApiClient {
         if (!isEnabled() || chatId == null || draftId == 0) {
             return false;
         }
-        String text = partialText == null ? "" : partialText;
+        String raw = partialText == null ? "" : partialText;
+        if (raw.length() > DRAFT_TEXT_MAX) {
+            raw = raw.substring(0, DRAFT_TEXT_MAX);
+        }
+        if (raw.isBlank()) {
+            return streamMarkdownDraft(chatId, draftId, raw);
+        }
+        SendRichMessageDraft request = SendRichMessageDraft.builder()
+                .chatId(chatId)
+                .draftId(draftId)
+                .richMessage(InputRichMessage.builder().markdown(raw).build())
+                .build();
+        try {
+            telegramClient.execute(request);
+            return true;
+        } catch (TelegramApiException | RuntimeException ex) {
+            log.warn("telegram sendRichMessageDraft failed (chat={}): {} — falling back to MarkdownV2 draft",
+                    chatId, ex.toString());
+            return streamMarkdownDraft(chatId, draftId, raw);
+        }
+    }
+
+    private boolean streamMarkdownDraft(Long chatId, int draftId, String raw) {
+        String text = markdownRenderer.render(raw);
         if (text.length() > DRAFT_TEXT_MAX) {
-            text = text.substring(0, DRAFT_TEXT_MAX);
+            text = trimDanglingEscape(text.substring(0, DRAFT_TEXT_MAX));
         }
         SendMessageDraft request = SendMessageDraft.builder()
                 .chatId(chatId)
                 .draftId(draftId)
                 .text(text)
+                .parseMode(PARSE_MODE_MARKDOWN)
                 .build();
         try {
             telegramClient.execute(request);
@@ -124,6 +153,51 @@ public class TelegramApiClient {
             log.debug("telegram disabled — skipping sendMessage(keyboard) to chat={}", chatId);
             return false;
         }
+        SendMessage request = SendMessage.builder()
+                .chatId(String.valueOf(chatId))
+                .text(text)
+                .parseMode(PARSE_MODE_HTML)
+                .replyMarkup(keyboardOf(buttons))
+                .build();
+        try {
+            telegramClient.execute(request);
+            return true;
+        } catch (TelegramApiException | RuntimeException ex) {
+            log.warn("telegram sendMessage(keyboard) failed (chat={}): {}", chatId, ex.toString());
+            return false;
+        }
+    }
+
+    public boolean sendRich(Long chatId, String richMarkdown, String fallbackMarkdown) {
+        return sendRich(chatId, richMarkdown, fallbackMarkdown, null);
+    }
+
+    public boolean sendRich(Long chatId, String richMarkdown, String fallbackMarkdown, List<InlineButton> buttons) {
+        if (!isEnabled() || chatId == null || richMarkdown == null || richMarkdown.isBlank()) {
+            log.debug("telegram disabled — skipping sendRich to chat={}", chatId);
+            return false;
+        }
+        SendRichMessage.SendRichMessageBuilder<?, ?> builder = SendRichMessage.builder()
+                .chatId(chatId)
+                .richMessage(InputRichMessage.builder().markdown(richMarkdown).build());
+        InlineKeyboardMarkup keyboard = keyboardOf(buttons);
+        if (keyboard != null) {
+            builder.replyMarkup(keyboard);
+        }
+        try {
+            telegramClient.execute(builder.build());
+            return true;
+        } catch (TelegramApiException | RuntimeException ex) {
+            log.warn("telegram sendRichMessage failed (chat={}): {} — falling back to MarkdownV2",
+                    chatId, ex.toString());
+            return sendMarkdown(chatId, fallbackMarkdown, buttons);
+        }
+    }
+
+    private InlineKeyboardMarkup keyboardOf(List<InlineButton> buttons) {
+        if (buttons == null || buttons.isEmpty()) {
+            return null;
+        }
         List<InlineKeyboardRow> keyboard = new ArrayList<>();
         for (InlineButton button : buttons) {
             keyboard.add(new InlineKeyboardRow(InlineKeyboardButton.builder()
@@ -131,17 +205,47 @@ public class TelegramApiClient {
                     .callbackData(button.getCallbackData())
                     .build()));
         }
+        return InlineKeyboardMarkup.builder().keyboard(keyboard).build();
+    }
+
+    public boolean sendMarkdown(Long chatId, String text) {
+        if (!isEnabled() || chatId == null || text == null || text.isBlank()) {
+            log.debug("telegram disabled — skipping sendMarkdown to chat={}", chatId);
+            return false;
+        }
         SendMessage request = SendMessage.builder()
                 .chatId(String.valueOf(chatId))
                 .text(text)
-                .parseMode(PARSE_MODE_HTML)
-                .replyMarkup(InlineKeyboardMarkup.builder().keyboard(keyboard).build())
+                .parseMode(PARSE_MODE_MARKDOWN)
                 .build();
         try {
             telegramClient.execute(request);
             return true;
         } catch (TelegramApiException | RuntimeException ex) {
-            log.warn("telegram sendMessage(keyboard) failed (chat={}): {}", chatId, ex.toString());
+            log.warn("telegram sendMarkdown failed (chat={}): {}", chatId, ex.toString());
+            return false;
+        }
+    }
+
+    public boolean sendMarkdown(Long chatId, String text, List<InlineButton> buttons) {
+        if (buttons == null || buttons.isEmpty()) {
+            return sendMarkdown(chatId, text);
+        }
+        if (!isEnabled() || chatId == null || text == null || text.isBlank()) {
+            log.debug("telegram disabled — skipping sendMarkdown(keyboard) to chat={}", chatId);
+            return false;
+        }
+        SendMessage request = SendMessage.builder()
+                .chatId(String.valueOf(chatId))
+                .text(text)
+                .parseMode(PARSE_MODE_MARKDOWN)
+                .replyMarkup(keyboardOf(buttons))
+                .build();
+        try {
+            telegramClient.execute(request);
+            return true;
+        } catch (TelegramApiException | RuntimeException ex) {
+            log.warn("telegram sendMarkdown(keyboard) failed (chat={}): {}", chatId, ex.toString());
             return false;
         }
     }
@@ -241,6 +345,17 @@ public class TelegramApiClient {
         } catch (TelegramApiException | RuntimeException ex) {
             log.warn("telegram answerCallbackQuery failed (id={}): {}", callbackQueryId, ex.toString());
         }
+    }
+
+    private String trimDanglingEscape(String value) {
+        int trailing = 0;
+        for (int i = value.length() - 1; i >= 0 && value.charAt(i) == '\\'; i--) {
+            trailing++;
+        }
+        if (trailing % 2 == 1) {
+            return value.substring(0, value.length() - 1);
+        }
+        return value;
     }
 
     private String truncate(String value, int max) {

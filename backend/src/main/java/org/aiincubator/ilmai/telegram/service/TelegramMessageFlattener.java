@@ -10,7 +10,6 @@ import org.aiincubator.ilmai.common.i18n.MessageService;
 import org.aiincubator.ilmai.common.i18n.SupportedLocale;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Component
@@ -22,9 +21,11 @@ public class TelegramMessageFlattener {
     private static final char[] OPTION_LETTERS = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'};
 
     private final MessageService messageService;
+    private final TelegramMarkdownRenderer markdownRenderer;
 
-    public TelegramMessageFlattener(MessageService messageService) {
+    public TelegramMessageFlattener(MessageService messageService, TelegramMarkdownRenderer markdownRenderer) {
         this.messageService = messageService;
+        this.markdownRenderer = markdownRenderer;
     }
 
     public String flatten(List<MessagePart> parts, SupportedLocale locale) {
@@ -33,44 +34,92 @@ public class TelegramMessageFlattener {
         }
         SupportedLocale effective = locale == null ? SupportedLocale.DEFAULT : locale;
 
-        List<TextPart> texts = new ArrayList<>();
-        List<CitationPart> citations = new ArrayList<>();
-        List<QuizCardPart> quizCards = new ArrayList<>();
-        List<ErrorPart> errors = new ArrayList<>();
-        for (MessagePart part : parts) {
-            if (part instanceof TextPart textPart) {
-                texts.add(textPart);
-            } else if (part instanceof CitationPart citationPart) {
-                citations.add(citationPart);
-            } else if (part instanceof QuizCardPart quizCardPart) {
-                quizCards.add(quizCardPart);
-            } else if (part instanceof ErrorPart errorPart) {
-                errors.add(errorPart);
-            }
-        }
+        GroupedMessageParts grouped = new GroupedMessageParts(parts);
+        List<TextPart> texts = grouped.getTexts();
+        List<CitationPart> citations = grouped.getCitations();
+        List<QuizCardPart> quizCards = grouped.getQuizCards();
+        List<ErrorPart> errors = grouped.getErrors();
 
         StringBuilder sb = new StringBuilder();
         String body = joinText(texts);
         boolean lowConfidence = texts.stream().anyMatch(t -> t.getConfidence() == TextConfidence.LOW);
 
         if (body.isBlank() && !errors.isEmpty()) {
-            sb.append(escape(joinErrors(errors)));
+            sb.append(markdownRenderer.escape(joinErrors(errors)));
         } else {
             if (lowConfidence) {
-                sb.append("<i>")
-                        .append(escape(label("telegram.bot.flatten.lowConfidence", effective)))
-                        .append("</i>\n\n");
+                sb.append("_")
+                        .append(markdownRenderer.escape(label("telegram.bot.flatten.lowConfidence", effective)))
+                        .append("_\n\n");
             }
-            sb.append(escape(body));
+            sb.append(markdownRenderer.render(body));
         }
 
         if (!quizCards.isEmpty()) {
-            sb.append("\n\n<b>")
-                    .append(escape(label("telegram.bot.flatten.quiz", effective)))
-                    .append("</b>");
+            sb.append("\n\n*")
+                    .append(markdownRenderer.escape(label("telegram.bot.flatten.quiz", effective)))
+                    .append("*");
             for (QuizCardPart card : quizCards) {
-                sb.append("\n\n<b>").append(card.getPosition()).append(". </b>")
-                        .append(escape(card.getPrompt()));
+                sb.append("\n\n*").append(markdownRenderer.escape(card.getPosition() + ".")).append("* ")
+                        .append(markdownRenderer.escape(card.getPrompt()));
+                List<String> options = card.getOptions();
+                if (options != null) {
+                    for (int i = 0; i < options.size(); i++) {
+                        sb.append('\n');
+                        if (i < OPTION_LETTERS.length) {
+                            sb.append(markdownRenderer.escape(OPTION_LETTERS[i] + ")")).append(' ');
+                        }
+                        sb.append(markdownRenderer.escape(options.get(i)));
+                    }
+                }
+            }
+        }
+
+        if (!citations.isEmpty()) {
+            sb.append("\n\n\uD83D\uDCDA *")
+                    .append(markdownRenderer.escape(label("telegram.bot.flatten.sources", effective)))
+                    .append("*");
+            for (CitationPart citation : citations) {
+                sb.append("\n\u2022 _").append(markdownRenderer.escape(citationText(citation))).append("_");
+            }
+        }
+
+        String out = sb.toString().strip();
+        if (out.length() > MAX_MESSAGE_LENGTH) {
+            out = trimDanglingEscape(out.substring(0, MAX_MESSAGE_LENGTH - 1).strip()) + "\u2026";
+        }
+        return out;
+    }
+
+    public String flattenRaw(List<MessagePart> parts, SupportedLocale locale) {
+        if (parts == null || parts.isEmpty()) {
+            return "";
+        }
+        SupportedLocale effective = locale == null ? SupportedLocale.DEFAULT : locale;
+
+        GroupedMessageParts grouped = new GroupedMessageParts(parts);
+        List<TextPart> texts = grouped.getTexts();
+        List<CitationPart> citations = grouped.getCitations();
+        List<QuizCardPart> quizCards = grouped.getQuizCards();
+        List<ErrorPart> errors = grouped.getErrors();
+
+        StringBuilder sb = new StringBuilder();
+        String body = joinText(texts);
+        boolean lowConfidence = texts.stream().anyMatch(t -> t.getConfidence() == TextConfidence.LOW);
+
+        if (body.isBlank() && !errors.isEmpty()) {
+            sb.append(joinErrors(errors));
+        } else {
+            if (lowConfidence) {
+                sb.append("_").append(label("telegram.bot.flatten.lowConfidence", effective)).append("_\n\n");
+            }
+            sb.append(body);
+        }
+
+        if (!quizCards.isEmpty()) {
+            sb.append("\n\n**").append(label("telegram.bot.flatten.quiz", effective)).append("**");
+            for (QuizCardPart card : quizCards) {
+                sb.append("\n\n**").append(card.getPosition()).append(".** ").append(card.getPrompt());
                 List<String> options = card.getOptions();
                 if (options != null) {
                     for (int i = 0; i < options.size(); i++) {
@@ -78,18 +127,16 @@ public class TelegramMessageFlattener {
                         if (i < OPTION_LETTERS.length) {
                             sb.append(OPTION_LETTERS[i]).append(") ");
                         }
-                        sb.append(escape(options.get(i)));
+                        sb.append(options.get(i));
                     }
                 }
             }
         }
 
         if (!citations.isEmpty()) {
-            sb.append("\n\n\uD83D\uDCDA <b>")
-                    .append(escape(label("telegram.bot.flatten.sources", effective)))
-                    .append("</b>");
+            sb.append("\n\n\uD83D\uDCDA **").append(label("telegram.bot.flatten.sources", effective)).append("**");
             for (CitationPart citation : citations) {
-                sb.append("\n\u2022 <i>").append(escape(citationText(citation))).append("</i>");
+                sb.append("\n\u2022 _").append(citationText(citation)).append("_");
             }
         }
 
@@ -152,10 +199,14 @@ public class TelegramMessageFlattener {
         return messageService.get(key, null, locale.getLocale());
     }
 
-    private String escape(String value) {
-        if (value == null) {
-            return "";
+    private String trimDanglingEscape(String value) {
+        int trailing = 0;
+        for (int i = value.length() - 1; i >= 0 && value.charAt(i) == '\\'; i--) {
+            trailing++;
         }
-        return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+        if (trailing % 2 == 1) {
+            return value.substring(0, value.length() - 1);
+        }
+        return value;
     }
 }

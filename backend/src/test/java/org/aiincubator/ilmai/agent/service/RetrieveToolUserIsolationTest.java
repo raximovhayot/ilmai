@@ -84,6 +84,27 @@ class RetrieveToolUserIsolationTest {
     }
 
     @Test
+    void retrieveStopsQueryingAfterPerTurnCapReached() {
+        UUID materialId = UUID.randomUUID();
+        int[] calls = {0};
+        RetrievalApi retrievalApi = (userId, query) -> {
+            calls[0]++;
+            return List.of(new RetrievedChunkDto(materialId, "Notes", 0, "snippet", 0.7));
+        };
+        RetrieveTool tool = new RetrieveTool(retrievalApi);
+
+        AgentRetrievalContext.begin();
+        ToolContext toolContext = new ToolContext(Map.of(AgentToolContext.CURRENT_USER_KEY, new CurrentUser(userA)));
+
+        for (int i = 0; i < RetrieveTool.MAX_CALLS_PER_TURN; i++) {
+            assertThat(tool.retrieve("query " + i, toolContext)).hasSize(1);
+        }
+
+        assertThat(tool.retrieve("one too many", toolContext)).isEmpty();
+        assertThat(calls[0]).isEqualTo(RetrieveTool.MAX_CALLS_PER_TURN);
+    }
+
+    @Test
     void emptyQueryShortCircuitsToEmptyResult() {
         RetrievalApi retrievalApi = (userId, query) -> {
             throw new AssertionError("RetrievalApi must not be called for blank query");

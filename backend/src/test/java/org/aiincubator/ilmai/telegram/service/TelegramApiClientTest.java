@@ -1,5 +1,7 @@
 package org.aiincubator.ilmai.telegram.service;
 
+import org.aiincubator.ilmai.telegram.botapi.SendRichMessage;
+import org.aiincubator.ilmai.telegram.botapi.SendRichMessageDraft;
 import org.aiincubator.ilmai.telegram.config.TelegramProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,7 +41,7 @@ class TelegramApiClientTest {
 
     @BeforeEach
     void setUp() {
-        client = new TelegramApiClient(telegramClient, new TelegramProperties("token", "bot", "secret", "https://example.com", 1000L));
+        client = new TelegramApiClient(telegramClient, new TelegramProperties("token", "bot", "secret", "https://example.com", 1000L), new TelegramMarkdownRenderer());
     }
 
     @Test
@@ -53,6 +55,75 @@ class TelegramApiClientTest {
         assertThat(sent.getChatId()).isEqualTo("42");
         assertThat(sent.getText()).isEqualTo("hello");
         assertThat(sent.getParseMode()).isEqualTo("HTML");
+    }
+
+    @Test
+    void sendMarkdown_buildsMarkdownV2Request() throws TelegramApiException {
+        ArgumentCaptor<SendMessage> captor = ArgumentCaptor.forClass(SendMessage.class);
+
+        assertThat(client.sendMarkdown(42L, "*hello*")).isTrue();
+
+        verify(telegramClient).execute(captor.capture());
+        SendMessage sent = captor.getValue();
+        assertThat(sent.getText()).isEqualTo("*hello*");
+        assertThat(sent.getParseMode()).isEqualTo("MarkdownV2");
+    }
+
+    @Test
+    void sendMarkdown_withButtons_usesMarkdownV2AndKeyboard() throws TelegramApiException {
+        ArgumentCaptor<SendMessage> captor = ArgumentCaptor.forClass(SendMessage.class);
+
+        boolean ok = client.sendMarkdown(7L, "*pick*", List.of(new InlineButton("Yes", "yes")));
+
+        assertThat(ok).isTrue();
+        verify(telegramClient).execute(captor.capture());
+        assertThat(captor.getValue().getParseMode()).isEqualTo("MarkdownV2");
+        assertThat(captor.getValue().getReplyMarkup()).isInstanceOf(InlineKeyboardMarkup.class);
+    }
+
+    @Test
+    void sendRich_buildsRichMessageWithRawMarkdown() throws TelegramApiException {
+        ArgumentCaptor<SendRichMessage> captor = ArgumentCaptor.forClass(SendRichMessage.class);
+
+        assertThat(client.sendRich(42L, "# Heading\n\n**bold**", "fallback")).isTrue();
+
+        verify(telegramClient).execute(captor.capture());
+        SendRichMessage sent = captor.getValue();
+        assertThat(sent.getChatId()).isEqualTo(42L);
+        assertThat(sent.getMethod()).isEqualTo("sendRichMessage");
+        assertThat(sent.getRichMessage().getMarkdown()).isEqualTo("# Heading\n\n**bold**");
+        assertThat(sent.getRichMessage().getHtml()).isNull();
+        assertThat(sent.getReplyMarkup()).isNull();
+    }
+
+    @Test
+    void sendRich_withButtons_attachesInlineKeyboard() throws TelegramApiException {
+        ArgumentCaptor<SendRichMessage> captor = ArgumentCaptor.forClass(SendRichMessage.class);
+
+        assertThat(client.sendRich(7L, "# Hi", "fallback", List.of(new InlineButton("Yes", "yes")))).isTrue();
+
+        verify(telegramClient).execute(captor.capture());
+        assertThat(captor.getValue().getReplyMarkup()).isInstanceOf(InlineKeyboardMarkup.class);
+    }
+
+    @Test
+    void sendRich_failureFallsBackToMarkdownV2() throws TelegramApiException {
+        when(telegramClient.execute(any(SendRichMessage.class))).thenThrow(new TelegramApiException("unsupported"));
+        ArgumentCaptor<SendMessage> captor = ArgumentCaptor.forClass(SendMessage.class);
+
+        assertThat(client.sendRich(42L, "# Hi", "*fallback*")).isTrue();
+
+        verify(telegramClient).execute(captor.capture());
+        assertThat(captor.getValue().getText()).isEqualTo("*fallback*");
+        assertThat(captor.getValue().getParseMode()).isEqualTo("MarkdownV2");
+    }
+
+    @Test
+    void sendRich_blankRichMarkdownSkips() throws TelegramApiException {
+        assertThat(client.sendRich(42L, "  ", "fallback")).isFalse();
+
+        verify(telegramClient, never()).execute(any(SendRichMessage.class));
+        verify(telegramClient, never()).execute(any(SendMessage.class));
     }
 
     @Test
@@ -132,38 +203,65 @@ class TelegramApiClientTest {
     }
 
     @Test
-    void streamMessage_buildsDraftRequest() throws TelegramApiException {
-        ArgumentCaptor<SendMessageDraft> captor = ArgumentCaptor.forClass(SendMessageDraft.class);
+    void streamMessage_buildsRichDraftRequest() throws TelegramApiException {
+        ArgumentCaptor<SendRichMessageDraft> captor = ArgumentCaptor.forClass(SendRichMessageDraft.class);
 
-        assertThat(client.streamMessage(42L, 7, "partial")).isTrue();
+        assertThat(client.streamMessage(42L, 7, "# Heading\n\n**bold**")).isTrue();
 
         verify(telegramClient).execute(captor.capture());
-        SendMessageDraft sent = captor.getValue();
+        SendRichMessageDraft sent = captor.getValue();
         assertThat(sent.getChatId()).isEqualTo(42L);
         assertThat(sent.getDraftId()).isEqualTo(7);
-        assertThat(sent.getText()).isEqualTo("partial");
+        assertThat(sent.getMethod()).isEqualTo("sendRichMessageDraft");
+        assertThat(sent.getRichMessage()).isNotNull();
+        assertThat(sent.getRichMessage().getMarkdown()).isEqualTo("# Heading\n\n**bold**");
+        assertThat(sent.getRichMessage().getHtml()).isNull();
+    }
+
+    @Test
+    void streamMessage_blankTextUsesPlaceholderDraft() throws TelegramApiException {
+        ArgumentCaptor<SendMessageDraft> captor = ArgumentCaptor.forClass(SendMessageDraft.class);
+
+        assertThat(client.streamMessage(42L, 7, "   ")).isTrue();
+
+        verify(telegramClient).execute(captor.capture());
+        verify(telegramClient, never()).execute(any(SendRichMessageDraft.class));
+        assertThat(captor.getValue().getParseMode()).isEqualTo("MarkdownV2");
     }
 
     @Test
     void streamMessage_zeroDraftIdSkips() throws TelegramApiException {
         assertThat(client.streamMessage(42L, 0, "partial")).isFalse();
 
-        verify(telegramClient, never()).execute(any(SendMessageDraft.class));
+        verify(telegramClient, never()).execute(any(SendRichMessageDraft.class));
     }
 
     @Test
     void streamMessage_truncatesTo4096() throws TelegramApiException {
-        ArgumentCaptor<SendMessageDraft> captor = ArgumentCaptor.forClass(SendMessageDraft.class);
+        ArgumentCaptor<SendRichMessageDraft> captor = ArgumentCaptor.forClass(SendRichMessageDraft.class);
         String big = "x".repeat(5000);
 
         assertThat(client.streamMessage(42L, 7, big)).isTrue();
 
         verify(telegramClient).execute(captor.capture());
-        assertThat(captor.getValue().getText()).hasSize(4096);
+        assertThat(captor.getValue().getRichMessage().getMarkdown()).hasSize(4096);
+    }
+
+    @Test
+    void streamMessage_richDraftFailureFallsBackToMarkdownV2() throws TelegramApiException {
+        when(telegramClient.execute(any(SendRichMessageDraft.class))).thenThrow(new TelegramApiException("unsupported"));
+        ArgumentCaptor<SendMessageDraft> captor = ArgumentCaptor.forClass(SendMessageDraft.class);
+
+        assertThat(client.streamMessage(42L, 7, "**bold**")).isTrue();
+
+        verify(telegramClient).execute(captor.capture());
+        assertThat(captor.getValue().getText()).contains("*bold*");
+        assertThat(captor.getValue().getParseMode()).isEqualTo("MarkdownV2");
     }
 
     @Test
     void streamMessage_failureIsSoft() throws TelegramApiException {
+        when(telegramClient.execute(any(SendRichMessageDraft.class))).thenThrow(new TelegramApiException("boom"));
         when(telegramClient.execute(any(SendMessageDraft.class))).thenThrow(new TelegramApiException("boom"));
 
         assertThat(client.streamMessage(42L, 7, "partial")).isFalse();
@@ -238,7 +336,7 @@ class TelegramApiClientTest {
     @Test
     void disabled_skipsAllCalls() throws TelegramApiException {
         TelegramApiClient disabled =
-                new TelegramApiClient(telegramClient, new TelegramProperties("  ", "bot", "secret", "https://example.com", 1000L));
+                new TelegramApiClient(telegramClient, new TelegramProperties("  ", "bot", "secret", "https://example.com", 1000L), new TelegramMarkdownRenderer());
 
         assertThat(disabled.isEnabled()).isFalse();
         assertThat(disabled.sendMessage(1L, "x")).isFalse();

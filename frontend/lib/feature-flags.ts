@@ -1,5 +1,5 @@
 export const FEATURES = [
-  "topics",
+  "data",
   "companion",
   "quiz",
   "gaps",

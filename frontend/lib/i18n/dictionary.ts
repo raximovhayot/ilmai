@@ -1377,7 +1377,8 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       quizYourAnswer: "Ваш ответ",
       quizSkipped: "Пропущено",
       quizGrading: "Проверка…",
-      quizComposerBlocked: "Завершите тест выше, прежде чем отправлять сообщение.",
+      quizComposerBlocked:
+        "Завершите тест выше, прежде чем отправлять сообщение.",
       quizModeTimed: "На время",
       quizModeExplain: "Пошагово",
       quizModeSingle: "Все вопросы",
@@ -1957,7 +1958,8 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       quizAnswerPlaceholder: "Javobingizni yozing…",
       quizTitle: "Test",
       quizStart: "Testni boshlash",
-      quizStartHint: "Suhbatni davom ettirish uchun testni yeching va yuboring.",
+      quizStartHint:
+        "Suhbatni davom ettirish uchun testni yeching va yuboring.",
       quizQuestionsLabel: "{count} ta savol",
       quizQuestionOf: "{current}-savol / {total}",
       quizNext: "Keyingi savol",
@@ -1968,7 +1970,8 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       quizYourAnswer: "Sizning javobingiz",
       quizSkipped: "O‘tkazib yuborildi",
       quizGrading: "Baholanmoqda…",
-      quizComposerBlocked: "Xabar yuborishdan oldin yuqoridagi testni yakunlang.",
+      quizComposerBlocked:
+        "Xabar yuborishdan oldin yuqoridagi testni yakunlang.",
       quizModeTimed: "Vaqtli",
       quizModeExplain: "Bosqichma-bosqich",
       quizModeSingle: "Barcha savollar",

@@ -1295,85 +1295,6 @@ export const handlers = [
     }
   ),
 
-  http.post(`${BASE}/quiz/sessions/:id/answer`, async ({ request, params }) => {
-    const guard = requireAuth(request)
-    if (guard instanceof HttpResponse) return guard
-    const session = db.quizSessions.find((s) => s.id === params.id)
-    if (!session)
-      return errorResponse("QUIZ_NOT_FOUND", "Quiz session not found.", 404)
-    const body = (await request.json().catch(() => ({}))) as {
-      questionId?: string
-      answer?: string
-    }
-    if (!body.questionId || body.answer === undefined) {
-      return errorResponse(
-        "QUIZ_BAD_REQUEST",
-        "questionId and answer are required.",
-        400
-      )
-    }
-    const q = db.quizQuestions.find(
-      (qq) => qq.id === body.questionId && qq.sessionId === session.id
-    )
-    if (!q)
-      return errorResponse(
-        "QUIZ_QUESTION_NOT_FOUND",
-        "Question not found.",
-        404
-      )
-
-    await delay(250)
-
-    let correct = false
-    if (q.type === "MCQ") {
-      correct = (body.answer || "").trim() === q.correctAnswer
-    } else {
-      const tokensA = new Set(tokenizeQuery(body.answer))
-      const tokensB = tokenizeQuery(q.correctAnswer)
-      let overlap = 0
-      for (const t of tokensB) if (tokensA.has(t)) overlap++
-      const threshold = q.type === "SHORT_ANSWER" ? 0.5 : 0.35
-      correct = tokensB.length > 0 && overlap / tokensB.length >= threshold
-    }
-    q.userAnswer = body.answer
-    q.isCorrect = correct
-    q.feedback = correct
-      ? "Correct — exactly what the source says."
-      : `Not quite. The source actually says: “${q.correctAnswer}”`
-    if (correct) session.correctCount++
-
-    const answered = db.quizQuestions.filter(
-      (qq) => qq.sessionId === session.id && qq.userAnswer
-    )
-    if (answered.length === session.totalQuestions) {
-      session.status = "COMPLETED"
-      session.completedAt = timestamp()
-      session.score = Math.round(
-        (session.correctCount / session.totalQuestions) * 100
-      )
-      db.stats.sessionsCompleted += 1
-      db.stats.knowledgeScore = Math.min(
-        100,
-        Math.round(db.stats.knowledgeScore * 0.7 + session.score * 0.3)
-      )
-    }
-
-    return envelope({
-      question: publicQuestion(q, { revealAnswer: true }),
-      session,
-    })
-  }),
-
-  http.get(`${BASE}/quiz/history`, async ({ request }) => {
-    const guard = requireAuth(request)
-    if (guard instanceof HttpResponse) return guard
-    const list = db.quizSessions
-      .slice()
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-      .slice(0, 20)
-    return envelope(list)
-  }),
-
   http.get(`${BASE}/gaps`, async ({ request }) => {
     const guard = requireAuth(request)
     if (guard instanceof HttpResponse) return guard
@@ -1616,20 +1537,3 @@ export const handlers = [
     return envelope({ ok: true })
   }),
 ]
-
-function publicQuestion(q: QuizQuestion, opts?: { revealAnswer?: boolean }) {
-  return {
-    id: q.id,
-    sessionId: q.sessionId,
-    index: q.index,
-    type: q.type,
-    prompt: q.prompt,
-    choices: q.choices,
-    citation: q.citation,
-    userAnswer: q.userAnswer,
-    isCorrect: q.isCorrect,
-    feedback: q.feedback,
-    hint: q.hint,
-    correctAnswer: opts?.revealAnswer ? q.correctAnswer : undefined,
-  }
-}

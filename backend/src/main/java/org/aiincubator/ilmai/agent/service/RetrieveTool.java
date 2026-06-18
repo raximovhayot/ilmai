@@ -20,6 +20,8 @@ import java.util.UUID;
 @Slf4j
 public class RetrieveTool {
 
+    static final int MAX_CALLS_PER_TURN = 4;
+
     private final RetrievalApi retrievalApi;
 
     @Tool(description = "Search the current user's uploaded materials (PDFs, documents, notes) for chunks "
@@ -31,6 +33,13 @@ public class RetrieveTool {
             @ToolParam(description = "Natural-language query in the user's language.") String query,
             ToolContext toolContext) {
         UUID userId = AgentToolContext.requireUserId(toolContext);
+        AgentRetrievalContext turnCtx = AgentToolContext.retrievalContext(toolContext);
+        AgentRetrievalContext threadLocalCtx = AgentRetrievalContext.current();
+        int priorCalls = priorCallCount(turnCtx, threadLocalCtx);
+        if (priorCalls >= MAX_CALLS_PER_TURN) {
+            log.debug("agent.retrieve cap reached user={} priorCalls={} — returning empty", userId, priorCalls);
+            return List.of();
+        }
         List<RetrievedChunkDto> raw = query == null || query.isBlank()
                 ? List.of()
                 : retrievalApi.retrieve(userId, query);
@@ -42,11 +51,9 @@ public class RetrieveTool {
                         dto.getContent(),
                         dto.getScore()))
                 .toList();
-        AgentRetrievalContext threadLocalCtx = AgentRetrievalContext.current();
         if (threadLocalCtx != null) {
             threadLocalCtx.recordCall(chunks);
         }
-        AgentRetrievalContext turnCtx = AgentToolContext.retrievalContext(toolContext);
         if (turnCtx != null && turnCtx != threadLocalCtx) {
             turnCtx.recordCall(chunks);
         }
@@ -55,6 +62,16 @@ public class RetrieveTool {
                 query == null ? "" : query.replaceAll("\\s+", " "),
                 chunks.size());
         return chunks;
+    }
+
+    private int priorCallCount(AgentRetrievalContext turnCtx, AgentRetrievalContext threadLocalCtx) {
+        if (turnCtx != null) {
+            return turnCtx.callCount();
+        }
+        if (threadLocalCtx != null) {
+            return threadLocalCtx.callCount();
+        }
+        return 0;
     }
 
     private void emitCitations(SerializedPartSink sink, List<RetrievedChunk> chunks) {

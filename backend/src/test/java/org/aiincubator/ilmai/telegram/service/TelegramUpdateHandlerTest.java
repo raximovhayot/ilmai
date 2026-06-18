@@ -123,11 +123,13 @@ class TelegramUpdateHandlerTest {
         when(agentApi.chat(any(), eq(sessionId), eq("explain mitosis"), eq(ChatChannel.TELEGRAM)))
                 .thenReturn(Flux.<MessagePart>just(new TextPart("Mitosis is cell division.")));
         when(flattener.flatten(any(), any())).thenReturn("Mitosis is cell division.");
+        when(flattener.flattenRaw(any(), any())).thenReturn("Mitosis is cell division.");
 
         handler.handleUpdate(update(chatId, "explain mitosis"));
 
         verify(agentApi).chat(any(), eq(sessionId), eq("explain mitosis"), eq(ChatChannel.TELEGRAM));
-        verify(telegramApiClient, times(1)).sendMessage(chatId, "Mitosis is cell division.");
+        verify(telegramApiClient, times(1))
+                .sendRich(chatId, "Mitosis is cell division.", "Mitosis is cell division.", List.of());
     }
 
     @Test
@@ -143,11 +145,13 @@ class TelegramUpdateHandlerTest {
                 .thenReturn(Flux.<MessagePart>just(
                         new TextPart("Mitosis"), new TextPart("is cell division.")));
         when(flattener.flatten(any(), any())).thenReturn("Mitosis\n\nis cell division.");
+        when(flattener.flattenRaw(any(), any())).thenReturn("Mitosis\n\nis cell division.");
 
         handler.handleUpdate(update(chatId, "explain mitosis"));
 
         verify(telegramApiClient, times(2)).streamMessage(eq(chatId), anyInt(), anyString());
-        verify(telegramApiClient).sendMessage(chatId, "Mitosis\n\nis cell division.");
+        verify(telegramApiClient)
+                .sendRich(chatId, "Mitosis\n\nis cell division.", "Mitosis\n\nis cell division.", List.of());
     }
 
     @Test
@@ -163,11 +167,13 @@ class TelegramUpdateHandlerTest {
                 .thenReturn(Flux.<MessagePart>just(
                         new TextPart("Mitosis"), new TextPart("is cell division.")));
         when(flattener.flatten(any(), any())).thenReturn("Mitosis is cell division.");
+        when(flattener.flattenRaw(any(), any())).thenReturn("Mitosis is cell division.");
 
         handler.handleUpdate(update(chatId, "explain mitosis"));
 
         verify(telegramApiClient, never()).streamMessage(anyLong(), anyInt(), anyString());
-        verify(telegramApiClient).sendMessage(chatId, "Mitosis is cell division.");
+        verify(telegramApiClient)
+                .sendRich(chatId, "Mitosis is cell division.", "Mitosis is cell division.", List.of());
     }
 
     @Test
@@ -199,7 +205,7 @@ class TelegramUpdateHandlerTest {
         assertThat(saved.getOptions()).isEqualTo(options);
         assertThat(saved.getChatId()).isEqualTo(chatId);
         assertThat(saved.getUserId()).isEqualTo(userId);
-        verify(telegramApiClient, never()).sendMessage(eq(chatId), anyString());
+        verify(telegramApiClient, never()).sendRich(eq(chatId), anyString(), anyString(), anyList());
     }
 
     @Test
@@ -269,13 +275,14 @@ class TelegramUpdateHandlerTest {
         when(agentApi.chat(any(), eq(sessionId), eq("copy"), eq(ChatChannel.TELEGRAM)))
                 .thenReturn(Flux.<MessagePart>just(new TextPart("Quiz starting.")));
         when(flattener.flatten(any(), any())).thenReturn("Quiz starting.");
+        when(flattener.flattenRaw(any(), any())).thenReturn("Quiz starting.");
 
         handler.handleUpdate(callbackUpdate(chatId, "cb-1", "act:start_quiz"));
 
         verify(telegramApiClient).answerCallbackQuery("cb-1");
         verify(telegramService).markSeen(chatId);
         verify(agentApi).chat(any(), eq(sessionId), eq("copy"), eq(ChatChannel.TELEGRAM));
-        verify(telegramApiClient).sendMessage(chatId, "Quiz starting.");
+        verify(telegramApiClient).sendRich(chatId, "Quiz starting.", "Quiz starting.", List.of());
     }
 
     @Test

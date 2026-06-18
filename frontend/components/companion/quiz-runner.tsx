@@ -197,8 +197,8 @@ export function QuizRunner({
           <span>{t.quizResultsTitle}</span>
         </div>
         <p className="text-sm text-muted-foreground">
-          {t.quizScore}: <span className="font-semibold">{pct}%</span> ({correct}{" "}
-          / {total})
+          {t.quizScore}: <span className="font-semibold">{pct}%</span> (
+          {correct} / {total})
         </p>
         <ul className="flex flex-col gap-2">
           {questions.map((q, index) => {
@@ -271,7 +271,9 @@ export function QuizRunner({
               .replace("{total}", String(total))}
           </span>
         </div>
-        <Progress value={Math.round(((step + (answered ? 1 : 0)) / total) * 100)} />
+        <Progress
+          value={Math.round(((step + (answered ? 1 : 0)) / total) * 100)}
+        />
         <QuizQuestion
           question={q}
           value={answers[q.questionId] ?? ""}
@@ -316,7 +318,11 @@ export function QuizRunner({
             className="gap-1 font-mono tabular-nums"
             aria-label={t.quizTimeLeft}
           >
-            <HugeiconsIcon icon={Clock01Icon} className="size-3.5" strokeWidth={2} />
+            <HugeiconsIcon
+              icon={Clock01Icon}
+              className="size-3.5"
+              strokeWidth={2}
+            />
             {formatClock(secondsLeft)}
           </Badge>
         ) : undefined
@@ -425,7 +431,9 @@ function QuizQuestion({
                 className={cn(
                   "flex w-full items-center justify-between gap-2.5 rounded-xl border border-border/70 px-4 py-2.5 text-start text-sm font-medium transition-all duration-150 disabled:cursor-default",
                   !answered && selected && "border-primary/60 bg-secondary",
-                  !answered && !selected && "hover:border-primary/25 hover:bg-secondary",
+                  !answered &&
+                    !selected &&
+                    "hover:border-primary/25 hover:bg-secondary",
                   correctOption &&
                     "border-emerald-500/50 bg-emerald-500/5 font-semibold text-emerald-800 dark:text-emerald-300",
                   wrongChoice &&
