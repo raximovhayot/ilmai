@@ -87,7 +87,7 @@ public class ChatSummaryAdvisor implements CallAdvisor, StreamAdvisor {
         if (!injected) {
             messages.add(0, new SystemMessage(block));
         }
-        return request.mutate().prompt(new Prompt(messages)).build();
+        return request.mutate().prompt(new Prompt(messages, prompt.getOptions())).build();
     }
 
     private UUID resolveSessionId(ChatClientRequest request) {

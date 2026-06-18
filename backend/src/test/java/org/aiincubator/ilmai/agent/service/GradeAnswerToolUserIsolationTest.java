@@ -130,6 +130,13 @@ class GradeAnswerToolUserIsolationTest {
         }
 
         @Override
+        public java.util.Optional<QuizSessionDto> findSessionForUser(CurrentUser currentUser, UUID sessionId) {
+            captured.set(currentUser);
+            capturedSession.set(sessionId);
+            return java.util.Optional.empty();
+        }
+
+        @Override
         public QuizCardDto startQuiz(CurrentUser currentUser, String scope, Integer questionCount, String difficulty) {
             return null;
         }

@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -45,6 +46,12 @@ public class DefaultQuizApi implements QuizApi {
     @Transactional(readOnly = true)
     public List<QuizSessionDto> findAllSessionsForUser(UUID userId) {
         return quizApiMapper.toSessionDtoList(sessions.findAllByUserIdOrderByCreatedAtDesc(userId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<QuizSessionDto> findSessionForUser(CurrentUser currentUser, UUID sessionId) {
+        return sessions.findByIdAndUserId(sessionId, currentUser.getUserId()).map(quizApiMapper::toDto);
     }
 
     @Override

@@ -9,7 +9,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClientRequest;
 import org.springframework.ai.chat.client.ChatClientResponse;
 import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.model.tool.ToolCallingChatOptions;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.context.support.ReloadableResourceBundleMessageSource;
 
@@ -102,6 +104,29 @@ class CitationGuardAdvisorTest {
         assertThat(extractText(result)).isEqualTo("second ungrounded text");
         assertThat(chain.calls()).isEqualTo(2);
         assertThat(AgentResponseFlags.current().isLowConfidence()).isTrue();
+    }
+
+    @Test
+    void preservesChatOptionsWhenRegenerating() {
+        AgentResponseFlags.begin();
+        seedRetrieval();
+        ToolCallingChatOptions options = ToolCallingChatOptions.builder()
+                .internalToolExecutionEnabled(false)
+                .build();
+        ChatClientRequest request = ChatClientRequest.builder()
+                .prompt(new Prompt(List.of(new UserMessage("ask")), options))
+                .context(new HashMap<>())
+                .build();
+        ScriptedCallAdvisorChain chain = new ScriptedCallAdvisorChain(List.of(
+                "no citation here",
+                "now with [#abc:t1]."));
+
+        advisor.adviseCall(request, chain);
+
+        assertThat(chain.requests()).hasSize(2);
+        ChatOptions retryOptions = chain.requests().get(1).prompt().getOptions();
+        assertThat(retryOptions).isInstanceOf(ToolCallingChatOptions.class);
+        assertThat(((ToolCallingChatOptions) retryOptions).getInternalToolExecutionEnabled()).isFalse();
     }
 
     @Test

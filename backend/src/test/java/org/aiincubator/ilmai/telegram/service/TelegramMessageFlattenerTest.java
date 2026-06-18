@@ -47,11 +47,13 @@ class TelegramMessageFlattenerTest {
     @Test
     void appendsSourcesBlockForCitations() {
         MessagePart text = new TextPart("Photosynthesis converts light to energy.");
-        MessagePart citation = new CitationPart(UUID.randomUUID(), UUID.randomUUID(), "p.1", "leaf chloroplast snippet", 0.91);
+        MessagePart citation = new CitationPart(
+                UUID.randomUUID(), UUID.randomUUID(), "Biology Notes", "p.1", "leaf chloroplast snippet", 0.91);
 
         String result = flattener.flatten(List.of(text, citation), SupportedLocale.EN);
 
         assertThat(result).contains("telegram.bot.flatten.sources");
+        assertThat(result).contains("Biology Notes");
         assertThat(result).contains("leaf chloroplast snippet");
     }
 

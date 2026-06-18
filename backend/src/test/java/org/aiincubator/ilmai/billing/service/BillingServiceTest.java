@@ -1,6 +1,7 @@
 package org.aiincubator.ilmai.billing.service;
 
 import org.aiincubator.ilmai.common.CurrentUser;
+import org.aiincubator.ilmai.billing.domain.Payment;
 import org.aiincubator.ilmai.billing.domain.PaymentProviderKind;
 import org.aiincubator.ilmai.billing.domain.PaymentRepository;
 import org.aiincubator.ilmai.billing.domain.PaymentStatus;
@@ -69,6 +70,30 @@ class BillingServiceTest {
 
         assertThat(response.getProvider()).isEqualTo("STRIPE");
         assertThat(response.getRedirectUrl()).startsWith("https://stub.example.com/");
+    }
+
+    @Test
+    void startCheckout_withTestProvider_activatesSubscriptionImmediately() {
+        UUID userId = UUID.randomUUID();
+        BillingService service = newServiceWith(new TestPaymentProvider());
+
+        Subscription[] saved = new Subscription[1];
+        when(subscriptions.save(any(Subscription.class))).thenAnswer(inv -> {
+            saved[0] = inv.getArgument(0);
+            return saved[0];
+        });
+        when(subscriptions.findByProviderAndExternalId(any(), any()))
+                .thenAnswer(inv -> Optional.ofNullable(saved[0]));
+        when(payments.findByProviderAndExternalId(any(), any())).thenReturn(Optional.empty());
+        when(payments.save(any(Payment.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        CheckoutSessionResponse response = service.startCheckout(
+                new CurrentUser(userId), "PREMIUM_MONTHLY", "TEST");
+
+        assertThat(response.getProvider()).isEqualTo("TEST");
+        assertThat(saved[0]).isNotNull();
+        assertThat(saved[0].getStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
+        assertThat(saved[0].getCurrentPeriodEnd()).isAfter(OffsetDateTime.now());
     }
 
     @Test

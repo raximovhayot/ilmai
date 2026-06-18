@@ -15,6 +15,7 @@ public class CitationPart extends MessagePart {
 
     private final UUID id;
     private final UUID materialId;
+    private final String materialName;
     private final String locator;
     private final String snippet;
     private final double score;

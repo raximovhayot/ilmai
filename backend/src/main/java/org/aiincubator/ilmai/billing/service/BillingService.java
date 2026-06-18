@@ -50,6 +50,14 @@ public class BillingService {
         subscription.setStatus(SubscriptionStatus.PENDING);
         subscription.setExternalId(session.getExternalId());
         subscriptions.save(subscription);
+
+        if (provider.autoActivates()) {
+            Map<String, Object> payload = Map.of(
+                    "userId", userId.toString(),
+                    "subscriptionId", session.getExternalId(),
+                    "plan", plan.name());
+            applyOutcome(userId, kind, provider.parseWebhook(payload, null));
+        }
         return billingMapper.toResponse(session);
     }
 
@@ -102,6 +110,10 @@ public class BillingService {
             return;
         }
 
+        applyOutcome(userId, kind, outcome);
+    }
+
+    private void applyOutcome(UUID userId, PaymentProviderKind kind, WebhookOutcome outcome) {
         Subscription subscription = resolveSubscription(userId, kind, outcome);
         Payment payment = persistPayment(userId, subscription, outcome);
         if (subscription != null && outcome.getPaymentStatus() == PaymentStatus.SUCCEEDED) {
@@ -118,7 +130,7 @@ public class BillingService {
             subscription.setStatus(SubscriptionStatus.CANCELED);
             subscriptions.save(subscription);
         }
-        log.info("billing: webhook processed {} status={} subscription={}",
+        log.info("billing: outcome processed {} status={} subscription={}",
                 payment.getId(), outcome.getPaymentStatus(),
                 subscription == null ? "(none)" : subscription.getId());
     }

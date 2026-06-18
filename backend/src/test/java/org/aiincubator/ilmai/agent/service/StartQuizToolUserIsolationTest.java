@@ -43,7 +43,7 @@ class StartQuizToolUserIsolationTest {
         AgentQuizContext ctx = AgentQuizContext.begin();
         ToolContext toolContext = new ToolContext(Map.of(AgentToolContext.CURRENT_USER_KEY, new CurrentUser(userA)));
 
-        StartQuizResult result = tool.startQuiz("photosynthesis", 5, "solid", toolContext);
+        StartQuizResult result = tool.startQuiz("photosynthesis", 5, "solid", "single", toolContext);
 
         assertThat(captured.get()).isNotNull();
         assertThat(captured.get().getUserId()).isEqualTo(userA);
@@ -59,7 +59,7 @@ class StartQuizToolUserIsolationTest {
         QuizApi quizApi = new CapturingQuizApi(new AtomicReference<>(), cardFor(UUID.randomUUID()), null);
         StartQuizTool tool = new StartQuizTool(quizApi);
 
-        assertThatThrownBy(() -> tool.startQuiz("anything", null, null, null))
+        assertThatThrownBy(() -> tool.startQuiz("anything", null, null, null, null))
                 .isInstanceOf(IllegalStateException.class);
     }
 
@@ -72,7 +72,7 @@ class StartQuizToolUserIsolationTest {
         AgentQuizContext ctx = AgentQuizContext.begin();
         ToolContext toolContext = new ToolContext(Map.of(AgentToolContext.CURRENT_USER_KEY, new CurrentUser(userA)));
 
-        StartQuizResult result = tool.startQuiz(null, null, null, toolContext);
+        StartQuizResult result = tool.startQuiz(null, null, null, null, toolContext);
 
         assertThat(result.isCreated()).isFalse();
         assertThat(result.getReason()).isEqualTo("materials_missing");
@@ -107,6 +107,12 @@ class StartQuizToolUserIsolationTest {
         @Override
         public List<QuizSessionDto> findAllSessionsForUser(UUID userId) {
             return List.of();
+        }
+
+        @Override
+        public java.util.Optional<QuizSessionDto> findSessionForUser(CurrentUser currentUser, UUID sessionId) {
+            captured.set(currentUser);
+            return java.util.Optional.empty();
         }
 
         @Override

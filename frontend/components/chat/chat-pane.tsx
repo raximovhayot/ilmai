@@ -33,6 +33,34 @@ type Props = {
   topicName: string
 }
 
+type CitationGroup = {
+  materialId: string
+  materialName: string
+  citations: Citation[]
+}
+
+function groupCitationsByMaterial(citations: Citation[]): CitationGroup[] {
+  const groups = new Map<string, CitationGroup>()
+  for (const c of citations) {
+    let group = groups.get(c.materialId)
+    if (!group) {
+      group = {
+        materialId: c.materialId,
+        materialName: c.materialName,
+        citations: [],
+      }
+      groups.set(c.materialId, group)
+    }
+    if (!group.citations.some((x) => x.chunkIndex === c.chunkIndex)) {
+      group.citations.push(c)
+    }
+  }
+  for (const group of groups.values()) {
+    group.citations.sort((a, b) => a.chunkIndex - b.chunkIndex)
+  }
+  return [...groups.values()]
+}
+
 export function ChatPane({ topicId }: Props) {
   const t = useT()
   const { status } = useSession()
@@ -262,19 +290,28 @@ function MessageBubble({
             <span className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
               {t.chat.citations}
             </span>
-            <div className="flex flex-wrap gap-1.5">
-              {message.citations.map((c) => (
-                <button
-                  key={`${c.materialId}-${c.chunkIndex}`}
-                  type="button"
-                  onClick={() => onCitationClick(c)}
-                  className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-xs hover:bg-accent"
+            <div className="flex flex-col gap-1.5">
+              {groupCitationsByMaterial(message.citations).map((group) => (
+                <div
+                  key={group.materialId}
+                  className="flex flex-wrap items-center gap-1.5 rounded-lg border border-border bg-background px-2 py-1"
                 >
-                  <span className="font-medium">{c.materialName}</span>
-                  <span className="text-muted-foreground">
-                    · #{c.chunkIndex + 1}
+                  <span className="text-xs font-medium">
+                    {group.materialName}
                   </span>
-                </button>
+                  <div className="flex flex-wrap gap-1">
+                    {group.citations.map((c) => (
+                      <button
+                        key={`${c.materialId}-${c.chunkIndex}`}
+                        type="button"
+                        onClick={() => onCitationClick(c)}
+                        className="inline-flex items-center rounded-full border border-border bg-card px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+                      >
+                        #{c.chunkIndex + 1}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
           </div>

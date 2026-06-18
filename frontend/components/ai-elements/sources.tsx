@@ -87,15 +87,21 @@ export function SourcesContent({
 
 export function Source({
   className,
+  materialName,
   locator,
   snippet,
   score,
   ...props
 }: React.HTMLAttributes<HTMLDivElement> & {
+  materialName?: string
   locator: string
   snippet: string
   score: number
 }) {
+  const label =
+    materialName && locator
+      ? `${materialName} · ${locator}`
+      : materialName || locator
   return (
     <div
       className={cn(
@@ -104,8 +110,8 @@ export function Source({
       )}
       {...props}
     >
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-bold text-primary">{locator}</span>
+      <div className="flex items-center justify-between gap-2">
+        <span className="truncate text-xs font-bold text-primary">{label}</span>
         <span className="text-[10px] font-semibold text-muted-foreground/75">
           {Math.round(score * 100)}%
         </span>

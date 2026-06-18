@@ -139,6 +139,8 @@ billing:
     daily-quiz: 3
     daily-chat-messages: 50
     material-uploads: 5
+  test-provider:
+    enabled: ${BILLING_TEST_PROVIDER_ENABLED:true}
 
 jobrunr:
   background-job-server:

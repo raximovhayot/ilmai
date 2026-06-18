@@ -183,7 +183,7 @@ export type SubscriptionStatusCode =
   | "ACTIVE"
   | "CANCELED"
   | "EXPIRED"
-export type PaymentProviderCode = "STRIPE" | "PAYME" | "CLICK"
+export type PaymentProviderCode = "STRIPE" | "PAYME" | "CLICK" | "TEST"
 export type PaymentStatusCode = "PENDING" | "SUCCEEDED" | "FAILED" | "REFUNDED"
 
 export type Subscription = {

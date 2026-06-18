@@ -65,6 +65,7 @@ public class RetrieveTool {
             sink.data("citation", Map.of(
                     "id", UUID.randomUUID(),
                     "materialId", chunk.getMaterialId(),
+                    "materialName", chunk.getMaterialName() == null ? "" : chunk.getMaterialName(),
                     "locator", chunk.getChunkIndex() == null ? "" : "t" + chunk.getChunkIndex(),
                     "snippet", chunk.getSnippet() == null ? "" : chunk.getSnippet(),
                     "score", chunk.getScore() == null ? 0.0 : chunk.getScore()

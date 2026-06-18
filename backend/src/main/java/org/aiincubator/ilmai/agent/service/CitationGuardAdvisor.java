@@ -88,6 +88,6 @@ public class CitationGuardAdvisor implements CallAdvisor {
         Prompt prompt = request.prompt();
         List<Message> messages = new ArrayList<>(prompt.getInstructions());
         messages.add(new UserMessage(hint));
-        return request.mutate().prompt(new Prompt(messages)).build();
+        return request.mutate().prompt(new Prompt(messages, prompt.getOptions())).build();
     }
 }

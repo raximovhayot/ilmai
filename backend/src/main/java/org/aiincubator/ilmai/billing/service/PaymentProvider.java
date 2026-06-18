@@ -13,4 +13,8 @@ public interface PaymentProvider {
     CheckoutSession createCheckout(UUID userId, SubscriptionPlan plan);
 
     WebhookOutcome parseWebhook(Map<String, Object> payload, String signature);
+
+    default boolean autoActivates() {
+        return false;
+    }
 }

@@ -51,8 +51,8 @@ public class CoachChatClientConfig {
     }
 
     @Bean
-    GroundingGuardAdvisor groundingGuardAdvisor(MessageService messageService) {
-        return new GroundingGuardAdvisor(messageService);
+    GroundingGuardAdvisor groundingGuardAdvisor() {
+        return new GroundingGuardAdvisor();
     }
 
     @Bean
@@ -93,6 +93,8 @@ public class CoachChatClientConfig {
                                GoalTool goalTool,
                                StartQuizTool startQuizTool,
                                GradeAnswerTool gradeAnswerTool,
+                               GetQuizzesTool getQuizzesTool,
+                               GetQuizTool getQuizTool,
                                GetGapsTool getGapsTool,
                                BuildPlanTool buildPlanTool,
                                GetPlanTool getPlanTool,
@@ -112,8 +114,9 @@ public class CoachChatClientConfig {
         }
         builder = builder
                 .defaultSystem(coachSystemPrompt.get())
-                .defaultTools(retrieveTool, goalTool, startQuizTool, gradeAnswerTool, getGapsTool,
-                        buildPlanTool, getPlanTool, completeStepTool, improviseTool, reviewTool)
+                .defaultTools(retrieveTool, goalTool, startQuizTool, gradeAnswerTool, getQuizzesTool,
+                        getQuizTool, getGapsTool, buildPlanTool, getPlanTool, completeStepTool, improviseTool,
+                        reviewTool)
                 .defaultAdvisors(userMemoryAdvisor, chatSummaryAdvisor,
                         groundingGuardAdvisor, citationGuardAdvisor, coachChatMemoryAdvisor);
         ToolCallingManager toolCallingManager = toolCallingManagerProvider.getIfAvailable();

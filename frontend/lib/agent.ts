@@ -22,6 +22,7 @@ export type CitationPart = {
   type: "citation"
   id: string
   materialId: string
+  materialName: string
   locator: string
   snippet: string
   score: number
@@ -114,21 +115,27 @@ export type CoachDataParts = {
   citation: {
     id: string
     materialId: string
+    materialName: string
     locator: string
     snippet: string
     score: number
   }
   quiz: {
     sessionId: string
-    questionId: string
-    position: number
-    type?: string
-    concept?: string | null
-    prompt: string
-    options?: string[] | null
-    materialId?: string | null
-    materialName?: string | null
-    chunkIndex?: number | null
+    mode?: string | null
+    timeLimitSeconds?: number | null
+    difficulty?: string | null
+    questions: Array<{
+      questionId: string
+      position: number
+      type?: string | null
+      concept?: string | null
+      prompt: string
+      options?: string[] | null
+      materialId?: string | null
+      materialName?: string | null
+      chunkIndex?: number | null
+    }>
   }
   action: {
     action: string
@@ -158,9 +165,6 @@ export function createCoachTransport(sessionId: string) {
         .find((m) => m.role === "user")
       const prompt = lastUserMessage ? messageText(lastUserMessage) : ""
       return {
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: {
           prompt,
           channel: "WEB",

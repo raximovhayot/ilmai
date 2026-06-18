@@ -7,15 +7,17 @@ import {
   AlertCircleIcon,
   Cancel01Icon,
   CheckmarkCircle02Icon,
+  Copy01Icon,
   File01Icon,
   Loading03Icon,
   PlusSignIcon,
   SparklesIcon,
+  Tick02Icon,
 } from "@hugeicons/core-free-icons"
 import { useChat } from "@ai-sdk/react"
 
 import { Button } from "@/components/ui/button"
-import { QuizCard } from "@/components/companion/quiz-card"
+import { QuizRunner } from "@/components/companion/quiz-runner"
 import {
   Conversation,
   ConversationContent,
@@ -131,7 +133,21 @@ export function CompanionClient({
   const [input, setInput] = React.useState("")
   const [sessions, setSessions] = React.useState<ChatSession[]>(initialSessions)
   const [attachments, setAttachments] = React.useState<ChatAttachment[]>([])
+  const [openQuizzes, setOpenQuizzes] = React.useState<string[]>([])
   const fileInputRef = React.useRef<HTMLInputElement>(null)
+
+  const handleQuizActive = React.useCallback(
+    (quizSessionId: string, active: boolean) => {
+      setOpenQuizzes((prev) => {
+        const has = prev.includes(quizSessionId)
+        if (active && !has) return [...prev, quizSessionId]
+        if (!active && has) return prev.filter((id) => id !== quizSessionId)
+        return prev
+      })
+    },
+    []
+  )
+  const quizBlocking = openQuizzes.length > 0
 
   const transport = React.useMemo(() => {
     if (!authenticated || !activeId) return undefined
@@ -256,7 +272,7 @@ export function CompanionClient({
   const send = React.useCallback(
     async (promptText: string) => {
       const text = promptText.trim()
-      if (!text || isBusy || attachmentBlocking) return
+      if (!text || isBusy || attachmentBlocking || quizBlocking) return
       if (!authenticated) {
         router.push("/login")
         return
@@ -286,6 +302,7 @@ export function CompanionClient({
       activeId,
       isBusy,
       attachmentBlocking,
+      quizBlocking,
       clearAttachments,
       clearError,
       run,
@@ -425,10 +442,18 @@ export function CompanionClient({
           <PromptInputSubmit
             status={status}
             onStop={stop}
-            disabled={input.trim().length === 0 || attachmentBlocking}
+            disabled={
+              input.trim().length === 0 || attachmentBlocking || quizBlocking
+            }
             sendLabel={t.send}
             stopLabel={t.stop}
-            title={attachmentBlocking ? t.attachmentGate : undefined}
+            title={
+              quizBlocking
+                ? t.quizComposerBlocked
+                : attachmentBlocking
+                  ? t.attachmentGate
+                  : undefined
+            }
           />
         </PromptInputTools>
       </PromptInputToolbar>
@@ -436,7 +461,7 @@ export function CompanionClient({
   )
 
   return (
-    <div className="flex h-[calc(100dvh-7.5rem)] flex-col bg-background lg:h-[calc(100dvh-3.5rem)]">
+    <div className="flex h-[calc(100dvh-7.5rem)] flex-col bg-background lg:h-[calc(100dvh-4rem)]">
       {isEmpty ? (
         <div className="flex flex-1 flex-col items-center justify-center px-4">
           <div className="w-full max-w-2xl">
@@ -507,6 +532,7 @@ export function CompanionClient({
                               message={message}
                               streaming={isBusy && isLast}
                               onAction={(label) => void send(label)}
+                              onQuizActive={handleQuizActive}
                             />
                           </MessageContent>
                         </Message>
@@ -529,7 +555,8 @@ export function CompanionClient({
             <ConversationScrollButton />
           </Conversation>
 
-          <div className="bg-background px-4 pt-2 pb-3">
+          <div className="relative shrink-0 px-4 pt-2 pb-3">
+            <div className="pointer-events-none absolute inset-x-0 -top-8 h-8 bg-gradient-to-t from-background to-transparent" />
             <div className="mx-auto w-full max-w-3xl">
               {composer}
               <p className="pt-2 text-center text-xs text-muted-foreground/70">
@@ -547,10 +574,12 @@ function AssistantMessage({
   message,
   streaming,
   onAction,
+  onQuizActive,
 }: {
   message: CoachUIMessage
   streaming: boolean
   onAction: (label: string) => void
+  onQuizActive: (sessionId: string, active: boolean) => void
 }) {
   const t = useT().companion
   const blocks = buildBlocks(message.parts)
@@ -560,9 +589,14 @@ function AssistantMessage({
   const hasCitation = blocks.some(
     (block) => block.kind === "citations" && block.items.length > 0
   )
+  const copyText = blocks
+    .filter((block) => block.kind === "text")
+    .map((block) => (block as { text: string }).text)
+    .join("\n\n")
+    .trim()
 
   return (
-    <>
+    <div className="group/message flex flex-col gap-3">
       {streaming && !hasText ? <Loader label={t.thinking} /> : null}
 
       {blocks.map((block, index) => {
@@ -594,6 +628,7 @@ function AssistantMessage({
                 {block.items.map((citation) => (
                   <Source
                     key={citation.id}
+                    materialName={citation.materialName}
                     locator={citation.locator}
                     snippet={citation.snippet}
                     score={citation.score}
@@ -605,7 +640,11 @@ function AssistantMessage({
         }
         if (block.kind === "quiz") {
           return (
-            <QuizCard key={index} part={{ ...block.data, type: "quiz_card" }} />
+            <QuizRunner
+              key={block.data.sessionId}
+              quiz={block.data}
+              onActiveChange={onQuizActive}
+            />
           )
         }
         return (
@@ -620,6 +659,52 @@ function AssistantMessage({
           </Suggestions>
         )
       })}
-    </>
+
+      {!streaming && copyText.length > 0 ? (
+        <div className="-ml-1.5 flex items-center opacity-0 transition-opacity duration-150 group-hover/message:opacity-100 focus-within:opacity-100">
+          <CopyButton
+            text={copyText}
+            copyLabel={t.copy}
+            copiedLabel={t.copied}
+          />
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function CopyButton({
+  text,
+  copyLabel,
+  copiedLabel,
+}: {
+  text: string
+  copyLabel: string
+  copiedLabel: string
+}) {
+  const [copied, setCopied] = React.useState(false)
+
+  const handleCopy = React.useCallback(() => {
+    void navigator.clipboard.writeText(text).then(() => {
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1500)
+    })
+  }, [text])
+
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      onClick={handleCopy}
+      className="h-7 gap-1.5 rounded-lg px-2 text-xs font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"
+    >
+      <HugeiconsIcon
+        icon={copied ? Tick02Icon : Copy01Icon}
+        strokeWidth={2}
+        className="size-3.5"
+      />
+      {copied ? copiedLabel : copyLabel}
+    </Button>
   )
 }

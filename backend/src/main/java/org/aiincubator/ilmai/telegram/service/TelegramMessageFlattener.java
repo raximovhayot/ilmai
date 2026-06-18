@@ -141,6 +141,10 @@ public class TelegramMessageFlattener {
         if (snippet.length() > MAX_SNIPPET_LENGTH) {
             snippet = snippet.substring(0, MAX_SNIPPET_LENGTH).strip() + "\u2026";
         }
+        String materialName = citation.getMaterialName();
+        if (materialName != null && !materialName.isBlank()) {
+            return materialName.strip() + " \u2014 " + snippet;
+        }
         return snippet;
     }
 

@@ -113,6 +113,7 @@ public class DefaultAgentApi implements AgentApi {
                 parts.add(new CitationPart(
                         UUID.randomUUID(),
                         chunk.getMaterialId(),
+                        chunk.getMaterialName(),
                         chunk.getChunkIndex() == null ? null : "t" + chunk.getChunkIndex(),
                         chunk.getSnippet(),
                         chunk.getScore() == null ? 0.0 : chunk.getScore()));

@@ -251,6 +251,23 @@ export type Dictionary = {
     quizCorrectAnswer: string
     quizExplanation: string
     quizAnswerPlaceholder: string
+    quizTitle: string
+    quizStart: string
+    quizStartHint: string
+    quizQuestionsLabel: string
+    quizQuestionOf: string
+    quizNext: string
+    quizFinish: string
+    quizTimeLeft: string
+    quizResultsTitle: string
+    quizScore: string
+    quizYourAnswer: string
+    quizSkipped: string
+    quizGrading: string
+    quizComposerBlocked: string
+    quizModeTimed: string
+    quizModeExplain: string
+    quizModeSingle: string
     askAboutTopic: string
     topicSeedPrompt: string
     failedToLoad: string
@@ -261,6 +278,8 @@ export type Dictionary = {
     attachmentRemove: string
     attachmentGate: string
     disclaimer: string
+    copy: string
+    copied: string
   }
   quiz: {
     title: string
@@ -417,6 +436,7 @@ export type Dictionary = {
     choosePlanTitle: string
     choosePlanSubtitle: string
     providerLabel: string
+    providerTest: string
     planMonthly: string
     planYearly: string
     billedMonthly: string
@@ -761,6 +781,23 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       quizCorrectAnswer: "Answer",
       quizExplanation: "Why",
       quizAnswerPlaceholder: "Type your answer…",
+      quizTitle: "Quiz",
+      quizStart: "Start quiz",
+      quizStartHint: "Solve and submit the quiz to keep chatting.",
+      quizQuestionsLabel: "{count} questions",
+      quizQuestionOf: "Question {current} of {total}",
+      quizNext: "Next question",
+      quizFinish: "Submit quiz",
+      quizTimeLeft: "Time left",
+      quizResultsTitle: "Quiz results",
+      quizScore: "Score",
+      quizYourAnswer: "Your answer",
+      quizSkipped: "Skipped",
+      quizGrading: "Grading…",
+      quizComposerBlocked: "Finish the quiz above before sending a message.",
+      quizModeTimed: "Timed",
+      quizModeExplain: "Step by step",
+      quizModeSingle: "All questions",
       askAboutTopic: "Ask about this topic",
       topicSeedPrompt: "Help me study {topic}.",
       failedToLoad: "We couldn’t load your chats. Please try again.",
@@ -771,6 +808,8 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       attachmentRemove: "Remove file",
       attachmentGate: "Wait until your file is ready before sending a message.",
       disclaimer: "Ilm AI can make mistakes. Please double-check responses.",
+      copy: "Copy",
+      copied: "Copied",
     },
     chat: {
       title: "Chat with your materials",
@@ -964,6 +1003,7 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       choosePlanTitle: "Go Premium",
       choosePlanSubtitle: "Pick a plan and a payment method to continue.",
       providerLabel: "Payment method",
+      providerTest: "Test",
       planMonthly: "Monthly",
       planYearly: "Yearly",
       billedMonthly: "Billed every month",
@@ -1324,6 +1364,23 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       quizCorrectAnswer: "Ответ",
       quizExplanation: "Почему",
       quizAnswerPlaceholder: "Введите ответ…",
+      quizTitle: "Тест",
+      quizStart: "Начать тест",
+      quizStartHint: "Пройдите и отправьте тест, чтобы продолжить общение.",
+      quizQuestionsLabel: "Вопросов: {count}",
+      quizQuestionOf: "Вопрос {current} из {total}",
+      quizNext: "Следующий вопрос",
+      quizFinish: "Отправить тест",
+      quizTimeLeft: "Осталось времени",
+      quizResultsTitle: "Результаты теста",
+      quizScore: "Результат",
+      quizYourAnswer: "Ваш ответ",
+      quizSkipped: "Пропущено",
+      quizGrading: "Проверка…",
+      quizComposerBlocked: "Завершите тест выше, прежде чем отправлять сообщение.",
+      quizModeTimed: "На время",
+      quizModeExplain: "Пошагово",
+      quizModeSingle: "Все вопросы",
       askAboutTopic: "Спросить об этой теме",
       topicSeedPrompt: "Помоги мне изучить тему «{topic}».",
       failedToLoad: "Не удалось загрузить чаты. Попробуйте ещё раз.",
@@ -1335,6 +1392,8 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       attachmentGate:
         "Дождитесь готовности файла, прежде чем отправлять сообщение.",
       disclaimer: "Ilm AI может ошибаться. Проверяйте важные ответы.",
+      copy: "Копировать",
+      copied: "Скопировано",
     },
     chat: {
       title: "Чат по вашим материалам",
@@ -1527,6 +1586,7 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       choosePlanTitle: "Перейти на Premium",
       choosePlanSubtitle: "Выберите план и способ оплаты, чтобы продолжить.",
       providerLabel: "Способ оплаты",
+      providerTest: "Тест",
       planMonthly: "Месячный",
       planYearly: "Годовой",
       billedMonthly: "Оплата каждый месяц",
@@ -1895,6 +1955,23 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       quizCorrectAnswer: "Javob",
       quizExplanation: "Nega",
       quizAnswerPlaceholder: "Javobingizni yozing…",
+      quizTitle: "Test",
+      quizStart: "Testni boshlash",
+      quizStartHint: "Suhbatni davom ettirish uchun testni yeching va yuboring.",
+      quizQuestionsLabel: "{count} ta savol",
+      quizQuestionOf: "{current}-savol / {total}",
+      quizNext: "Keyingi savol",
+      quizFinish: "Testni yuborish",
+      quizTimeLeft: "Qolgan vaqt",
+      quizResultsTitle: "Test natijalari",
+      quizScore: "Natija",
+      quizYourAnswer: "Sizning javobingiz",
+      quizSkipped: "O‘tkazib yuborildi",
+      quizGrading: "Baholanmoqda…",
+      quizComposerBlocked: "Xabar yuborishdan oldin yuqoridagi testni yakunlang.",
+      quizModeTimed: "Vaqtli",
+      quizModeExplain: "Bosqichma-bosqich",
+      quizModeSingle: "Barcha savollar",
       askAboutTopic: "Shu mavzu haqida so‘rash",
       topicSeedPrompt: "“{topic}” mavzusini o‘rganishga yordam ber.",
       failedToLoad: "Suhbatlarni yuklab bo‘lmadi. Qayta urinib ko‘ring.",
@@ -1905,6 +1982,8 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       attachmentRemove: "Faylni o‘chirish",
       attachmentGate: "Xabar yuborishdan oldin fayl tayyor bo‘lishini kuting.",
       disclaimer: "Ilm AI xato qilishi mumkin. Javoblarni tekshirib ko‘ring.",
+      copy: "Nusxalash",
+      copied: "Nusxalandi",
     },
     chat: {
       title: "Materiallaringiz bo‘yicha suhbat",
@@ -2099,6 +2178,7 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       choosePlanTitle: "Premium’ga o‘tish",
       choosePlanSubtitle: "Davom etish uchun reja va to‘lov usulini tanlang.",
       providerLabel: "To‘lov usuli",
+      providerTest: "Test",
       planMonthly: "Oylik",
       planYearly: "Yillik",
       billedMonthly: "Har oy to‘lov",

@@ -32,6 +32,7 @@ export function Conversation({
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
   const scrollRef = React.useRef<HTMLDivElement | null>(null)
+  const isAtBottomRef = React.useRef(true)
   const [isAtBottom, setIsAtBottom] = React.useState(true)
 
   const scrollToBottom = React.useCallback(() => {
@@ -45,14 +46,15 @@ export function Conversation({
 
     const handleScroll = () => {
       const distance = node.scrollHeight - node.scrollTop - node.clientHeight
-      setIsAtBottom(distance < 64)
+      const atBottom = distance < 64
+      isAtBottomRef.current = atBottom
+      setIsAtBottom(atBottom)
     }
     handleScroll()
     node.addEventListener("scroll", handleScroll, { passive: true })
 
     const observer = new MutationObserver(() => {
-      const distance = node.scrollHeight - node.scrollTop - node.clientHeight
-      if (distance < 160) {
+      if (isAtBottomRef.current) {
         node.scrollTop = node.scrollHeight
       }
     })

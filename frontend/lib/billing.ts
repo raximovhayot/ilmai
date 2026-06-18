@@ -6,7 +6,7 @@ export type SubscriptionStatusCode =
   | "ACTIVE"
   | "CANCELED"
   | "EXPIRED"
-export type PaymentProviderCode = "STRIPE" | "PAYME" | "CLICK"
+export type PaymentProviderCode = "STRIPE" | "PAYME" | "CLICK" | "TEST"
 export type PaymentStatusCode = "PENDING" | "SUCCEEDED" | "FAILED" | "REFUNDED"
 
 export type PremiumPlanCode = Exclude<SubscriptionPlanCode, "FREE">
@@ -48,6 +48,7 @@ export const PAYMENT_PROVIDERS: PaymentProviderCode[] = [
   "PAYME",
   "CLICK",
   "STRIPE",
+  "TEST",
 ]
 
 export function isActiveSubscription(sub: Subscription | null): boolean {

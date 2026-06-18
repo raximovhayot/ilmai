@@ -871,8 +871,56 @@ export const handlers = [
     const material =
       db.materials.find((m) => m.status === "READY") ?? db.materials[0]
     const grounded = Boolean(material && material.status === "READY")
-    const questionId = newId()
-    quizCardAnswers[questionId] = "Spaced repetition"
+    const quizSessionId = newId()
+    const quizQuestions = [
+      {
+        questionId: newId(),
+        position: 1,
+        type: "MCQ",
+        concept: "Study technique",
+        prompt: "Which technique best improves long-term retention?",
+        options: [
+          "Spaced repetition",
+          "Cramming",
+          "Highlighting",
+          "Re-reading",
+        ] as string[] | null,
+        materialId: material?.id ?? null,
+        materialName: material?.title ?? null,
+        chunkIndex: 0,
+        answer: "Spaced repetition",
+      },
+      {
+        questionId: newId(),
+        position: 2,
+        type: "MCQ",
+        concept: "Active recall",
+        prompt: "What does active recall require you to do?",
+        options: [
+          "Retrieve answers from memory",
+          "Re-read your notes",
+          "Listen passively",
+          "Copy the text",
+        ] as string[] | null,
+        materialId: material?.id ?? null,
+        materialName: material?.title ?? null,
+        chunkIndex: 1,
+        answer: "Retrieve answers from memory",
+      },
+      {
+        questionId: newId(),
+        position: 3,
+        type: "SHORT_ANSWER",
+        concept: "Spacing effect",
+        prompt: "In one phrase, why does spacing your practice help?",
+        options: null as string[] | null,
+        materialId: material?.id ?? null,
+        materialName: material?.title ?? null,
+        chunkIndex: 2,
+        answer: "It strengthens memory over time",
+      },
+    ]
+    for (const q of quizQuestions) quizCardAnswers[q.questionId] = q.answer
 
     const messageId = newId()
     const textId = newId()
@@ -900,7 +948,8 @@ export const handlers = [
           data: {
             id: newId(),
             materialId: material.id,
-            locator: `${material.title} · p.1`,
+            materialName: material.title,
+            locator: "p.1",
             snippet: (material.body ?? material.title).slice(0, 140),
             score: 0.82,
           },
@@ -908,21 +957,21 @@ export const handlers = [
         {
           type: "data-quiz",
           data: {
-            sessionId,
-            questionId,
-            position: 1,
-            type: "MCQ",
-            concept: "Study technique",
-            prompt: "Which technique best improves long-term retention?",
-            options: [
-              "Spaced repetition",
-              "Cramming",
-              "Highlighting",
-              "Re-reading",
-            ],
-            materialId: material.id,
-            materialName: material.title,
-            chunkIndex: 0,
+            sessionId: quizSessionId,
+            mode: "SINGLE",
+            timeLimitSeconds: 0,
+            difficulty: "MEDIUM",
+            questions: quizQuestions.map((q) => ({
+              questionId: q.questionId,
+              position: q.position,
+              type: q.type,
+              concept: q.concept,
+              prompt: q.prompt,
+              options: q.options,
+              materialId: q.materialId,
+              materialName: q.materialName,
+              chunkIndex: q.chunkIndex,
+            })),
           },
         },
         {
@@ -1437,7 +1486,12 @@ export const handlers = [
     if (plan !== "PREMIUM_MONTHLY" && plan !== "PREMIUM_YEARLY") {
       return errorResponse("BILLING_INVALID_PLAN", "Unknown plan.", 400)
     }
-    if (provider !== "STRIPE" && provider !== "PAYME" && provider !== "CLICK") {
+    if (
+      provider !== "STRIPE" &&
+      provider !== "PAYME" &&
+      provider !== "CLICK" &&
+      provider !== "TEST"
+    ) {
       return errorResponse("BILLING_INVALID_PROVIDER", "Unknown provider.", 400)
     }
     await delay(700)
@@ -1457,7 +1511,7 @@ export const handlers = [
       cancelAtPeriodEnd: false,
     }
     db.subscriptions.unshift(subscription)
-    const usd = provider === "STRIPE"
+    const usd = provider === "STRIPE" || provider === "TEST"
     const amountMinor = usd
       ? plan === "PREMIUM_YEARLY"
         ? 4990

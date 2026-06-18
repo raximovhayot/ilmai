@@ -58,12 +58,13 @@ import {
 import { useLanguage, useT } from "@/lib/i18n/provider"
 import { cn } from "@/lib/utils"
 
-const PROVIDERS: PaymentProviderCode[] = ["PAYME", "CLICK", "STRIPE"]
+const PROVIDERS: PaymentProviderCode[] = ["PAYME", "CLICK", "STRIPE", "TEST"]
 const PLANS: PremiumPlanCode[] = ["PREMIUM_MONTHLY", "PREMIUM_YEARLY"]
 const PROVIDER_LABEL: Record<PaymentProviderCode, string> = {
   PAYME: "Payme",
   CLICK: "Click",
   STRIPE: "Stripe",
+  TEST: "Test",
 }
 
 export function PremiumView() {
@@ -259,7 +260,10 @@ export function PremiumView() {
                       {formatMoney(p.amountMinor, p.currency)}
                     </ItemTitle>
                     <ItemDescription>
-                      {PROVIDER_LABEL[p.provider]} · {formatDate(p.occurredAt)}
+                      {p.provider === "TEST"
+                        ? t.premium.providerTest
+                        : PROVIDER_LABEL[p.provider]}{" "}
+                      · {formatDate(p.occurredAt)}
                     </ItemDescription>
                   </ItemContent>
                   <ItemActions>
@@ -288,8 +292,10 @@ export function PremiumView() {
                   <ItemContent>
                     <ItemTitle>{planLabel(s.plan)}</ItemTitle>
                     <ItemDescription>
-                      {PROVIDER_LABEL[s.provider]} ·{" "}
-                      {formatDate(s.currentPeriodStart)} –{" "}
+                      {s.provider === "TEST"
+                        ? t.premium.providerTest
+                        : PROVIDER_LABEL[s.provider]}{" "}
+                      · {formatDate(s.currentPeriodStart)} –{" "}
                       {formatDate(s.currentPeriodEnd)}
                     </ItemDescription>
                   </ItemContent>
@@ -450,7 +456,9 @@ function ChoosePlanCard({
                 )}
               >
                 <RadioGroupItem value={p} />
-                <span className="font-medium">{PROVIDER_LABEL[p]}</span>
+                <span className="font-medium">
+                  {p === "TEST" ? t.premium.providerTest : PROVIDER_LABEL[p]}
+                </span>
               </label>
             ))}
           </RadioGroup>
