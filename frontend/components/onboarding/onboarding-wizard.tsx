@@ -104,7 +104,13 @@ export function OnboardingWizard() {
         {step === 3 && (
           <FinishStep
             saving={saving}
-            onStartChat={() => void finish("/companion")}
+            onStartChat={(prompt) =>
+              void finish(
+                prompt && prompt.trim().length > 0
+                  ? `/companion?seed=${encodeURIComponent(prompt.trim())}`
+                  : "/companion"
+              )
+            }
             onExplore={() => void finish("/home")}
           />
         )}

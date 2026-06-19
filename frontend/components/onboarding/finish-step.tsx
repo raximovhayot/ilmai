@@ -9,7 +9,7 @@ import { useT } from "@/lib/i18n/provider"
 
 type Props = {
   saving: boolean
-  onStartChat: () => void
+  onStartChat: (prompt?: string) => void
   onExplore: () => void
 }
 
@@ -45,7 +45,7 @@ export function FinishStep({ saving, onStartChat, onExplore }: Props) {
               variant="outline"
               size="sm"
               disabled={saving}
-              onClick={onStartChat}
+              onClick={() => onStartChat(starter)}
             >
               {starter}
             </Button>
@@ -54,7 +54,12 @@ export function FinishStep({ saving, onStartChat, onExplore }: Props) {
       </div>
 
       <div className="flex w-full flex-col gap-2 sm:flex-row sm:justify-center">
-        <Button type="button" size="lg" disabled={saving} onClick={onStartChat}>
+        <Button
+          type="button"
+          size="lg"
+          disabled={saving}
+          onClick={() => onStartChat()}
+        >
           {saving && <Spinner className="size-4" />}
           {c.startChat}
         </Button>
