@@ -43,6 +43,9 @@ public class OnboardingService {
         if (req.getDailyReminder() != null) {
             profile.setDailyReminder(req.getDailyReminder());
         }
+        if (req.getOnboardingPassed() != null) {
+            profile.setOnboardingPassed(req.getOnboardingPassed());
+        }
         return onboardingMapper.toResponse(profile);
     }
 

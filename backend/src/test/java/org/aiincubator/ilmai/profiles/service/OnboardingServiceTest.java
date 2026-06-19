@@ -33,7 +33,7 @@ class OnboardingServiceTest {
 
         LocalDate target = LocalDate.now().plusDays(60);
         OnboardingResponse response = service.submit(currentUser,
-                new OnboardingRequest("Pass IELTS", target, 45, LocalTime.of(19, 0)));
+                new OnboardingRequest("Pass IELTS", target, 45, LocalTime.of(19, 0), null));
 
         assertThat(profile.getGoal()).isEqualTo("Pass IELTS");
         assertThat(profile.getTargetDate()).isEqualTo(target);
@@ -63,7 +63,7 @@ class OnboardingServiceTest {
         Profile profile = profileFor(userId);
         when(profiles.findById(userId)).thenReturn(Optional.of(profile));
 
-        OnboardingRequest req = new OnboardingRequest(null, LocalDate.now().minusDays(1), null, null);
+        OnboardingRequest req = new OnboardingRequest(null, LocalDate.now().minusDays(1), null, null, null);
         assertThatThrownBy(() -> service.submit(currentUser, req))
                 .isInstanceOf(ProfileException.class);
     }
@@ -80,6 +80,43 @@ class OnboardingServiceTest {
         assertThat(response.getGoal()).isEqualTo("Learn SQL");
         assertThat(response.getDailyStudyMinutes()).isEqualTo(20);
         assertThat(response.isTelegramLinked()).isFalse();
+    }
+
+    @Test
+    void submitPersistsOnboardingPassedFlag() {
+        Profile profile = profileFor(userId);
+        when(profiles.findById(userId)).thenReturn(Optional.of(profile));
+
+        OnboardingResponse passed = service.submit(currentUser,
+                new OnboardingRequest(null, null, null, null, true));
+        assertThat(profile.getOnboardingPassed()).isTrue();
+        assertThat(passed.getOnboardingPassed()).isTrue();
+
+        OnboardingResponse skipped = service.submit(currentUser,
+                new OnboardingRequest(null, null, null, null, false));
+        assertThat(profile.getOnboardingPassed()).isFalse();
+        assertThat(skipped.getOnboardingPassed()).isFalse();
+    }
+
+    @Test
+    void submitLeavesOnboardingPassedUnchangedWhenAbsent() {
+        Profile profile = profileFor(userId);
+        profile.setOnboardingPassed(true);
+        when(profiles.findById(userId)).thenReturn(Optional.of(profile));
+
+        service.submit(currentUser, new OnboardingRequest());
+
+        assertThat(profile.getOnboardingPassed()).isTrue();
+    }
+
+    @Test
+    void getReturnsNullOnboardingPassedByDefault() {
+        Profile profile = profileFor(userId);
+        when(profiles.findById(userId)).thenReturn(Optional.of(profile));
+
+        OnboardingResponse response = service.get(currentUser);
+
+        assertThat(response.getOnboardingPassed()).isNull();
     }
 
     @Test

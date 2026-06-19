@@ -21,4 +21,5 @@ public class OnboardingResponse {
     private Integer dailyStudyMinutes;
     private LocalTime dailyReminder;
     private boolean telegramLinked;
+    private Boolean onboardingPassed;
 }

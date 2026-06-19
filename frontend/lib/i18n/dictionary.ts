@@ -548,6 +548,63 @@ export type Dictionary = {
       step3Description: string
     }
   }
+  onboarding: {
+    skip: string
+    next: string
+    back: string
+    saving: string
+    stepOf: string
+    welcome: {
+      title: string
+      subtitle: string
+      languageLabel: string
+      cta: string
+    }
+    goal: {
+      title: string
+      subtitle: string
+      goalLabel: string
+      goalPlaceholder: string
+      targetLabel: string
+      targetHint: string
+      dailyLabel: string
+      dailyHint: string
+      minutesSuffix: string
+      customOption: string
+      customPlaceholder: string
+    }
+    upload: {
+      title: string
+      subtitle: string
+      fileTab: string
+      pasteTab: string
+      dropZone: string
+      browse: string
+      formatsHint: string
+      privacyNote: string
+      pasteTitlePlaceholder: string
+      pasteContentPlaceholder: string
+      pasteSubmit: string
+      uploading: string
+      processing: string
+      ready: string
+      failed: string
+      retry: string
+      waiting: string
+      continue: string
+      showAll: string
+      showLess: string
+      delete: string
+    }
+    finish: {
+      title: string
+      subtitle: string
+      askPrompt: string
+      starters: string[]
+      startChat: string
+      explore: string
+    }
+  }
 }
 
 export const DICTIONARIES: Record<Lang, Dictionary> = {
@@ -1129,6 +1186,68 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
         step3Title: "Ask me anything",
         step3Description:
           "Chat, quiz yourself, and I'll quiz you back — citing the exact paragraph each time.",
+      },
+    },
+    onboarding: {
+      skip: "Skip for now",
+      next: "Next",
+      back: "Back",
+      saving: "Saving…",
+      stepOf: "Step {current} of {total}",
+      welcome: {
+        title: "Welcome to Ilm AI",
+        subtitle:
+          "Upload anything you're studying. I'll tutor you on it — and only it.",
+        languageLabel: "Your language",
+        cta: "Let's go",
+      },
+      goal: {
+        title: "What do you want to achieve?",
+        subtitle: "This shapes your plan. You can change it anytime.",
+        goalLabel: "Your goal",
+        goalPlaceholder: 'e.g. "Pass IELTS in 6 weeks"',
+        targetLabel: "Target date",
+        targetHint: "Optional — leave empty if there's no deadline.",
+        dailyLabel: "Daily study time",
+        dailyHint: "How much can you study most days?",
+        minutesSuffix: "min",
+        customOption: "Custom",
+        customPlaceholder: "Minutes",
+      },
+      upload: {
+        title: "Upload your first material",
+        subtitle: "PDF, Word, plain text — or paste your notes.",
+        fileTab: "Upload file",
+        pasteTab: "Paste text",
+        dropZone: "Drag & drop a file here",
+        browse: "Browse files",
+        formatsHint: "PDF, Word, or .txt.",
+        privacyNote: "Your content stays private to you.",
+        pasteTitlePlaceholder: "Title",
+        pasteContentPlaceholder: "Paste your notes here…",
+        pasteSubmit: "Add text",
+        uploading: "Uploading…",
+        processing: "Preparing your material…",
+        ready: "Ready",
+        failed: "Upload failed",
+        retry: "Try again",
+        waiting: "Add a material to continue.",
+        continue: "Continue",
+        showAll: "Show all ({count})",
+        showLess: "Show less",
+        delete: "Delete",
+      },
+      finish: {
+        title: "You're all set",
+        subtitle: "Your material is ready. Ask me anything about it.",
+        askPrompt: "Try asking…",
+        starters: [
+          "Summarize the key points",
+          "Quiz me on this",
+          "What should I focus on first?",
+        ],
+        startChat: "Start chatting",
+        explore: "Explore on my own",
       },
     },
   },
@@ -1715,6 +1834,68 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
         step3Title: "Спросите что угодно",
         step3Description:
           "Общайтесь, спрашивайте — и я буду задавать вопросы вам в ответ, ссылаясь на конкретные фрагменты.",
+      },
+    },
+    onboarding: {
+      skip: "Пропустить",
+      next: "Далее",
+      back: "Назад",
+      saving: "Сохранение…",
+      stepOf: "Шаг {current} из {total}",
+      welcome: {
+        title: "Добро пожаловать в Ilm AI",
+        subtitle:
+          "Загрузите то, что изучаете. Я буду наставником именно по этому материалу.",
+        languageLabel: "Ваш язык",
+        cta: "Начать",
+      },
+      goal: {
+        title: "Чего вы хотите достичь?",
+        subtitle: "Это формирует ваш план. Можно изменить в любой момент.",
+        goalLabel: "Ваша цель",
+        goalPlaceholder: "напр. «Сдать IELTS за 6 недель»",
+        targetLabel: "Дата цели",
+        targetHint: "Необязательно — оставьте пустым, если срока нет.",
+        dailyLabel: "Время на учёбу в день",
+        dailyHint: "Сколько вы готовы заниматься в большинство дней?",
+        minutesSuffix: "мин",
+        customOption: "Своё",
+        customPlaceholder: "Минуты",
+      },
+      upload: {
+        title: "Загрузите первый материал",
+        subtitle: "PDF, Word, обычный текст — или вставьте заметки.",
+        fileTab: "Загрузить файл",
+        pasteTab: "Вставить текст",
+        dropZone: "Перетащите файл сюда",
+        browse: "Выбрать файл",
+        formatsHint: "PDF, Word или .txt.",
+        privacyNote: "Ваш контент остаётся приватным.",
+        pasteTitlePlaceholder: "Название",
+        pasteContentPlaceholder: "Вставьте заметки сюда…",
+        pasteSubmit: "Добавить текст",
+        uploading: "Загрузка…",
+        processing: "Готовим ваш материал…",
+        ready: "Готово",
+        failed: "Не удалось загрузить",
+        retry: "Повторить",
+        waiting: "Добавьте материал, чтобы продолжить.",
+        continue: "Продолжить",
+        showAll: "Показать все ({count})",
+        showLess: "Свернуть",
+        delete: "Удалить",
+      },
+      finish: {
+        title: "Всё готово",
+        subtitle: "Ваш материал готов. Спросите меня о чём угодно.",
+        askPrompt: "Попробуйте спросить…",
+        starters: [
+          "Кратко перескажи главное",
+          "Проверь меня тестом",
+          "С чего начать?",
+        ],
+        startChat: "Начать чат",
+        explore: "Осмотреться самому",
       },
     },
   },
@@ -2310,6 +2491,69 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
         step3Title: "Istalgan savol bering",
         step3Description:
           "Suhbatlashing — men aniq parchaga havola bilan javob beraman va o‘zim ham sizdan so‘rayman.",
+      },
+    },
+    onboarding: {
+      skip: "Hozircha o‘tkazib yuborish",
+      next: "Keyingi",
+      back: "Orqaga",
+      saving: "Saqlanmoqda…",
+      stepOf: "{total} dan {current}-qadam",
+      welcome: {
+        title: "Ilm AI ga xush kelibsiz",
+        subtitle:
+          "O‘rganayotgan narsangizni yuklang. Men aynan shu material bo‘yicha ustoz bo‘laman.",
+        languageLabel: "Tilingiz",
+        cta: "Boshladik",
+      },
+      goal: {
+        title: "Nimaga erishmoqchisiz?",
+        subtitle:
+          "Bu rejangizni shakllantiradi. Istalgan vaqtda o‘zgartirasiz.",
+        goalLabel: "Maqsadingiz",
+        goalPlaceholder: "masalan, «6 haftada IELTS topshirish»",
+        targetLabel: "Maqsad sanasi",
+        targetHint: "Ixtiyoriy — muddat bo‘lmasa, bo‘sh qoldiring.",
+        dailyLabel: "Kunlik o‘qish vaqti",
+        dailyHint: "Ko‘p kunlari qancha shug‘ullana olasiz?",
+        minutesSuffix: "daq",
+        customOption: "Boshqa",
+        customPlaceholder: "Daqiqa",
+      },
+      upload: {
+        title: "Birinchi materialni yuklang",
+        subtitle: "PDF, Word, oddiy matn — yoki qaydlaringizni joylashtiring.",
+        fileTab: "Fayl yuklash",
+        pasteTab: "Matn joylash",
+        dropZone: "Faylni shu yerga tashlang",
+        browse: "Fayl tanlash",
+        formatsHint: "PDF, Word yoki .txt.",
+        privacyNote: "Kontentingiz faqat sizga tegishli bo‘lib qoladi.",
+        pasteTitlePlaceholder: "Sarlavha",
+        pasteContentPlaceholder: "Qaydlaringizni shu yerga joylang…",
+        pasteSubmit: "Matn qo‘shish",
+        uploading: "Yuklanmoqda…",
+        processing: "Materialingiz tayyorlanmoqda…",
+        ready: "Tayyor",
+        failed: "Yuklab bo‘lmadi",
+        retry: "Qayta urinish",
+        waiting: "Davom etish uchun material qo‘shing.",
+        continue: "Davom etish",
+        showAll: "Hammasini ko‘rsatish ({count})",
+        showLess: "Yig‘ish",
+        delete: "O‘chirish",
+      },
+      finish: {
+        title: "Hammasi tayyor",
+        subtitle: "Materialingiz tayyor. U haqida istalgan savol bering.",
+        askPrompt: "So‘rab ko‘ring…",
+        starters: [
+          "Asosiy fikrlarni qisqacha ayt",
+          "Meni test bilan sina",
+          "Nimadan boshlasam bo‘ladi?",
+        ],
+        startChat: "Suhbatni boshlash",
+        explore: "O‘zim ko‘rib chiqaman",
       },
     },
   },

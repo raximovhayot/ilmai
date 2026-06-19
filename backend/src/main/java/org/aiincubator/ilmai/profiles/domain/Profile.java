@@ -63,6 +63,9 @@ public class Profile extends DateAuditable {
     @Column(name = "last_active_at")
     private OffsetDateTime lastActiveAt;
 
+    @Column(name = "onboarding_passed")
+    private Boolean onboardingPassed;
+
     @Override
     public final boolean equals(Object o) {
         if (this == o) return true;

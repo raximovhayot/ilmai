@@ -6,6 +6,7 @@ export type OnboardingState = {
   dailyStudyMinutes: number | null
   dailyReminder: string | null
   telegramLinked: boolean
+  onboardingPassed: boolean | null
 }
 
 export type OnboardingInput = {
@@ -13,6 +14,7 @@ export type OnboardingInput = {
   targetDate?: string | null
   dailyStudyMinutes?: number | null
   dailyReminder?: string | null
+  onboardingPassed?: boolean | null
 }
 
 export async function getOnboarding(): Promise<OnboardingState | null> {

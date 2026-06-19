@@ -27,4 +27,6 @@ public class OnboardingRequest {
     private Integer dailyStudyMinutes;
 
     private LocalTime dailyReminder;
+
+    private Boolean onboardingPassed;
 }

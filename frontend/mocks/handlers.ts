@@ -463,6 +463,8 @@ function shuffle<T>(arr: T[]): T[] {
   return a
 }
 
+let mockOnboardingPassed: boolean | null = null
+
 export const handlers = [
   http.post(`${BASE}/auth/google`, async ({ request }) => {
     await delay(150)
@@ -1330,6 +1332,7 @@ export const handlers = [
       dailyStudyMinutes: null,
       dailyReminder: null,
       telegramLinked: false,
+      onboardingPassed: mockOnboardingPassed,
     })
   }),
 
@@ -1341,16 +1344,20 @@ export const handlers = [
       targetDate?: string | null
       dailyStudyMinutes?: number | null
       dailyReminder?: string | null
+      onboardingPassed?: boolean | null
     }
     await delay(500)
     if (body.goal !== undefined) db.plan.goal = body.goal
     if (body.targetDate !== undefined) db.plan.targetDate = body.targetDate
+    if (body.onboardingPassed !== undefined)
+      mockOnboardingPassed = body.onboardingPassed
     return envelope({
       goal: db.plan.goal,
       targetDate: db.plan.targetDate,
       dailyStudyMinutes: body.dailyStudyMinutes ?? null,
       dailyReminder: body.dailyReminder ?? null,
       telegramLinked: false,
+      onboardingPassed: mockOnboardingPassed,
     })
   }),
 
