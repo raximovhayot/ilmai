@@ -5,6 +5,7 @@ export type OnboardingState = {
   targetDate: string | null
   dailyStudyMinutes: number | null
   dailyReminder: string | null
+  telegramLinked: boolean
 }
 
 export type OnboardingInput = {

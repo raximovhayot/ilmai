@@ -1329,6 +1329,7 @@ export const handlers = [
       targetDate: db.plan.targetDate,
       dailyStudyMinutes: null,
       dailyReminder: null,
+      telegramLinked: false,
     })
   }),
 
@@ -1349,6 +1350,7 @@ export const handlers = [
       targetDate: db.plan.targetDate,
       dailyStudyMinutes: body.dailyStudyMinutes ?? null,
       dailyReminder: body.dailyReminder ?? null,
+      telegramLinked: false,
     })
   }),
 
