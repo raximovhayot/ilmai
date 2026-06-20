@@ -16,8 +16,8 @@ FROM eclipse-temurin:25-jre AS runtime
 RUN apt-get update \
  && apt-get install -y --no-install-recommends curl ca-certificates \
  && rm -rf /var/lib/apt/lists/* \
- && groupadd --system --gid 1000 ilmai \
- && useradd --system --uid 1000 --gid ilmai --no-create-home --shell /usr/sbin/nologin ilmai \
+ && groupadd --system --gid 10001 ilmai \
+ && useradd --system --uid 10001 --gid ilmai --no-create-home --shell /usr/sbin/nologin ilmai \
  && mkdir -p /opt/ilmai \
  && chown -R ilmai:ilmai /opt/ilmai
 
