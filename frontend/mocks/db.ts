@@ -1,6 +1,4 @@
 import type {
-  ChatMessage,
-  Conversation,
   GapsReport,
   Goal,
   LearningPlan,
@@ -19,8 +17,6 @@ const DEMO_USER: ProfileMe = {
   username: "demo@ilmai.dev",
   status: "ACTIVE",
   createdAt: "2026-04-12T09:00:00.000Z",
-  fullName: "Aziza Karimova",
-  picture: null,
 }
 
 const now = () => new Date().toISOString()
@@ -412,8 +408,6 @@ type DbState = {
   user: ProfileMe
   topics: Topic[]
   materials: Material[]
-  conversations: Conversation[]
-  messages: ChatMessage[]
   quizSessions: QuizSession[]
   quizQuestions: QuizQuestion[]
   plan: LearningPlan
@@ -431,8 +425,6 @@ function createInitialState(): DbState {
     user: { ...DEMO_USER },
     topics: SEED_TOPICS.map((t) => ({ ...t })),
     materials: SEED_MATERIALS.map((m) => ({ ...m })),
-    conversations: [],
-    messages: [],
     quizSessions: [],
     quizQuestions: [],
     plan: structuredClone(SEED_PLAN),

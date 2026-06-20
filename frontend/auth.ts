@@ -55,6 +55,10 @@ function refreshBackendTokens(refreshToken: string) {
   return postBackend<BackendTokenPair>("/auth/refresh", { refreshToken })
 }
 
+function revokeBackendTokens(refreshToken: string) {
+  return postBackend<unknown>("/auth/logout", { refreshToken })
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   session: { strategy: "jwt" },
@@ -115,6 +119,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async session({ session, token }) {
       session.error = typeof token.error === "string" ? token.error : undefined
       return session
+    },
+  },
+  events: {
+    async signOut(message) {
+      const token = "token" in message ? message.token : null
+      if (
+        token &&
+        typeof token.refreshToken === "string" &&
+        token.refreshToken !== "demo-refresh-token"
+      ) {
+        await revokeBackendTokens(token.refreshToken)
+      }
     },
   },
 })

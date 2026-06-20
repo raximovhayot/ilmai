@@ -3,8 +3,6 @@ export type ProfileMe = {
   username: string
   status: "ACTIVE" | "DISABLED" | string
   createdAt: string
-  fullName: string
-  picture: string | null
 }
 
 export type Topic = {
@@ -41,26 +39,6 @@ export type Citation = {
   chunkIndex: number
   preview: string
   score: number
-}
-
-export type ChatRole = "USER" | "ASSISTANT"
-
-export type ChatMessage = {
-  id: string
-  conversationId: string
-  role: ChatRole
-  content: string
-  citations: Citation[]
-  createdAt: string
-}
-
-export type Conversation = {
-  id: string
-  topicId: string
-  title: string
-  createdAt: string
-  updatedAt: string
-  lastPreview?: string
 }
 
 export type QuizDifficulty = "EASY" | "MEDIUM" | "HARD"

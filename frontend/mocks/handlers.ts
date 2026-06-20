@@ -11,7 +11,6 @@ import {
   timestamp,
 } from "./db"
 import type {
-  ChatMessage,
   Citation,
   Material,
   QuizDifficulty,
@@ -275,106 +274,6 @@ function tokenizeQuery(query: string): string[] {
     .replace(/[^a-zа-я0-9ʻʼ' ]/giu, " ")
     .split(/\s+/)
     .filter((w) => w.length > 2)
-}
-
-function similarityForMaterial(
-  material: Material,
-  queryTokens: string[]
-): number {
-  const body = material.body.toLowerCase() + " " + material.title.toLowerCase()
-  let score = 0
-  for (const token of queryTokens) {
-    if (body.includes(token)) score += 1
-  }
-  return queryTokens.length === 0 ? 0 : score / queryTokens.length
-}
-
-function pickCitations(topicId: string, query: string, limit = 3): Citation[] {
-  const tokens = tokenizeQuery(query)
-  const candidates = db.materials.filter(
-    (m) => m.topicId === topicId && m.status === "READY"
-  )
-  const scored = candidates
-    .map((m) => ({ material: m, score: similarityForMaterial(m, tokens) }))
-    .filter((s) => s.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit)
-
-  return scored.map((s, idx) => {
-    const sentences = s.material.body
-      .split(/(?<=[.!?])\s+/)
-      .filter((sentence) => {
-        const lower = sentence.toLowerCase()
-        return tokens.some((token) => lower.includes(token))
-      })
-    const preview = (sentences[0] ?? s.material.body).slice(0, 220)
-    return {
-      materialId: s.material.id,
-      materialName: s.material.title,
-      chunkIndex: idx,
-      preview,
-      score: Math.min(0.95, 0.6 + s.score * 0.35),
-    }
-  })
-}
-
-function detectLanguage(message: string): "uz" | "ru" | "en" {
-  if (/[\u0400-\u04FF]/.test(message)) return "ru"
-  if (/[ʻʼ]/.test(message)) return "uz"
-  if (/\b(salom|qanday|nima|kerak|materiallarim|oʻzbek|qiyin)\b/i.test(message))
-    return "uz"
-  return "en"
-}
-
-const NO_GROUNDED = {
-  en: "I couldn't find that in your materials yet. Try uploading a source that covers it, or rephrase your question.",
-  ru: "Я не нашёл этого в ваших материалах. Попробуйте загрузить источник по этой теме или переформулировать вопрос.",
-  uz: "Bunga oid maʼlumot materiallaringizda topilmadi. Mavzuga oid manba yuklang yoki savolni qaytadan yozing.",
-}
-
-function craftAnswer(
-  topic: Topic,
-  _question: string,
-  citations: Citation[],
-  lang: "uz" | "ru" | "en"
-): string {
-  if (citations.length === 0) return NO_GROUNDED[lang]
-
-  const opener: Record<typeof lang, string> = {
-    en: "Good question.",
-    ru: "Хороший вопрос.",
-    uz: "Yaxshi savol.",
-  }
-
-  const intro: Record<typeof lang, string> = {
-    en: `Here's what your "${topic.name}" notes say:`,
-    ru: `Вот что говорят ваши материалы из «${topic.name}»:`,
-    uz: `"${topic.name}" mavzusidagi materiallaringiz shuni aytadi:`,
-  }
-
-  const evidence = citations.map((c, i) => `${i + 1}. ${c.preview}`).join("\n")
-
-  const followUps: Record<typeof lang, string[]> = {
-    en: [
-      "What's your own guess at why that's true?",
-      "Want me to quiz you on this in 3 questions?",
-      "Which part of that is still unclear?",
-    ],
-    ru: [
-      "А как вы сами думаете, почему так?",
-      "Хотите, я задам 3 вопроса по этому?",
-      "Что из этого пока непонятно?",
-    ],
-    uz: [
-      "O‘zingizcha, nima sababdan shunday deb o‘ylaysiz?",
-      "Shu bo‘yicha 3 ta savol berishimni xohlaysizmi?",
-      "Bu yerda qaysi qism hali tushunarsiz?",
-    ],
-  }
-  const follow =
-    followUps[lang][citations.length % followUps[lang].length] ?? ""
-
-  return `${opener[lang]} ${intro[lang]}\n\n${evidence}\n\n${follow}`
 }
 
 function craftQuestion(
@@ -721,9 +620,6 @@ export const handlers = [
     if (guard instanceof HttpResponse) return guard
     const form = await request.formData()
     const topicId = String(form.get("topicId") || "")
-    const titleRaw = form.get("title")
-    const title = typeof titleRaw === "string" ? titleRaw.trim() : ""
-    const pasted = form.get("pastedText")
     const file = form.get("file")
     if (topicId && !findTopic(topicId))
       return errorResponse("MATERIAL_TOPIC_NOT_FOUND", "Topic not found.", 404)
@@ -732,7 +628,7 @@ export const handlers = [
     let originalFilename: string | undefined
     let contentType = "text/plain"
     let sizeBytes = 0
-    let derivedTitle = title
+    let derivedTitle = ""
 
     if (file instanceof File && file.size > 0) {
       const acceptable = [
@@ -766,18 +662,8 @@ export const handlers = [
           `In the real backend, Apache Tika would extract text from this ${file.type} document and split it into chunks for vector search.`
       }
       if (!derivedTitle) derivedTitle = file.name.replace(/\.[^.]+$/, "")
-    } else if (typeof pasted === "string" && pasted.trim().length > 0) {
-      body = pasted.trim()
-      sizeBytes = body.length
-      if (!derivedTitle)
-        derivedTitle =
-          body.split(/\s+/).slice(0, 6).join(" ").slice(0, 60) + "…"
     } else {
-      return errorResponse(
-        "MATERIAL_CONTENT_REQUIRED",
-        "Upload a file or paste some text.",
-        400
-      )
+      return errorResponse("MATERIAL_CONTENT_REQUIRED", "Upload a file.", 400)
     }
 
     if (!derivedTitle) {
@@ -1096,104 +982,6 @@ export const handlers = [
       })
     }
   ),
-
-  http.get(`${BASE}/chat/conversations`, async ({ request }) => {
-    const guard = requireAuth(request)
-    if (guard instanceof HttpResponse) return guard
-    const url = new URL(request.url)
-    const topicId = url.searchParams.get("topicId")
-    const list = db.conversations
-      .filter((c) => (topicId ? c.topicId === topicId : true))
-      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-    return envelope(list)
-  }),
-
-  http.get(
-    `${BASE}/chat/conversations/:id/messages`,
-    async ({ request, params }) => {
-      const guard = requireAuth(request)
-      if (guard instanceof HttpResponse) return guard
-      const conv = db.conversations.find((c) => c.id === params.id)
-      if (!conv)
-        return errorResponse(
-          "CHAT_CONVERSATION_NOT_FOUND",
-          "Conversation not found.",
-          404
-        )
-      const messages = db.messages
-        .filter((m) => m.conversationId === conv.id)
-        .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
-      return envelope({ conversation: conv, messages })
-    }
-  ),
-
-  http.post(`${BASE}/chat`, async ({ request }) => {
-    const guard = requireAuth(request)
-    if (guard instanceof HttpResponse) return guard
-    const body = (await request.json().catch(() => ({}))) as {
-      topicId?: string
-      conversationId?: string
-      message?: string
-    }
-    if (!body.topicId || !body.message?.trim()) {
-      return errorResponse(
-        "CHAT_BAD_REQUEST",
-        "topicId and message are required.",
-        400
-      )
-    }
-    const topic = findTopic(body.topicId)
-    if (!topic)
-      return errorResponse("CHAT_TOPIC_NOT_FOUND", "Topic not found.", 404)
-
-    let conv = body.conversationId
-      ? db.conversations.find((c) => c.id === body.conversationId)
-      : undefined
-    if (!conv) {
-      conv = {
-        id: newId(),
-        topicId: topic.id,
-        title: body.message!.trim().slice(0, 60),
-        createdAt: timestamp(),
-        updatedAt: timestamp(),
-      }
-      db.conversations.push(conv)
-    }
-
-    const userMessage: ChatMessage = {
-      id: newId(),
-      conversationId: conv.id,
-      role: "USER",
-      content: body.message!.trim(),
-      citations: [],
-      createdAt: timestamp(),
-    }
-    db.messages.push(userMessage)
-
-    await delay(700)
-
-    const citations = pickCitations(topic.id, body.message!)
-    const lang = detectLanguage(body.message!)
-    const answer = craftAnswer(topic, body.message!, citations, lang)
-
-    const assistantMessage: ChatMessage = {
-      id: newId(),
-      conversationId: conv.id,
-      role: "ASSISTANT",
-      content: answer,
-      citations,
-      createdAt: timestamp(),
-    }
-    db.messages.push(assistantMessage)
-    conv.updatedAt = timestamp()
-    conv.lastPreview = answer.slice(0, 120)
-
-    return envelope({
-      conversationId: conv.id,
-      answer,
-      citations,
-    })
-  }),
 
   http.post(`${BASE}/quiz/sessions`, async ({ request }) => {
     const guard = requireAuth(request)

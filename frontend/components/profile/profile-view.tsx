@@ -35,7 +35,6 @@ type AuthMe = {
   username: string
   status: string
   createdAt: string
-  fullName: string
 }
 
 export function ProfileView({ user }: Props) {

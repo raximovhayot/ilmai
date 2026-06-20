@@ -67,8 +67,7 @@ export async function moveMaterial(
 export async function uploadMaterialFile(
   spaceId: string,
   file: File,
-  topicId?: string | null,
-  title?: string
+  topicId?: string | null
 ): Promise<MaterialResponse | null> {
   const form = new FormData()
   form.append("spaceId", spaceId)
@@ -76,9 +75,6 @@ export async function uploadMaterialFile(
     form.append("topicId", topicId)
   }
   form.append("file", file)
-  if (title && title.trim().length > 0) {
-    form.append("title", title.trim())
-  }
   return await apiFetch<MaterialResponse>("/materials", {
     method: "POST",
     body: form,
@@ -96,7 +92,7 @@ export async function uploadMaterialPaste(
     ? safeTitle
     : `${safeTitle}.txt`
   const file = new File([pastedText], fileName, { type: "text/plain" })
-  return await uploadMaterialFile(spaceId, file, topicId, safeTitle)
+  return await uploadMaterialFile(spaceId, file, topicId)
 }
 
 export async function deleteMaterial(materialId: string): Promise<void> {
