@@ -1,11 +1,14 @@
 package org.aiincubator.ilmai.profiles.service;
 
 import org.aiincubator.ilmai.common.CurrentUser;
+import org.aiincubator.ilmai.profiles.GoalUpdatedEvent;
+import org.aiincubator.ilmai.profiles.OnboardingCompletedEvent;
 import org.aiincubator.ilmai.profiles.domain.Profile;
 import org.aiincubator.ilmai.profiles.domain.ProfileRepository;
 import org.aiincubator.ilmai.profiles.payload.OnboardingRequest;
 import org.aiincubator.ilmai.profiles.payload.OnboardingResponse;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -16,6 +19,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class OnboardingServiceTest {
@@ -24,7 +29,9 @@ class OnboardingServiceTest {
     private final CurrentUser currentUser = new CurrentUser(userId);
 
     private final ProfileRepository profiles = mock(ProfileRepository.class);
-    private final OnboardingService service = new OnboardingService(profiles, new OnboardingMapperImpl());
+    private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
+    private final OnboardingService service =
+            new OnboardingService(profiles, new OnboardingMapperImpl(), eventPublisher);
 
     @Test
     void submitPersistsProvidedFields() {
@@ -117,6 +124,57 @@ class OnboardingServiceTest {
         OnboardingResponse response = service.get(currentUser);
 
         assertThat(response.getOnboardingPassed()).isNull();
+    }
+
+    @Test
+    void submitPublishesGoalUpdatedEventWhenGoalChanges() {
+        Profile profile = profileFor(userId);
+        when(profiles.findById(userId)).thenReturn(Optional.of(profile));
+
+        service.submit(currentUser, new OnboardingRequest("Pass IELTS", null, null, null, null));
+
+        verify(eventPublisher).publishEvent(any(GoalUpdatedEvent.class));
+    }
+
+    @Test
+    void submitDoesNotPublishGoalUpdatedEventWhenGoalUnchanged() {
+        Profile profile = profileFor(userId);
+        when(profiles.findById(userId)).thenReturn(Optional.of(profile));
+
+        service.submit(currentUser, new OnboardingRequest(null, null, 30, null, null));
+
+        verify(eventPublisher, never()).publishEvent(any(GoalUpdatedEvent.class));
+    }
+
+    @Test
+    void submitPublishesOnboardingCompletedEventOnFirstCompletion() {
+        Profile profile = profileFor(userId);
+        when(profiles.findById(userId)).thenReturn(Optional.of(profile));
+
+        service.submit(currentUser, new OnboardingRequest(null, null, null, null, true));
+
+        verify(eventPublisher).publishEvent(any(OnboardingCompletedEvent.class));
+    }
+
+    @Test
+    void submitDoesNotRepublishOnboardingCompletedWhenAlreadyPassed() {
+        Profile profile = profileFor(userId);
+        profile.setOnboardingPassed(true);
+        when(profiles.findById(userId)).thenReturn(Optional.of(profile));
+
+        service.submit(currentUser, new OnboardingRequest(null, null, null, null, true));
+
+        verify(eventPublisher, never()).publishEvent(any(OnboardingCompletedEvent.class));
+    }
+
+    @Test
+    void submitDoesNotPublishOnboardingCompletedWhenSkipped() {
+        Profile profile = profileFor(userId);
+        when(profiles.findById(userId)).thenReturn(Optional.of(profile));
+
+        service.submit(currentUser, new OnboardingRequest(null, null, null, null, false));
+
+        verify(eventPublisher, never()).publishEvent(any(OnboardingCompletedEvent.class));
     }
 
     @Test
