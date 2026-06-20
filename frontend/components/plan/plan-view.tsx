@@ -16,6 +16,7 @@ import {
   RoadIcon,
 } from "@hugeicons/core-free-icons"
 
+import { Response } from "@/components/ai-elements/response"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -23,10 +24,12 @@ import { Progress } from "@/components/ui/progress"
 import { Spinner } from "@/components/ui/spinner"
 import {
   completePlanStep,
+  generateStepLesson,
   getPlan,
   type LearningPlan,
   type PlanActivity,
   type PlanStep,
+  type StepLesson,
 } from "@/lib/plan"
 import { useT } from "@/lib/i18n/provider"
 import type { TopicResponse } from "@/lib/topics"
@@ -44,6 +47,9 @@ export function PlanView({ initialPlan, topics }: Props) {
   const [completing, setCompleting] = React.useState<number | null>(null)
   const [refreshing, setRefreshing] = React.useState(false)
   const [syncedInitial, setSyncedInitial] = React.useState(initialPlan)
+  const [lessons, setLessons] = React.useState<Record<number, StepLesson>>({})
+  const [expanded, setExpanded] = React.useState<number | null>(null)
+  const [lessonLoading, setLessonLoading] = React.useState<number | null>(null)
 
   if (initialPlan !== syncedInitial) {
     setSyncedInitial(initialPlan)
@@ -78,6 +84,46 @@ export function PlanView({ initialPlan, topics }: Props) {
       toast.error(t.errors.generic)
     } finally {
       setRefreshing(false)
+    }
+  }
+
+  const onToggleLesson = async (dayIndex: number) => {
+    if (status !== "authenticated") return
+    if (expanded === dayIndex) {
+      setExpanded(null)
+      return
+    }
+    if (lessons[dayIndex]) {
+      setExpanded(dayIndex)
+      return
+    }
+    setLessonLoading(dayIndex)
+    try {
+      const lesson = await generateStepLesson(dayIndex)
+      if (lesson) {
+        setLessons((prev) => ({ ...prev, [dayIndex]: lesson }))
+        setExpanded(dayIndex)
+      }
+    } catch {
+      toast.error(t.errors.generic)
+    } finally {
+      setLessonLoading(null)
+    }
+  }
+
+  const onRegenerateLesson = async (dayIndex: number) => {
+    if (status !== "authenticated") return
+    setLessonLoading(dayIndex)
+    try {
+      const lesson = await generateStepLesson(dayIndex, true)
+      if (lesson) {
+        setLessons((prev) => ({ ...prev, [dayIndex]: lesson }))
+        setExpanded(dayIndex)
+      }
+    } catch {
+      toast.error(t.errors.generic)
+    } finally {
+      setLessonLoading(null)
     }
   }
 
@@ -205,6 +251,13 @@ export function PlanView({ initialPlan, topics }: Props) {
                     completing={completing === step.dayIndex}
                     topicNameById={topicNameById}
                     onComplete={() => onComplete(step.dayIndex)}
+                    lesson={lessons[step.dayIndex]}
+                    lessonOpen={expanded === step.dayIndex}
+                    lessonLoading={lessonLoading === step.dayIndex}
+                    onToggleLesson={() => onToggleLesson(step.dayIndex)}
+                    onRegenerateLesson={() =>
+                      onRegenerateLesson(step.dayIndex)
+                    }
                   />
                 ))
               )}
@@ -271,15 +324,30 @@ function StepCard({
   completing,
   topicNameById,
   onComplete,
+  lesson,
+  lessonOpen,
+  lessonLoading,
+  onToggleLesson,
+  onRegenerateLesson,
 }: {
   step: PlanStep
   isToday: boolean
   completing: boolean
   topicNameById: Map<string, string>
   onComplete: () => void
+  lesson: StepLesson | undefined
+  lessonOpen: boolean
+  lessonLoading: boolean
+  onToggleLesson: () => void
+  onRegenerateLesson: () => void
 }) {
   const t = useT()
   const activityLabel = labelForAction(step.activity, t)
+  const lessonButtonLabel = lessonOpen
+    ? t.plan.hideLesson
+    : step.hasLesson || lesson
+      ? t.plan.openLesson
+      : t.plan.startLesson
   return (
     <div
       className={cn(
@@ -378,7 +446,47 @@ function StepCard({
         </ul>
       ) : null}
 
-      <div className="mt-3 flex items-center justify-end">
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+        {step.activity === "QUIZ" ? (
+          <Button
+            nativeButton={false}
+            variant="outline"
+            size="sm"
+            render={
+              <Link
+                href={`/companion?seed=${encodeURIComponent(
+                  `${t.plan.startQuiz}: ${step.title}`
+                )}`}
+              >
+                <HugeiconsIcon
+                  icon={PuzzleIcon}
+                  strokeWidth={2}
+                  data-icon="inline-start"
+                />
+                {t.plan.startQuiz}
+              </Link>
+            }
+          />
+        ) : (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onToggleLesson}
+            disabled={lessonLoading}
+          >
+            {lessonLoading ? (
+              <Spinner data-icon="inline-start" />
+            ) : (
+              <HugeiconsIcon
+                icon={BookOpen01Icon}
+                strokeWidth={2}
+                data-icon="inline-start"
+              />
+            )}
+            {lessonButtonLabel}
+          </Button>
+        )}
+
         {step.done ? (
           <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
             <HugeiconsIcon
@@ -403,6 +511,85 @@ function StepCard({
           </Button>
         )}
       </div>
+
+      {step.activity !== "QUIZ" && lessonOpen && lesson ? (
+        <LessonPanel
+          lesson={lesson}
+          regenerating={lessonLoading}
+          onRegenerate={onRegenerateLesson}
+        />
+      ) : null}
+    </div>
+  )
+}
+
+function LessonPanel({
+  lesson,
+  regenerating,
+  onRegenerate,
+}: {
+  lesson: StepLesson
+  regenerating: boolean
+  onRegenerate: () => void
+}) {
+  const t = useT()
+  return (
+    <div className="mt-3 rounded-lg border border-border bg-muted/30 p-4">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <HugeiconsIcon
+            icon={BookOpen01Icon}
+            strokeWidth={2}
+            className="size-3.5"
+          />
+          {t.plan.lessonHeading}
+        </span>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onRegenerate}
+          disabled={regenerating}
+        >
+          {regenerating ? (
+            <Spinner data-icon="inline-start" />
+          ) : (
+            <HugeiconsIcon
+              icon={RefreshIcon}
+              strokeWidth={2}
+              data-icon="inline-start"
+            />
+          )}
+          {t.plan.regenerateLesson}
+        </Button>
+      </div>
+
+      <Response>{lesson.content}</Response>
+
+      {lesson.citations.length > 0 ? (
+        <div className="mt-3 border-t border-border pt-2">
+          <p className="mb-1 text-xs font-medium text-muted-foreground">
+            {t.plan.lessonSources}
+          </p>
+          <ul className="flex flex-col gap-1">
+            {lesson.citations.map((citation, index) => (
+              <li
+                key={`${citation.materialId ?? "m"}-${index}`}
+                className="flex items-start gap-1.5 text-xs text-muted-foreground"
+              >
+                <span className="font-medium text-foreground/70">
+                  [{index + 1}]
+                </span>
+                <span className="truncate">
+                  {citation.materialName ?? "material"}
+                  {typeof citation.chunkIndex === "number"
+                    ? ` · #${citation.chunkIndex}`
+                    : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </div>
   )
 }

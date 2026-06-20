@@ -346,6 +346,14 @@ export type Dictionary = {
     openCta: string
     editGoal: string
     setGoal: string
+    startLesson: string
+    openLesson: string
+    regenerateLesson: string
+    lessonHeading: string
+    lessonSources: string
+    lessonGenerating: string
+    startQuiz: string
+    hideLesson: string
     empty: string
   }
   stats: {
@@ -960,6 +968,14 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       openCta: "Open",
       editGoal: "Edit goal",
       setGoal: "Set goal",
+      startLesson: "Start lesson",
+      openLesson: "Open lesson",
+      regenerateLesson: "Regenerate",
+      lessonHeading: "Lesson",
+      lessonSources: "From your materials",
+      lessonGenerating: "Building your lesson from your materials…",
+      startQuiz: "Start quiz",
+      hideLesson: "Hide",
       empty: "Set a goal and target date on your profile to generate a plan.",
     },
     stats: {
@@ -1606,6 +1622,14 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       openCta: "Открыть",
       editGoal: "Изменить цель",
       setGoal: "Задать цель",
+      startLesson: "Начать урок",
+      openLesson: "Открыть урок",
+      regenerateLesson: "Сгенерировать заново",
+      lessonHeading: "Урок",
+      lessonSources: "Из ваших материалов",
+      lessonGenerating: "Готовим урок по вашим материалам…",
+      startQuiz: "Начать тест",
+      hideLesson: "Скрыть",
       empty: "Задайте цель и дату в профиле, чтобы создать план.",
     },
     stats: {
@@ -2261,6 +2285,14 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       openCta: "Ochish",
       editGoal: "Maqsadni o‘zgartirish",
       setGoal: "Maqsad qo‘yish",
+      startLesson: "Darsni boshlash",
+      openLesson: "Darsni ochish",
+      regenerateLesson: "Qayta yaratish",
+      lessonHeading: "Dars",
+      lessonSources: "Materiallaringizdan",
+      lessonGenerating: "Materiallaringiz asosida dars tayyorlanmoqda…",
+      startQuiz: "Testni boshlash",
+      hideLesson: "Yashirish",
       empty: "Reja olish uchun profilingizda maqsad va sana kiriting.",
     },
     stats: {

@@ -5,9 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.aiincubator.ilmai.plan.PlanActivity;
 
-import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 
@@ -16,16 +14,11 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class PlanStepResponse {
+public class StepLessonResponse {
 
     private int dayIndex;
-    private LocalDate scheduledDate;
     private String title;
-    private PlanActivity activity;
-    private List<PlanMaterialRef> materials;
-    private String note;
-    private boolean done;
-    private OffsetDateTime completedAt;
-    private boolean hasLesson;
-    private OffsetDateTime lessonGeneratedAt;
+    private String content;
+    private List<LessonCitationResponse> citations;
+    private OffsetDateTime generatedAt;
 }

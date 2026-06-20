@@ -6,6 +6,7 @@ import org.aiincubator.ilmai.plan.domain.PlanStep;
 import org.aiincubator.ilmai.plan.payload.LearningPlanResponse;
 import org.aiincubator.ilmai.plan.payload.PlanMaterialRef;
 import org.aiincubator.ilmai.plan.payload.PlanStepResponse;
+import org.aiincubator.ilmai.plan.payload.StepLessonResponse;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,7 +30,17 @@ public abstract class PlanMapper {
     public abstract LearningPlanResponse toResponse(LearningPlan plan);
 
     @Mapping(target = "materials", expression = "java(resolveMaterials(step.getMaterialIds()))")
+    @Mapping(target = "hasLesson", expression = "java(hasLesson(step))")
     public abstract PlanStepResponse toResponse(PlanStep step);
+
+    @Mapping(target = "content", source = "lessonContent")
+    @Mapping(target = "citations", source = "lessonCitations")
+    @Mapping(target = "generatedAt", source = "lessonGeneratedAt")
+    public abstract StepLessonResponse toLesson(PlanStep step);
+
+    protected boolean hasLesson(PlanStep step) {
+        return step.getLessonContent() != null && !step.getLessonContent().isBlank();
+    }
 
     protected int countDone(LearningPlan plan) {
         return (int) plan.getSteps().stream().filter(PlanStep::isDone).count();

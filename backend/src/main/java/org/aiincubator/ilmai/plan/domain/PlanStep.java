@@ -69,6 +69,16 @@ public class PlanStep extends DateAuditable {
     @Column(name = "completed_at")
     private OffsetDateTime completedAt;
 
+    @Column(name = "lesson_content", columnDefinition = "text")
+    private String lessonContent;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "lesson_citations", columnDefinition = "jsonb")
+    private List<LessonCitation> lessonCitations;
+
+    @Column(name = "lesson_generated_at")
+    private OffsetDateTime lessonGeneratedAt;
+
     @Override
     public final boolean equals(Object o) {
         if (this == o) return true;

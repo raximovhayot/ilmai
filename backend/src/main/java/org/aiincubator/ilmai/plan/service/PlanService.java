@@ -2,6 +2,8 @@ package org.aiincubator.ilmai.plan.service;
 
 import lombok.RequiredArgsConstructor;
 import org.aiincubator.ilmai.common.CurrentUser;
+import org.aiincubator.ilmai.common.quota.IlmTokenReservation;
+import org.aiincubator.ilmai.common.quota.QuotaService;
 import org.aiincubator.ilmai.plan.PlanActivity;
 import org.aiincubator.ilmai.plan.PlanStatus;
 import org.aiincubator.ilmai.plan.PlanStepInput;
@@ -9,6 +11,7 @@ import org.aiincubator.ilmai.plan.domain.LearningPlan;
 import org.aiincubator.ilmai.plan.domain.LearningPlanRepository;
 import org.aiincubator.ilmai.plan.domain.PlanStep;
 import org.aiincubator.ilmai.plan.payload.LearningPlanResponse;
+import org.aiincubator.ilmai.plan.payload.StepLessonResponse;
 import org.aiincubator.ilmai.profiles.ProfileDto;
 import org.aiincubator.ilmai.profiles.ProfilesApi;
 import org.springframework.stereotype.Service;
@@ -29,9 +32,13 @@ public class PlanService {
 
     static final ZoneId DEFAULT_ZONE = ZoneId.of("Asia/Tashkent");
 
+    static final int LESSON_ESTIMATE_ILM_TOKENS = 8;
+
     private final LearningPlanRepository learningPlanRepository;
     private final ProfilesApi profilesApi;
     private final PlanMapper planMapper;
+    private final PlanLessonGenerator lessonGenerator;
+    private final QuotaService quotaService;
     private final Clock clock;
 
     @Transactional
@@ -80,6 +87,56 @@ public class PlanService {
     }
 
     @Transactional
+    public StepLessonResponse generateLessonResponse(CurrentUser currentUser, int dayIndex, boolean regenerate) {
+        UUID userId = currentUser.getUserId();
+        LearningPlan plan = findActivePlan(userId)
+                .orElseThrow(() -> new PlanException(PlanException.Reason.PLAN_NOT_FOUND));
+        PlanStep step = plan.getSteps().stream()
+                .filter(s -> s.getDayIndex() == dayIndex)
+                .findFirst()
+                .orElseThrow(() -> new PlanException(PlanException.Reason.PLAN_STEP_NOT_FOUND));
+
+        if (!regenerate && hasLesson(step)) {
+            return planMapper.toLesson(step);
+        }
+        if (!lessonGenerator.isAvailable()) {
+            if (hasLesson(step)) {
+                return planMapper.toLesson(step);
+            }
+            throw new PlanException(PlanException.Reason.PLAN_LESSON_UNAVAILABLE);
+        }
+        if (!quotaService.canSpend(userId, LESSON_ESTIMATE_ILM_TOKENS)) {
+            if (hasLesson(step)) {
+                return planMapper.toLesson(step);
+            }
+            throw new PlanException(PlanException.Reason.PLAN_LESSON_QUOTA_EXCEEDED);
+        }
+
+        IlmTokenReservation reservation = quotaService.reserve(userId, LESSON_ESTIMATE_ILM_TOKENS);
+        boolean committed = false;
+        try {
+            LessonDraft draft = lessonGenerator.generate(
+                    userId, step.getTitle(), step.getNote(), step.getMaterialIds(), languageFor(userId));
+            if (draft == null) {
+                if (hasLesson(step)) {
+                    return planMapper.toLesson(step);
+                }
+                throw new PlanException(PlanException.Reason.PLAN_LESSON_UNAVAILABLE);
+            }
+            quotaService.commit(reservation, LESSON_ESTIMATE_ILM_TOKENS);
+            committed = true;
+            step.setLessonContent(draft.getContent());
+            step.setLessonCitations(draft.getCitations());
+            step.setLessonGeneratedAt(OffsetDateTime.now(clock));
+            return planMapper.toLesson(step);
+        } finally {
+            if (!committed) {
+                quotaService.refund(reservation);
+            }
+        }
+    }
+
+    @Transactional
     public void markReplanNeeded(UUID userId) {
         learningPlanRepository.findFirstByUserIdAndStatusOrderByCreatedAtDesc(userId, PlanStatus.ACTIVE)
                 .ifPresent(plan -> plan.setReplanNeeded(true));
@@ -109,6 +166,17 @@ public class PlanService {
             return true;
         }
         return false;
+    }
+
+    private static boolean hasLesson(PlanStep step) {
+        return step.getLessonContent() != null && !step.getLessonContent().isBlank();
+    }
+
+    private String languageFor(UUID userId) {
+        return profilesApi.find(userId)
+                .map(ProfileDto::getLocale)
+                .map(locale -> locale.getLocale().getLanguage())
+                .orElse(null);
     }
 
     private void markStepDone(LearningPlan plan, int dayIndex) {

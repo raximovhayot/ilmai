@@ -21,6 +21,23 @@ export type PlanStep = {
   note: string | null
   done: boolean
   completedAt: string | null
+  hasLesson: boolean
+  lessonGeneratedAt: string | null
+}
+
+export type LessonCitation = {
+  materialId: string | null
+  materialName: string | null
+  chunkIndex: number | null
+  snippet: string | null
+}
+
+export type StepLesson = {
+  dayIndex: number
+  title: string
+  content: string
+  citations: LessonCitation[]
+  generatedAt: string | null
 }
 
 export type LearningPlan = {
@@ -50,4 +67,14 @@ export async function completePlanStep(
     { method: "POST" }
   )
   return result && result.id ? result : null
+}
+
+export async function generateStepLesson(
+  dayIndex: number,
+  regenerate = false
+): Promise<StepLesson | null> {
+  return await apiFetch<StepLesson>(
+    `/plan/steps/${dayIndex}/lesson?regenerate=${regenerate}`,
+    { method: "POST" }
+  )
 }
