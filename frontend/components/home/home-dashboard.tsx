@@ -94,8 +94,6 @@ export function HomeDashboard({
     [topics]
   )
 
-  const firstRun = !loading && topics.length === 0
-
   return (
     <div className="flex flex-col gap-4 sm:gap-5">
       <GreetingRow
@@ -105,103 +103,23 @@ export function HomeDashboard({
         loading={loading}
       />
 
-      {firstRun ? (
-        <OnboardingCard />
-      ) : (
-        <>
-          <TodayCard
-            plan={plan}
-            step={todayStep}
-            topicNameById={topicNameById}
-            loading={loading}
-            onCompleteStep={onCompleteStep}
-          />
+      <TodayCard
+        plan={plan}
+        step={todayStep}
+        topicNameById={topicNameById}
+        loading={loading}
+        onCompleteStep={onCompleteStep}
+      />
 
-          <PathsCard
-            goals={goals}
-            lang={lang}
-            loading={loading}
-            aggregatePercent={aggregatePercent}
-            aggregateDaysCompleted={aggregateDaysCompleted}
-            aggregateDaysTotal={aggregateDaysTotal}
-          />
-        </>
-      )}
+      <PathsCard
+        goals={goals}
+        lang={lang}
+        loading={loading}
+        aggregatePercent={aggregatePercent}
+        aggregateDaysCompleted={aggregateDaysCompleted}
+        aggregateDaysTotal={aggregateDaysTotal}
+      />
     </div>
-  )
-}
-
-function OnboardingCard() {
-  const t = useT()
-  const steps = [
-    {
-      n: 1,
-      title: t.home.onboarding.step1Title,
-      description: t.home.onboarding.step1Description,
-      icon: BookOpen01Icon,
-    },
-    {
-      n: 2,
-      title: t.home.onboarding.step2Title,
-      description: t.home.onboarding.step2Description,
-      icon: PlusSignIcon,
-    },
-    {
-      n: 3,
-      title: t.home.onboarding.step3Title,
-      description: t.home.onboarding.step3Description,
-      icon: Compass01Icon,
-    },
-  ]
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">{t.home.onboarding.title}</CardTitle>
-        <CardDescription>{t.home.onboarding.subtitle}</CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3">
-        <ol className="flex flex-col gap-2">
-          {steps.map((s) => (
-            <li
-              key={s.n}
-              className="flex items-start gap-3 rounded-lg border border-border bg-card p-3"
-            >
-              <span
-                className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground"
-                aria-hidden
-              >
-                {s.n}
-              </span>
-              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <span className="text-sm font-medium">{s.title}</span>
-                <span className="text-xs text-muted-foreground">
-                  {s.description}
-                </span>
-              </div>
-              <HugeiconsIcon
-                icon={s.icon}
-                strokeWidth={2}
-                className="mt-0.5 size-4 shrink-0 text-muted-foreground"
-              />
-            </li>
-          ))}
-        </ol>
-        <Button
-          nativeButton={false}
-          className="w-full sm:w-auto sm:self-start"
-          render={
-            <Link href="/data">
-              <HugeiconsIcon
-                icon={PlusSignIcon}
-                strokeWidth={2}
-                data-icon="inline-start"
-              />
-              {t.home.onboarding.step1Cta}
-            </Link>
-          }
-        />
-      </CardContent>
-    </Card>
   )
 }
 
