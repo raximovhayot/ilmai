@@ -154,7 +154,9 @@ sentry:
   dsn: ${SENTRY_DSN:}
   environment: ${SENTRY_ENVIRONMENT:local}
   send-default-pii: false
-  traces-sample-rate: ${SENTRY_TRACES_SAMPLE_RATE:0}
+  traces-sample-rate: ${SENTRY_TRACES_SAMPLE_RATE:0.1}
+  logs:
+    enabled: true
   logging:
     minimum-event-level: error
     minimum-breadcrumb-level: info
