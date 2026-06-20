@@ -6,7 +6,7 @@ import { toast } from "sonner"
 
 import { useT } from "@/lib/i18n/provider"
 
-function AuthErrorToast() {
+function AuthErrorToastInner() {
   const t = useT()
   const params = useSearchParams()
   const error = params.get("error")
@@ -20,6 +20,14 @@ function AuthErrorToast() {
   }, [error, t.errors.signInFailed])
 
   return null
+}
+
+function AuthErrorToast() {
+  return (
+    <React.Suspense fallback={null}>
+      <AuthErrorToastInner />
+    </React.Suspense>
+  )
 }
 
 export { AuthErrorToast }
