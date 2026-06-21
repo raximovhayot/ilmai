@@ -1,5 +1,6 @@
 package org.aiincubator.ilmai.agent.service;
 
+import org.aiincubator.ilmai.agent.ChatSessionSummary;
 import org.aiincubator.ilmai.agent.api.ChatSessionResponse;
 import org.aiincubator.ilmai.agent.domain.ChatSession;
 import org.mapstruct.Mapper;
@@ -8,4 +9,6 @@ import org.mapstruct.Mapper;
 public interface ChatSessionMapper {
 
     ChatSessionResponse toResponse(ChatSession session);
+
+    ChatSessionSummary toSummary(ChatSession session);
 }

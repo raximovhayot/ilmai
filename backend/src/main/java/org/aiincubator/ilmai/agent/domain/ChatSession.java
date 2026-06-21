@@ -41,6 +41,9 @@ public class ChatSession extends DateAuditable {
     @Column(name = "title", length = 200)
     private String title;
 
+    @Column(name = "active", nullable = false)
+    private boolean active = true;
+
     @Override
     public final boolean equals(Object o) {
         if (this == o) return true;

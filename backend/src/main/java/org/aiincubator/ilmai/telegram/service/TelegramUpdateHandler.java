@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.aiincubator.ilmai.agent.ActionPart;
 import org.aiincubator.ilmai.agent.AgentApi;
 import org.aiincubator.ilmai.agent.ChatChannel;
+import org.aiincubator.ilmai.agent.ChatSessionSummary;
 import org.aiincubator.ilmai.agent.MessagePart;
 import org.aiincubator.ilmai.agent.QuizCardPart;
 import org.aiincubator.ilmai.agent.TextPart;
@@ -60,6 +61,10 @@ public class TelegramUpdateHandler {
     private static final String DEFAULT_TIMEZONE = "Asia/Tashkent";
     private static final Duration COACH_TIMEOUT = Duration.ofSeconds(120);
     private static final String ACTION_PREFIX = "act:";
+    private static final String CHAT_NEW = "chat:new";
+    private static final String CHAT_LIST = "chat:list";
+    private static final String CHAT_SWITCH_PREFIX = "chat:switch:";
+    private static final String FORGET_CONFIRM = "forget:confirm";
     private static final int POLL_QUESTION_MAX = 300;
     private static final int POLL_OPTION_MAX = 100;
     private static final int STREAM_TEXT_MAX = 4096;
@@ -151,19 +156,140 @@ public class TelegramUpdateHandler {
             return;
         }
 
+        MenuAction menuAction = menuActionOf(text, locale);
+        if (menuAction != null) {
+            dispatchMenuAction(menuAction, chatId, userId, profile, locale);
+            return;
+        }
+
         if (command.equals("/help")) {
-            send(chatId, copy("telegram.bot.help", locale));
+            dispatchMenuAction(MenuAction.HELP, chatId, userId, profile, locale);
         } else if (command.equals("/streak")) {
-            send(chatId, streakMessage(userId, locale));
+            dispatchMenuAction(MenuAction.STREAK, chatId, userId, profile, locale);
         } else if (command.equals("/today")) {
-            send(chatId, todayMessage(userId, profile, locale));
+            dispatchMenuAction(MenuAction.TODAY, chatId, userId, profile, locale);
         } else if (command.equals("/quiz") || command.equals("/practice")) {
-            runCoachTurn(chatId, userId, locale, copy("telegram.bot.quizPrompt", locale));
+            dispatchMenuAction(MenuAction.QUIZ, chatId, userId, profile, locale);
+        } else if (command.equals("/newchat") || command.equals("/new")) {
+            dispatchMenuAction(MenuAction.NEW_CHAT, chatId, userId, profile, locale);
+        } else if (command.equals("/chats")) {
+            dispatchMenuAction(MenuAction.CHATS, chatId, userId, profile, locale);
+        } else if (command.equals("/forget")) {
+            dispatchMenuAction(MenuAction.FORGET, chatId, userId, profile, locale);
         } else if (command.startsWith("/")) {
-            send(chatId, copy("telegram.bot.help", locale));
+            dispatchMenuAction(MenuAction.HELP, chatId, userId, profile, locale);
         } else {
             runCoachTurn(chatId, userId, locale, text);
         }
+    }
+
+    private MenuAction menuActionOf(String text, SupportedLocale locale) {
+        if (text == null || text.isBlank()) {
+            return null;
+        }
+        String trimmed = text.strip();
+        for (MenuAction action : MenuAction.values()) {
+            if (trimmed.equals(copy(action.labelKey, locale))) {
+                return action;
+            }
+        }
+        return null;
+    }
+
+    private void dispatchMenuAction(MenuAction action, long chatId, UUID userId,
+                                    ProfileDto profile, SupportedLocale locale) {
+        switch (action) {
+            case HELP -> sendMenu(chatId, copy("telegram.bot.help", locale), locale);
+            case STREAK -> send(chatId, streakMessage(userId, locale));
+            case TODAY -> send(chatId, todayMessage(userId, profile, locale));
+            case QUIZ -> runCoachTurn(chatId, userId, locale, copy("telegram.bot.quizPrompt", locale));
+            case NEW_CHAT -> handleNewChat(chatId, userId, locale);
+            case CHATS -> handleChats(chatId, userId, locale);
+            case FORGET -> handleForgetPrompt(chatId, locale);
+        }
+    }
+
+    private void handleNewChat(long chatId, UUID userId, SupportedLocale locale) {
+        agentApi.startNewSession(new CurrentUser(userId), ChatChannel.TELEGRAM);
+        sendMenu(chatId, copy("telegram.bot.newchat.done", locale), locale);
+    }
+
+    private void handleChats(long chatId, UUID userId, SupportedLocale locale) {
+        List<ChatSessionSummary> recent = agentApi.recentSessions(new CurrentUser(userId), ChatChannel.TELEGRAM);
+        if (recent.isEmpty()) {
+            send(chatId, copy("telegram.bot.chats.empty", locale));
+            return;
+        }
+        List<InlineButton> buttons = new ArrayList<>();
+        for (ChatSessionSummary session : recent) {
+            String label = sessionLabel(session, locale);
+            buttons.add(new InlineButton(label, CHAT_SWITCH_PREFIX + session.getId()));
+        }
+        buttons.add(new InlineButton(copy("telegram.bot.chats.newButton", locale), CHAT_NEW));
+        telegramApiClient.sendMessage(chatId, copy("telegram.bot.chats.title", locale), buttons);
+    }
+
+    private void handleForgetPrompt(long chatId, SupportedLocale locale) {
+        List<InlineButton> buttons = List.of(
+                new InlineButton(copy("telegram.bot.forget.confirmButton", locale), FORGET_CONFIRM));
+        telegramApiClient.sendMessage(chatId, copy("telegram.bot.forget.prompt", locale), buttons);
+    }
+
+    private void handleSwitch(long chatId, UUID userId, SupportedLocale locale, String sessionIdRaw) {
+        UUID sessionId;
+        try {
+            sessionId = UUID.fromString(sessionIdRaw);
+        } catch (IllegalArgumentException ex) {
+            return;
+        }
+        CurrentUser currentUser = new CurrentUser(userId);
+        try {
+            agentApi.activateSession(currentUser, sessionId);
+        } catch (RuntimeException ex) {
+            log.warn("telegram chat switch failed user={} session={}: {}", userId, sessionId, ex.toString());
+            return;
+        }
+        String title = agentApi.recentSessions(currentUser, ChatChannel.TELEGRAM).stream()
+                .filter(session -> session.getId().equals(sessionId))
+                .map(session -> sessionTitle(session, locale))
+                .findFirst()
+                .orElse(copy("telegram.bot.session.untitled", locale));
+        sendMenu(chatId, copy("telegram.bot.chats.switched", locale, escapeHtml(title)), locale);
+    }
+
+    private void handleForget(long chatId, UUID userId, SupportedLocale locale) {
+        agentApi.forgetActiveSession(new CurrentUser(userId), ChatChannel.TELEGRAM);
+        send(chatId, copy("telegram.bot.forget.done", locale));
+    }
+
+    private String sessionTitle(ChatSessionSummary session, SupportedLocale locale) {
+        String title = session.getTitle();
+        if (title == null || title.isBlank()) {
+            return copy("telegram.bot.session.untitled", locale);
+        }
+        return title.strip();
+    }
+
+    private String sessionLabel(ChatSessionSummary session, SupportedLocale locale) {
+        String title = truncate(sessionTitle(session, locale), 48);
+        if (session.isActive()) {
+            return copy("telegram.bot.chats.activePrefix", locale, title);
+        }
+        return title;
+    }
+
+    private List<List<String>> menuRows(SupportedLocale locale) {
+        return List.of(
+                List.of(copy("telegram.bot.button.today", locale),
+                        copy("telegram.bot.button.streak", locale),
+                        copy("telegram.bot.button.quiz", locale)),
+                List.of(copy("telegram.bot.button.newchat", locale),
+                        copy("telegram.bot.button.chats", locale),
+                        copy("telegram.bot.button.help", locale)));
+    }
+
+    private void sendMenu(long chatId, String text, SupportedLocale locale) {
+        telegramApiClient.sendWithMenu(chatId, text, menuRows(locale));
     }
 
     private void runAsUser(UUID userId, Runnable action) {
@@ -191,7 +317,7 @@ public class TelegramUpdateHandler {
             return;
         }
         SupportedLocale locale = localeOf(profilesApi.find(linked.get()).orElse(null));
-        send(chatId, copy("telegram.bot.start.linked", locale));
+        sendMenu(chatId, copy("telegram.bot.start.linked", locale), locale);
     }
 
     private void handleMaterialUpload(long chatId, UUID userId, SupportedLocale locale,
@@ -461,6 +587,9 @@ public class TelegramUpdateHandler {
             SupportedLocale locale = localeOf(profilesApi.find(userId).orElse(null));
             telegramService.markSeen(resolvedChatId);
             String data = callback.getData();
+            if (handleChatCallback(resolvedChatId, userId, locale, data)) {
+                return;
+            }
             String prompt = promptForAction(data, locale);
             if (prompt != null) {
                 runCoachTurn(resolvedChatId, userId, locale, prompt);
@@ -468,6 +597,29 @@ public class TelegramUpdateHandler {
                 send(resolvedChatId, copy("telegram.bot.action.upload", locale));
             }
         });
+    }
+
+    private boolean handleChatCallback(long chatId, UUID userId, SupportedLocale locale, String data) {
+        if (data == null) {
+            return false;
+        }
+        if (data.equals(CHAT_NEW)) {
+            handleNewChat(chatId, userId, locale);
+            return true;
+        }
+        if (data.equals(CHAT_LIST)) {
+            handleChats(chatId, userId, locale);
+            return true;
+        }
+        if (data.startsWith(CHAT_SWITCH_PREFIX)) {
+            handleSwitch(chatId, userId, locale, data.substring(CHAT_SWITCH_PREFIX.length()));
+            return true;
+        }
+        if (data.equals(FORGET_CONFIRM)) {
+            handleForget(chatId, userId, locale);
+            return true;
+        }
+        return false;
     }
 
     private String promptForAction(String data, SupportedLocale locale) {

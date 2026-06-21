@@ -5,6 +5,7 @@ import org.aiincubator.ilmai.agent.ActionPart;
 import org.aiincubator.ilmai.agent.AgentApi;
 import org.aiincubator.ilmai.agent.AgentErrorCodes;
 import org.aiincubator.ilmai.agent.ChatChannel;
+import org.aiincubator.ilmai.agent.ChatSessionSummary;
 import org.aiincubator.ilmai.agent.CitationPart;
 import org.aiincubator.ilmai.agent.ErrorPart;
 import org.aiincubator.ilmai.agent.MessagePart;
@@ -59,6 +60,41 @@ public class DefaultAgentApi implements AgentApi {
             throw new IllegalArgumentException("currentUser is required");
         }
         return chatSessionService.getOrCreateCanonical(currentUser, channel);
+    }
+
+    @Override
+    public ChatSessionSummary startNewSession(CurrentUser currentUser, ChatChannel channel) {
+        if (currentUser == null) {
+            throw new IllegalArgumentException("currentUser is required");
+        }
+        return chatSessionService.startNewSession(currentUser, channel);
+    }
+
+    @Override
+    public List<ChatSessionSummary> recentSessions(CurrentUser currentUser, ChatChannel channel) {
+        if (currentUser == null) {
+            throw new IllegalArgumentException("currentUser is required");
+        }
+        return chatSessionService.recentSessions(currentUser, channel);
+    }
+
+    @Override
+    public void activateSession(CurrentUser currentUser, UUID sessionId) {
+        if (currentUser == null) {
+            throw new IllegalArgumentException("currentUser is required");
+        }
+        if (sessionId == null) {
+            throw new IllegalArgumentException("sessionId is required");
+        }
+        chatSessionService.activateSession(currentUser, sessionId);
+    }
+
+    @Override
+    public void forgetActiveSession(CurrentUser currentUser, ChatChannel channel) {
+        if (currentUser == null) {
+            throw new IllegalArgumentException("currentUser is required");
+        }
+        chatSessionService.forgetActiveSession(currentUser, channel);
     }
 
     @Override

@@ -1,8 +1,11 @@
 package org.aiincubator.ilmai.agent.service;
 
 import org.aiincubator.ilmai.agent.ChatChannel;
+import org.aiincubator.ilmai.agent.ChatSessionSummary;
 import org.aiincubator.ilmai.agent.api.ChatSessionResponse;
 import org.aiincubator.ilmai.agent.api.CreateChatSessionRequest;
+import org.aiincubator.ilmai.agent.domain.ChatMemorySummary;
+import org.aiincubator.ilmai.agent.domain.ChatMemorySummaryRepository;
 import org.aiincubator.ilmai.agent.domain.ChatSession;
 import org.aiincubator.ilmai.agent.domain.ChatSessionRepository;
 import org.aiincubator.ilmai.common.CurrentUser;
@@ -26,12 +29,14 @@ import static org.mockito.Mockito.when;
 class ChatSessionServiceTest {
 
     private ChatSessionRepository repository;
+    private ChatMemorySummaryRepository memorySummaries;
     private ChatSessionService service;
 
     @BeforeEach
     void setUp() {
         repository = mock(ChatSessionRepository.class);
-        service = new ChatSessionService(repository, Mappers.getMapper(ChatSessionMapper.class));
+        memorySummaries = mock(ChatMemorySummaryRepository.class);
+        service = new ChatSessionService(repository, memorySummaries, Mappers.getMapper(ChatSessionMapper.class));
     }
 
     @Test
@@ -96,6 +101,97 @@ class ChatSessionServiceTest {
         assertThat(result).hasSize(1);
         verify(repository).findAllByUserIdOrderByCreatedAtDesc(userId);
         verify(repository, never()).findAll();
+    }
+
+    @Test
+    void getOrCreateCanonicalReturnsLatestActiveSession() {
+        UUID userId = UUID.randomUUID();
+        UUID sessionId = UUID.randomUUID();
+        when(repository.findFirstByUserIdAndChannelAndActiveTrueOrderByCreatedAtDesc(userId, ChatChannel.TELEGRAM))
+                .thenReturn(Optional.of(session(sessionId, userId)));
+
+        UUID result = service.getOrCreateCanonical(new CurrentUser(userId), ChatChannel.TELEGRAM);
+
+        assertThat(result).isEqualTo(sessionId);
+        verify(repository, never()).save(any(ChatSession.class));
+    }
+
+    @Test
+    void getOrCreateCanonicalCreatesActiveSessionWhenNoneActive() {
+        UUID userId = UUID.randomUUID();
+        when(repository.findFirstByUserIdAndChannelAndActiveTrueOrderByCreatedAtDesc(userId, ChatChannel.TELEGRAM))
+                .thenReturn(Optional.empty());
+        when(repository.save(any(ChatSession.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.getOrCreateCanonical(new CurrentUser(userId), ChatChannel.TELEGRAM);
+
+        ArgumentCaptor<ChatSession> captor = ArgumentCaptor.forClass(ChatSession.class);
+        verify(repository).save(captor.capture());
+        assertThat(captor.getValue().getChannel()).isEqualTo(ChatChannel.TELEGRAM);
+        assertThat(captor.getValue().isActive()).isTrue();
+    }
+
+    @Test
+    void startNewSessionArchivesActiveAndCreatesFreshOne() {
+        UUID userId = UUID.randomUUID();
+        ChatSession existing = session(UUID.randomUUID(), userId);
+        existing.setActive(true);
+        when(repository.findAllByUserIdAndChannelAndActiveTrue(userId, ChatChannel.TELEGRAM))
+                .thenReturn(List.of(existing));
+        when(repository.save(any(ChatSession.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ChatSessionSummary summary = service.startNewSession(new CurrentUser(userId), ChatChannel.TELEGRAM);
+
+        assertThat(existing.isActive()).isFalse();
+        assertThat(summary.isActive()).isTrue();
+        verify(repository).saveAll(List.of(existing));
+    }
+
+    @Test
+    void activateSessionDeactivatesOthersAndActivatesTarget() {
+        UUID userId = UUID.randomUUID();
+        UUID targetId = UUID.randomUUID();
+        ChatSession target = session(targetId, userId);
+        target.setChannel(ChatChannel.TELEGRAM);
+        target.setActive(false);
+        ChatSession other = session(UUID.randomUUID(), userId);
+        other.setChannel(ChatChannel.TELEGRAM);
+        other.setActive(true);
+        when(repository.findById(targetId)).thenReturn(Optional.of(target));
+        when(repository.findAllByUserIdAndChannelAndActiveTrue(userId, ChatChannel.TELEGRAM))
+                .thenReturn(List.of(other));
+
+        service.activateSession(new CurrentUser(userId), targetId);
+
+        assertThat(other.isActive()).isFalse();
+        assertThat(target.isActive()).isTrue();
+        verify(repository).save(target);
+    }
+
+    @Test
+    void activateSessionRejectsAnotherUsersSession() {
+        UUID ownerId = UUID.randomUUID();
+        UUID otherId = UUID.randomUUID();
+        UUID sessionId = UUID.randomUUID();
+        when(repository.findById(sessionId)).thenReturn(Optional.of(session(sessionId, ownerId)));
+
+        assertThatThrownBy(() -> service.activateSession(new CurrentUser(otherId), sessionId))
+                .isInstanceOf(ChatSessionException.class);
+        verify(repository, never()).save(any(ChatSession.class));
+    }
+
+    @Test
+    void forgetActiveSessionDeletesSummaryForCanonicalSession() {
+        UUID userId = UUID.randomUUID();
+        UUID sessionId = UUID.randomUUID();
+        when(repository.findFirstByUserIdAndChannelAndActiveTrueOrderByCreatedAtDesc(userId, ChatChannel.TELEGRAM))
+                .thenReturn(Optional.of(session(sessionId, userId)));
+        ChatMemorySummary summary = new ChatMemorySummary();
+        when(memorySummaries.findBySessionId(sessionId)).thenReturn(Optional.of(summary));
+
+        service.forgetActiveSession(new CurrentUser(userId), ChatChannel.TELEGRAM);
+
+        verify(memorySummaries).delete(summary);
     }
 
     private static ChatSession session(UUID id, UUID userId) {

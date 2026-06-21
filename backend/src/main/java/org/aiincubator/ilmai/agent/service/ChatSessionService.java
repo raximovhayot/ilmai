@@ -2,8 +2,10 @@ package org.aiincubator.ilmai.agent.service;
 
 import lombok.RequiredArgsConstructor;
 import org.aiincubator.ilmai.agent.ChatChannel;
+import org.aiincubator.ilmai.agent.ChatSessionSummary;
 import org.aiincubator.ilmai.agent.api.ChatSessionResponse;
 import org.aiincubator.ilmai.agent.api.CreateChatSessionRequest;
+import org.aiincubator.ilmai.agent.domain.ChatMemorySummaryRepository;
 import org.aiincubator.ilmai.agent.domain.ChatSession;
 import org.aiincubator.ilmai.agent.domain.ChatSessionRepository;
 import org.aiincubator.ilmai.common.CurrentUser;
@@ -18,8 +20,10 @@ import java.util.UUID;
 public class ChatSessionService {
 
     private static final int TITLE_MAX_LENGTH = 200;
+    private static final int RECENT_SESSIONS_LIMIT = 8;
 
     private final ChatSessionRepository sessions;
+    private final ChatMemorySummaryRepository memorySummaries;
     private final ChatSessionMapper chatSessionMapper;
 
     @Transactional
@@ -41,24 +45,70 @@ public class ChatSessionService {
     @Transactional
     public UUID getOrCreateCanonical(CurrentUser currentUser, ChatChannel channel) {
         ChatChannel effective = channel == null ? ChatChannel.WEB : channel;
-        return sessions.findFirstByUserIdAndChannelOrderByCreatedAtAsc(currentUser.getUserId(), effective)
+        return sessions.findFirstByUserIdAndChannelAndActiveTrueOrderByCreatedAtDesc(
+                        currentUser.getUserId(), effective)
                 .map(ChatSession::getId)
-                .orElseGet(() -> {
-                    ChatSession session = new ChatSession();
-                    session.setUserId(currentUser.getUserId());
-                    session.setChannel(effective);
-                    return sessions.save(session).getId();
-                });
+                .orElseGet(() -> createSession(currentUser, effective).getId());
+    }
+
+    @Transactional
+    public ChatSessionSummary startNewSession(CurrentUser currentUser, ChatChannel channel) {
+        ChatChannel effective = channel == null ? ChatChannel.WEB : channel;
+        archiveActive(currentUser.getUserId(), effective);
+        return chatSessionMapper.toSummary(createSession(currentUser, effective));
+    }
+
+    @Transactional(readOnly = true)
+    public List<ChatSessionSummary> recentSessions(CurrentUser currentUser, ChatChannel channel) {
+        ChatChannel effective = channel == null ? ChatChannel.WEB : channel;
+        return sessions.findAllByUserIdAndChannelOrderByCreatedAtDesc(currentUser.getUserId(), effective).stream()
+                .limit(RECENT_SESSIONS_LIMIT)
+                .map(chatSessionMapper::toSummary)
+                .toList();
+    }
+
+    @Transactional
+    public void activateSession(CurrentUser currentUser, UUID sessionId) {
+        ChatSession session = ownedSession(currentUser, sessionId);
+        archiveActive(currentUser.getUserId(), session.getChannel());
+        session.setActive(true);
+        sessions.save(session);
+    }
+
+    @Transactional
+    public void forgetActiveSession(CurrentUser currentUser, ChatChannel channel) {
+        UUID sessionId = getOrCreateCanonical(currentUser, channel);
+        memorySummaries.findBySessionId(sessionId).ifPresent(memorySummaries::delete);
+    }
+
+    private ChatSession createSession(CurrentUser currentUser, ChatChannel channel) {
+        ChatSession session = new ChatSession();
+        session.setUserId(currentUser.getUserId());
+        session.setChannel(channel);
+        session.setActive(true);
+        return sessions.save(session);
+    }
+
+    private void archiveActive(UUID userId, ChatChannel channel) {
+        List<ChatSession> active = sessions.findAllByUserIdAndChannelAndActiveTrue(userId, channel);
+        for (ChatSession session : active) {
+            session.setActive(false);
+        }
+        sessions.saveAll(active);
     }
 
     @Transactional(readOnly = true)
     public UUID requireOwnedSession(CurrentUser currentUser, UUID sessionId) {
+        return ownedSession(currentUser, sessionId).getId();
+    }
+
+    private ChatSession ownedSession(CurrentUser currentUser, UUID sessionId) {
         ChatSession session = sessions.findById(sessionId)
                 .orElseThrow(() -> new ChatSessionException(ChatSessionException.Reason.SESSION_NOT_FOUND));
         if (!currentUser.getUserId().equals(session.getUserId())) {
             throw new ChatSessionException(ChatSessionException.Reason.SESSION_NOT_FOUND);
         }
-        return session.getId();
+        return session;
     }
 
     private ChatChannel resolveChannel(CreateChatSessionRequest request) {

@@ -297,6 +297,51 @@ class TelegramUpdateHandlerTest {
         verifyNoInteractions(agentApi);
     }
 
+    @Test
+    void newChatButtonLabelStartsFreshSession() {
+        long chatId = 2001L;
+        UUID userId = UUID.randomUUID();
+        when(telegramService.findLinkedUser(chatId)).thenReturn(Optional.of(userId));
+        when(profilesApi.find(userId)).thenReturn(Optional.of(profile(userId)));
+        when(messageService.get(eq("telegram.bot.button.newchat"), any(), any())).thenReturn("NEWCHAT");
+
+        handler.handleUpdate(update(chatId, "NEWCHAT"));
+
+        verify(agentApi).startNewSession(any(), eq(ChatChannel.TELEGRAM));
+        verify(telegramApiClient).sendWithMenu(eq(chatId), anyString(), anyList());
+        verify(agentApi, never()).chat(any(), any(), anyString(), any());
+    }
+
+    @Test
+    void chatSwitchCallbackActivatesSelectedSession() {
+        long chatId = 2002L;
+        UUID userId = UUID.randomUUID();
+        UUID sessionId = UUID.randomUUID();
+        when(telegramService.findLinkedUser(chatId)).thenReturn(Optional.of(userId));
+        when(profilesApi.find(userId)).thenReturn(Optional.of(profile(userId)));
+
+        handler.handleUpdate(callbackUpdate(chatId, "cb-3", "chat:switch:" + sessionId));
+
+        verify(telegramApiClient).answerCallbackQuery("cb-3");
+        verify(agentApi).activateSession(any(), eq(sessionId));
+        verify(telegramApiClient).sendWithMenu(eq(chatId), anyString(), anyList());
+        verify(agentApi, never()).chat(any(), any(), anyString(), any());
+    }
+
+    @Test
+    void forgetConfirmCallbackClearsActiveSessionMemory() {
+        long chatId = 2003L;
+        UUID userId = UUID.randomUUID();
+        when(telegramService.findLinkedUser(chatId)).thenReturn(Optional.of(userId));
+        when(profilesApi.find(userId)).thenReturn(Optional.of(profile(userId)));
+
+        handler.handleUpdate(callbackUpdate(chatId, "cb-4", "forget:confirm"));
+
+        verify(agentApi).forgetActiveSession(any(), eq(ChatChannel.TELEGRAM));
+        verify(telegramApiClient).sendMessage(eq(chatId), anyString());
+        verify(agentApi, never()).chat(any(), any(), anyString(), any());
+    }
+
     private ProfileDto profile(UUID userId) {
         return new ProfileDto(userId, SupportedLocale.EN, "Asia/Tashkent", null, null, null, null, 0, 0, 0, null);
     }

@@ -17,8 +17,11 @@ import org.telegram.telegrambots.meta.api.objects.File;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.api.objects.polls.input.InputPollOption;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
@@ -166,6 +169,55 @@ public class TelegramApiClient {
             log.warn("telegram sendMessage(keyboard) failed (chat={}): {}", chatId, ex.toString());
             return false;
         }
+    }
+
+    public boolean sendWithMenu(Long chatId, String text, List<List<String>> menu) {
+        if (!isEnabled() || chatId == null || text == null || text.isBlank()) {
+            log.debug("telegram disabled — skipping sendWithMenu to chat={}", chatId);
+            return false;
+        }
+        SendMessage request = SendMessage.builder()
+                .chatId(String.valueOf(chatId))
+                .text(text)
+                .parseMode(PARSE_MODE_HTML)
+                .replyMarkup(replyKeyboardOf(menu))
+                .build();
+        try {
+            telegramClient.execute(request);
+            return true;
+        } catch (TelegramApiException | RuntimeException ex) {
+            log.warn("telegram sendWithMenu failed (chat={}): {}", chatId, ex.toString());
+            return false;
+        }
+    }
+
+    private ReplyKeyboardMarkup replyKeyboardOf(List<List<String>> menu) {
+        if (menu == null || menu.isEmpty()) {
+            return null;
+        }
+        List<KeyboardRow> rows = new ArrayList<>();
+        for (List<String> row : menu) {
+            if (row == null || row.isEmpty()) {
+                continue;
+            }
+            KeyboardRow keyboardRow = new KeyboardRow();
+            for (String label : row) {
+                if (label != null && !label.isBlank()) {
+                    keyboardRow.add(new KeyboardButton(label));
+                }
+            }
+            if (!keyboardRow.isEmpty()) {
+                rows.add(keyboardRow);
+            }
+        }
+        if (rows.isEmpty()) {
+            return null;
+        }
+        return ReplyKeyboardMarkup.builder()
+                .keyboard(rows)
+                .resizeKeyboard(true)
+                .isPersistent(true)
+                .build();
     }
 
     public boolean sendRich(Long chatId, String richMarkdown, String fallbackMarkdown) {
