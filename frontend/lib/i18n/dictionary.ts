@@ -543,6 +543,21 @@ export type Dictionary = {
       allDone: string
       restDay: string
       pathLine: string
+      filterAll: string
+      goalLabel: string
+    }
+    addGoalDialog: {
+      trigger: string
+      title: string
+      description: string
+      goalLabel: string
+      goalPlaceholder: string
+      deadlineLabel: string
+      deadlineHint: string
+      cancel: string
+      submit: string
+      seedWithDeadline: string
+      seedWithoutDeadline: string
     }
     onboarding: {
       title: string
@@ -1188,6 +1203,24 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
         allDone: "All done — great work",
         restDay: "Rest day — no tasks scheduled.",
         pathLine: "Path · {goal}",
+        filterAll: "All goals",
+        goalLabel: "Goal",
+      },
+      addGoalDialog: {
+        trigger: "Add a goal",
+        title: "Add a new goal",
+        description:
+          "Tell us what you want to learn. We'll set it as a goal and build a day-by-day plan from your materials.",
+        goalLabel: "Your goal",
+        goalPlaceholder: 'e.g. "Pass IELTS in 6 weeks"',
+        deadlineLabel: "Target date",
+        deadlineHint: "Optional — leave empty if there's no deadline.",
+        cancel: "Cancel",
+        submit: "Create goal",
+        seedWithDeadline:
+          "I want to set a new learning goal: {goal}, by {deadline}. Please set it as my goal and build a study plan from my materials.",
+        seedWithoutDeadline:
+          "I want to set a new learning goal: {goal}. Please set it as my goal and build a study plan from my materials.",
       },
       onboarding: {
         title: "Welcome to Ilm AI",
@@ -1844,6 +1877,24 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
         allDone: "Готово — отлично!",
         restDay: "День отдыха — задач нет.",
         pathLine: "Путь · {goal}",
+        filterAll: "Все цели",
+        goalLabel: "Цель",
+      },
+      addGoalDialog: {
+        trigger: "Добавить цель",
+        title: "Новая цель",
+        description:
+          "Скажите, что хотите изучить. Мы сделаем это вашей целью и построим план по дням на основе ваших материалов.",
+        goalLabel: "Ваша цель",
+        goalPlaceholder: "напр. «Сдать IELTS за 6 недель»",
+        deadlineLabel: "Дата цели",
+        deadlineHint: "Необязательно — оставьте пустым, если срока нет.",
+        cancel: "Отмена",
+        submit: "Создать цель",
+        seedWithDeadline:
+          "Хочу поставить новую учебную цель: {goal}, к {deadline}. Сделайте её моей целью и постройте план по моим материалам.",
+        seedWithoutDeadline:
+          "Хочу поставить новую учебную цель: {goal}. Сделайте её моей целью и постройте план по моим материалам.",
       },
       onboarding: {
         title: "Добро пожаловать в Ilm AI",
@@ -2509,6 +2560,24 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
         allDone: "Bugungi reja bajarildi — zo‘r!",
         restDay: "Dam olish kuni — vazifalar yo‘q.",
         pathLine: "Yo‘l · {goal}",
+        filterAll: "Barcha maqsadlar",
+        goalLabel: "Maqsad",
+      },
+      addGoalDialog: {
+        trigger: "Maqsad qo‘shish",
+        title: "Yangi maqsad",
+        description:
+          "Nimani o‘rganmoqchi ekaningizni ayting. Buni maqsad qilib qo‘yamiz va materiallaringizdan kunlik reja tuzamiz.",
+        goalLabel: "Maqsadingiz",
+        goalPlaceholder: "masalan, «6 haftada IELTS topshirish»",
+        deadlineLabel: "Maqsad sanasi",
+        deadlineHint: "Ixtiyoriy — muddat bo‘lmasa, bo‘sh qoldiring.",
+        cancel: "Bekor qilish",
+        submit: "Maqsad yaratish",
+        seedWithDeadline:
+          "Yangi o‘quv maqsadini qo‘ymoqchiman: {goal}, {deadline} gacha. Uni maqsadim qilib qo‘ying va materiallarimdan reja tuzing.",
+        seedWithoutDeadline:
+          "Yangi o‘quv maqsadini qo‘ymoqchiman: {goal}. Uni maqsadim qilib qo‘ying va materiallarimdan reja tuzing.",
       },
       onboarding: {
         title: "Ilm AI ga xush kelibsiz",

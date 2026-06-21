@@ -4,7 +4,9 @@ export type PlanActivity = "READ" | "QUIZ" | "REVIEW"
 
 export type LearningPlanItemAction = PlanActivity
 
-export type PlanStatus = "ACTIVE" | "SUPERSEDED"
+export type PlanStatus = "ACTIVE" | "PAUSED" | "COMPLETED" | "SUPERSEDED"
+
+export type GoalStatusUpdate = "ACTIVE" | "PAUSED" | "COMPLETED"
 
 export type PlanMaterial = {
   id: string
@@ -42,6 +44,7 @@ export type StepLesson = {
 
 export type LearningPlan = {
   id: string
+  goalId: string | null
   goal: string | null
   targetDate: string | null
   status: PlanStatus
@@ -59,22 +62,46 @@ export async function getPlan(): Promise<LearningPlan | null> {
   return result && result.id ? result : null
 }
 
+export async function getPlans(): Promise<LearningPlan[]> {
+  const result = await apiFetch<LearningPlan[] | null>("/plan/all", {
+    cache: "no-store",
+  })
+  return Array.isArray(result) ? result.filter((p) => p && p.id) : []
+}
+
 export async function completePlanStep(
+  planId: string,
   dayIndex: number
 ): Promise<LearningPlan | null> {
   const result = await apiFetch<LearningPlan | null>(
-    `/plan/steps/${dayIndex}/complete`,
+    `/plan/${planId}/steps/${dayIndex}/complete`,
     { method: "POST" }
   )
   return result && result.id ? result : null
 }
 
 export async function generateStepLesson(
+  planId: string,
   dayIndex: number,
   regenerate = false
 ): Promise<StepLesson | null> {
   return await apiFetch<StepLesson>(
-    `/plan/steps/${dayIndex}/lesson?regenerate=${regenerate}`,
+    `/plan/${planId}/steps/${dayIndex}/lesson?regenerate=${regenerate}`,
     { method: "POST" }
   )
+}
+
+export async function setPlanStatus(
+  planId: string,
+  status: GoalStatusUpdate
+): Promise<LearningPlan | null> {
+  const result = await apiFetch<LearningPlan | null>(`/plan/${planId}`, {
+    method: "PATCH",
+    body: { status },
+  })
+  return result && result.id ? result : null
+}
+
+export async function deletePlan(planId: string): Promise<void> {
+  await apiFetch<void>(`/plan/${planId}`, { method: "DELETE" })
 }

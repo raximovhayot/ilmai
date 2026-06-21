@@ -25,7 +25,7 @@ import { Spinner } from "@/components/ui/spinner"
 import {
   completePlanStep,
   generateStepLesson,
-  getPlan,
+  getPlans,
   type LearningPlan,
   type PlanActivity,
   type PlanStep,
@@ -63,10 +63,10 @@ export function PlanView({ initialPlan, topics }: Props) {
   const today = new Date().toISOString().slice(0, 10)
 
   const onComplete = async (dayIndex: number) => {
-    if (status !== "authenticated") return
+    if (status !== "authenticated" || !plan) return
     setCompleting(dayIndex)
     try {
-      const fresh = await completePlanStep(dayIndex)
+      const fresh = await completePlanStep(plan.id, dayIndex)
       if (fresh) setPlan(fresh)
     } catch {
       toast.error(t.errors.generic)
@@ -76,10 +76,12 @@ export function PlanView({ initialPlan, topics }: Props) {
   }
 
   const onRefresh = async () => {
-    if (status !== "authenticated") return
+    if (status !== "authenticated" || !plan) return
     setRefreshing(true)
     try {
-      setPlan(await getPlan())
+      const all = await getPlans()
+      const fresh = all.find((p) => p.id === plan.id)
+      if (fresh) setPlan(fresh)
     } catch {
       toast.error(t.errors.generic)
     } finally {
@@ -88,7 +90,7 @@ export function PlanView({ initialPlan, topics }: Props) {
   }
 
   const onToggleLesson = async (dayIndex: number) => {
-    if (status !== "authenticated") return
+    if (status !== "authenticated" || !plan) return
     if (expanded === dayIndex) {
       setExpanded(null)
       return
@@ -99,7 +101,7 @@ export function PlanView({ initialPlan, topics }: Props) {
     }
     setLessonLoading(dayIndex)
     try {
-      const lesson = await generateStepLesson(dayIndex)
+      const lesson = await generateStepLesson(plan.id, dayIndex)
       if (lesson) {
         setLessons((prev) => ({ ...prev, [dayIndex]: lesson }))
         setExpanded(dayIndex)
@@ -112,10 +114,10 @@ export function PlanView({ initialPlan, topics }: Props) {
   }
 
   const onRegenerateLesson = async (dayIndex: number) => {
-    if (status !== "authenticated") return
+    if (status !== "authenticated" || !plan) return
     setLessonLoading(dayIndex)
     try {
-      const lesson = await generateStepLesson(dayIndex, true)
+      const lesson = await generateStepLesson(plan.id, dayIndex, true)
       if (lesson) {
         setLessons((prev) => ({ ...prev, [dayIndex]: lesson }))
         setExpanded(dayIndex)
@@ -132,49 +134,15 @@ export function PlanView({ initialPlan, topics }: Props) {
       ? Math.min(100, Math.round((plan.daysCompleted / plan.daysTotal) * 100))
       : 0
 
-  return (
-    <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="font-heading text-2xl font-semibold tracking-tight md:text-3xl">
-          {t.plan.title}
-        </h1>
-        <p className="text-sm text-muted-foreground">{t.plan.subtitle}</p>
-      </header>
+  if (!plan) return null
 
-      {plan?.replanNeeded ? (
+  return (
+    <div className="flex flex-col gap-4">
+      {plan.replanNeeded ? (
         <ReplanBanner onRefresh={onRefresh} refreshing={refreshing} />
       ) : null}
 
-      {!plan ? (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
-            <span className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-              <HugeiconsIcon
-                icon={RoadIcon}
-                strokeWidth={2}
-                className="size-6"
-              />
-            </span>
-            <p className="max-w-sm text-sm text-muted-foreground">
-              {t.plan.empty}
-            </p>
-            <Button
-              nativeButton={false}
-              render={
-                <Link href="/profile">
-                  <HugeiconsIcon
-                    icon={Flag03Icon}
-                    strokeWidth={2}
-                    data-icon="inline-start"
-                  />
-                  {t.plan.setGoal}
-                </Link>
-              }
-            />
-          </CardContent>
-        </Card>
-      ) : (
-        <>
+      <>
           <Card>
             <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
               <CardTitle className="flex items-center gap-2 text-base">
@@ -263,8 +231,7 @@ export function PlanView({ initialPlan, topics }: Props) {
               )}
             </CardContent>
           </Card>
-        </>
-      )}
+      </>
     </div>
   )
 }

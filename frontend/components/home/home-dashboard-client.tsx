@@ -4,8 +4,7 @@ import * as React from "react"
 import { useSession } from "next-auth/react"
 
 import { HomeDashboard } from "@/components/home/home-dashboard"
-import { listGoals, type Goal } from "@/lib/goals"
-import { completePlanStep, getPlan, type LearningPlan } from "@/lib/plan"
+import { completePlanStep, getPlans, type LearningPlan } from "@/lib/plan"
 import { getStats, type Stats } from "@/lib/stats"
 import { listTopics, type TopicResponse } from "@/lib/topics"
 
@@ -16,8 +15,7 @@ type Props = {
 export function HomeDashboardClient({ greetingName }: Props) {
   const { status } = useSession()
   const [stats, setStats] = React.useState<Stats | null>(null)
-  const [goals, setGoals] = React.useState<Goal[]>([])
-  const [plan, setPlan] = React.useState<LearningPlan | null>(null)
+  const [plans, setPlans] = React.useState<LearningPlan[]>([])
   const [topics, setTopics] = React.useState<TopicResponse[]>([])
   const [loading, setLoading] = React.useState(true)
 
@@ -26,16 +24,14 @@ export function HomeDashboardClient({ greetingName }: Props) {
     let cancelled = false
     void (async () => {
       try {
-        const [s, g, p, ts] = await Promise.all([
+        const [s, p, ts] = await Promise.all([
           getStats(),
-          listGoals(),
-          getPlan().catch(() => null),
+          getPlans().catch(() => []),
           listTopics().catch(() => []),
         ])
         if (!cancelled) {
           setStats(s)
-          setGoals(g)
-          setPlan(p)
+          setPlans(p)
           setTopics(ts)
         }
       } catch {
@@ -50,11 +46,15 @@ export function HomeDashboardClient({ greetingName }: Props) {
   }, [status])
 
   const onCompleteStep = React.useCallback(
-    async (dayIndex: number) => {
+    async (planId: string, dayIndex: number) => {
       if (status !== "authenticated") return
       try {
-        const fresh = await completePlanStep(dayIndex)
-        if (fresh) setPlan(fresh)
+        const fresh = await completePlanStep(planId, dayIndex)
+        if (fresh) {
+          setPlans((prev) =>
+            prev.map((p) => (p.id === fresh.id ? fresh : p))
+          )
+        }
       } catch {
         // ignore
       }
@@ -66,8 +66,7 @@ export function HomeDashboardClient({ greetingName }: Props) {
     <HomeDashboard
       greetingName={greetingName}
       stats={stats}
-      goals={goals}
-      plan={plan}
+      plans={plans}
       topics={topics}
       loading={loading}
       onCompleteStep={onCompleteStep}

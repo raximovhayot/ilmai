@@ -21,7 +21,9 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -43,11 +45,16 @@ public class PlanService {
 
     @Transactional
     public LearningPlan replaceActivePlan(UUID userId, String goal, LocalDate targetDate, List<PlanStepInput> steps) {
-        for (LearningPlan existing : learningPlanRepository.findByUserIdAndStatus(userId, PlanStatus.ACTIVE)) {
-            existing.setStatus(PlanStatus.SUPERSEDED);
+        List<LearningPlan> active = learningPlanRepository.findByUserIdAndStatus(userId, PlanStatus.ACTIVE);
+        UUID goalId = resolveGoalId(active, goal);
+        for (LearningPlan existing : active) {
+            if (goalId.equals(existing.getGoalId())) {
+                existing.setStatus(PlanStatus.SUPERSEDED);
+            }
         }
         LearningPlan plan = new LearningPlan();
         plan.setUserId(userId);
+        plan.setGoalId(goalId);
         plan.setGoal(goal);
         plan.setTargetDate(targetDate);
         plan.setStatus(PlanStatus.ACTIVE);
@@ -57,6 +64,20 @@ public class PlanService {
             }
         }
         return learningPlanRepository.save(plan);
+    }
+
+    private static UUID resolveGoalId(List<LearningPlan> activePlans, String goal) {
+        String normalized = normalizeGoal(goal);
+        for (LearningPlan existing : activePlans) {
+            if (normalized.equals(normalizeGoal(existing.getGoal()))) {
+                return existing.getGoalId();
+            }
+        }
+        return UUID.randomUUID();
+    }
+
+    private static String normalizeGoal(String goal) {
+        return goal == null ? "" : goal.strip().toLowerCase(Locale.ROOT);
     }
 
     @Transactional(readOnly = true)
@@ -79,6 +100,16 @@ public class PlanService {
                 .orElse(null);
     }
 
+    @Transactional(readOnly = true)
+    public List<LearningPlanResponse> listPlansResponse(CurrentUser currentUser) {
+        return learningPlanRepository
+                .findByUserIdAndStatusInOrderByCreatedAtAsc(
+                        currentUser.getUserId(), EnumSet.of(PlanStatus.ACTIVE, PlanStatus.PAUSED))
+                .stream()
+                .map(planMapper::toResponse)
+                .toList();
+    }
+
     @Transactional
     public LearningPlanResponse completeStepResponse(CurrentUser currentUser, int dayIndex) {
         return completeStep(currentUser.getUserId(), dayIndex)
@@ -87,10 +118,48 @@ public class PlanService {
     }
 
     @Transactional
+    public LearningPlanResponse completeStepResponse(CurrentUser currentUser, UUID planId, int dayIndex) {
+        LearningPlan plan = requireOwnedPlan(currentUser, planId);
+        markStepDone(plan, dayIndex);
+        return planMapper.toResponse(plan);
+    }
+
+    @Transactional
+    public LearningPlanResponse updatePlanStatus(CurrentUser currentUser, UUID planId, PlanStatus status) {
+        if (status != PlanStatus.ACTIVE && status != PlanStatus.PAUSED && status != PlanStatus.COMPLETED) {
+            throw new PlanException(PlanException.Reason.PLAN_STATUS_INVALID);
+        }
+        LearningPlan plan = requireOwnedPlan(currentUser, planId);
+        plan.setStatus(status);
+        return planMapper.toResponse(plan);
+    }
+
+    @Transactional
+    public void deletePlan(CurrentUser currentUser, UUID planId) {
+        LearningPlan plan = requireOwnedPlan(currentUser, planId);
+        learningPlanRepository.delete(plan);
+    }
+
+    @Transactional
     public StepLessonResponse generateLessonResponse(CurrentUser currentUser, int dayIndex, boolean regenerate) {
-        UUID userId = currentUser.getUserId();
-        LearningPlan plan = findActivePlan(userId)
+        LearningPlan plan = findActivePlan(currentUser.getUserId())
                 .orElseThrow(() -> new PlanException(PlanException.Reason.PLAN_NOT_FOUND));
+        return generateLesson(currentUser.getUserId(), plan, dayIndex, regenerate);
+    }
+
+    @Transactional
+    public StepLessonResponse generateLessonResponse(CurrentUser currentUser, UUID planId, int dayIndex,
+                                                     boolean regenerate) {
+        LearningPlan plan = requireOwnedPlan(currentUser, planId);
+        return generateLesson(currentUser.getUserId(), plan, dayIndex, regenerate);
+    }
+
+    private LearningPlan requireOwnedPlan(CurrentUser currentUser, UUID planId) {
+        return learningPlanRepository.findByIdAndUserId(planId, currentUser.getUserId())
+                .orElseThrow(() -> new PlanException(PlanException.Reason.PLAN_NOT_FOUND));
+    }
+
+    private StepLessonResponse generateLesson(UUID userId, LearningPlan plan, int dayIndex, boolean regenerate) {
         PlanStep step = plan.getSteps().stream()
                 .filter(s -> s.getDayIndex() == dayIndex)
                 .findFirst()

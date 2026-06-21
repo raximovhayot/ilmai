@@ -20,6 +20,7 @@ import java.util.UUID;
 public class LearningPlanResponse {
 
     private UUID id;
+    private UUID goalId;
     private String goal;
     private LocalDate targetDate;
     private PlanStatus status;

@@ -5,17 +5,14 @@ import Link from "next/link"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   BookOpen01Icon,
-  Calendar03Icon,
   CheckmarkCircle02Icon,
   Compass01Icon,
   FireIcon,
-  PlusSignIcon,
   PuzzleIcon,
   RoadIcon,
-  Target02Icon,
 } from "@hugeicons/core-free-icons"
 
-import { Badge } from "@/components/ui/badge"
+import { AddGoalDialog } from "@/components/home/add-goal-dialog"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -35,60 +32,60 @@ import {
 } from "@/components/ui/empty"
 import { Progress } from "@/components/ui/progress"
 import { Skeleton } from "@/components/ui/skeleton"
-import type { Goal } from "@/lib/goals"
-import type { Lang } from "@/lib/i18n/dictionary"
-import { useLanguage, useT } from "@/lib/i18n/provider"
+import { useT } from "@/lib/i18n/provider"
 import type { LearningPlan, PlanStep } from "@/lib/plan"
 import type { Stats } from "@/lib/stats"
 import type { TopicResponse } from "@/lib/topics"
 import { cn } from "@/lib/utils"
 
+type TodayItem = {
+  planId: string
+  goal: string | null
+  step: PlanStep
+}
+
+type GoalOption = {
+  id: string
+  title: string | null
+}
+
 type Props = {
   stats: Stats | null
-  goals: Goal[]
-  plan: LearningPlan | null
+  plans: LearningPlan[]
   topics: TopicResponse[]
   greetingName: string | null
   loading?: boolean
-  onCompleteStep?: (dayIndex: number) => void
+  onCompleteStep?: (planId: string, dayIndex: number) => void
 }
 
 export function HomeDashboard({
   stats,
-  goals,
-  plan,
+  plans,
   topics,
   greetingName,
   loading = false,
   onCompleteStep,
 }: Props) {
-  const { lang } = useLanguage()
-
   const streakDays = stats?.streakDays ?? 0
   const weeklyMinutes = stats?.weeklyMinutes ?? 0
 
-  const aggregateDaysTotal = goals.reduce(
-    (acc, g) => acc + (g.daysTotal ?? 0),
-    0
+  const activePlans = React.useMemo(
+    () => plans.filter((p) => p.status === "ACTIVE"),
+    [plans]
   )
-  const aggregateDaysCompleted = goals.reduce(
-    (acc, g) => acc + (g.daysCompleted ?? 0),
-    0
+
+  const goalOptions = React.useMemo<GoalOption[]>(
+    () => activePlans.map((p) => ({ id: p.id, title: p.goal })),
+    [activePlans]
   )
-  const aggregatePercent =
-    aggregateDaysTotal > 0
-      ? Math.min(
-          100,
-          Math.round((aggregateDaysCompleted / aggregateDaysTotal) * 100)
-        )
-      : 0
 
   const today = new Date().toISOString().slice(0, 10)
-  const todayStep =
-    plan?.steps.find((s) => s.scheduledDate === today) ??
-    plan?.steps.find((s) => !s.done) ??
-    plan?.steps[0] ??
-    null
+
+  const todayItems = React.useMemo<TodayItem[]>(
+    () => buildTodayItems(activePlans, today),
+    [activePlans, today]
+  )
+
   const topicNameById = React.useMemo(
     () => new Map(topics.map((tp) => [tp.id, tp.name])),
     [topics]
@@ -104,23 +101,39 @@ export function HomeDashboard({
       />
 
       <TodayCard
-        plan={plan}
-        step={todayStep}
+        items={todayItems}
+        goals={goalOptions}
+        hasPlans={activePlans.length > 0}
         topicNameById={topicNameById}
         loading={loading}
         onCompleteStep={onCompleteStep}
       />
-
-      <PathsCard
-        goals={goals}
-        lang={lang}
-        loading={loading}
-        aggregatePercent={aggregatePercent}
-        aggregateDaysCompleted={aggregateDaysCompleted}
-        aggregateDaysTotal={aggregateDaysTotal}
-      />
     </div>
   )
+}
+
+function buildTodayItems(plans: LearningPlan[], today: string): TodayItem[] {
+  const scheduled: TodayItem[] = []
+  for (const plan of plans) {
+    for (const step of plan.steps) {
+      if (step.scheduledDate === today) {
+        scheduled.push({ planId: plan.id, goal: plan.goal, step })
+      }
+    }
+  }
+  if (scheduled.length > 0) {
+    return scheduled
+  }
+  // Fallback: the next undone step from each goal so the day is never empty.
+  const fallback: TodayItem[] = []
+  for (const plan of plans) {
+    const next =
+      plan.steps.find((s) => !s.done) ?? null
+    if (next) {
+      fallback.push({ planId: plan.id, goal: plan.goal, step: next })
+    }
+  }
+  return fallback
 }
 
 function GreetingRow({
@@ -215,29 +228,42 @@ function StreakChip({
 }
 
 function TodayCard({
-  plan,
-  step,
+  items,
+  goals,
+  hasPlans,
   topicNameById,
   loading,
   onCompleteStep,
 }: {
-  plan: LearningPlan | null
-  step: PlanStep | null
+  items: TodayItem[]
+  goals: GoalOption[]
+  hasPlans: boolean
   topicNameById: Map<string, string>
   loading: boolean
-  onCompleteStep?: (dayIndex: number) => void
+  onCompleteStep?: (planId: string, dayIndex: number) => void
 }) {
   const t = useT()
-  const { lang } = useLanguage()
+  const [selectedGoal, setSelectedGoal] = React.useState<string | null>(null)
 
-  const dateLabel = step?.scheduledDate
-    ? formatTodayDate(step.scheduledDate, lang)
-    : ""
-  const itemsTotal = plan?.daysTotal ?? 0
-  const itemsDone = plan?.daysCompleted ?? 0
+  const effectiveSelected =
+    selectedGoal && goals.some((g) => g.id === selectedGoal)
+      ? selectedGoal
+      : null
+
+  const visibleItems = React.useMemo(
+    () =>
+      effectiveSelected
+        ? items.filter((it) => it.planId === effectiveSelected)
+        : items,
+    [items, effectiveSelected]
+  )
+
+  const itemsTotal = visibleItems.length
+  const itemsDone = visibleItems.filter((it) => it.step.done).length
   const dayPercent =
     itemsTotal > 0 ? Math.round((itemsDone / itemsTotal) * 100) : 0
-  const allDone = !!step?.done
+  const allDone = itemsTotal > 0 && itemsDone === itemsTotal
+  const showGoalTag = goals.length > 1
 
   return (
     <Card
@@ -252,11 +278,10 @@ function TodayCard({
           <HugeiconsIcon icon={RoadIcon} strokeWidth={2} className="size-4" />
           {t.home.today.title}
         </CardTitle>
-        <CardDescription>
-          {step ? dateLabel : t.home.today.subtitle}
-        </CardDescription>
-        {step ? (
-          <CardAction>
+        <CardDescription>{t.home.today.subtitle}</CardDescription>
+        {hasPlans ? (
+          <CardAction className="flex items-center gap-2">
+            <AddGoalDialog />
             <Button
               variant="ghost"
               size="sm"
@@ -271,7 +296,7 @@ function TodayCard({
       <CardContent className="flex flex-col gap-3">
         {loading ? (
           <TodaySkeleton />
-        ) : !plan || !step ? (
+        ) : !hasPlans ? (
           <Empty>
             <EmptyHeader>
               <EmptyMedia variant="icon">
@@ -283,80 +308,137 @@ function TodayCard({
               </EmptyDescription>
             </EmptyHeader>
             <EmptyContent>
-              <Button
-                nativeButton={false}
-                render={
-                  <Link href="/profile">
-                    <HugeiconsIcon
-                      icon={PlusSignIcon}
-                      strokeWidth={2}
-                      data-icon="inline-start"
-                    />
-                    {t.home.today.createPlan}
-                  </Link>
-                }
-              />
+              <AddGoalDialog variant="default" size="default" />
             </EmptyContent>
           </Empty>
-        ) : itemsTotal === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            {t.home.today.restDay}
-          </p>
         ) : (
           <>
-            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-              <div className="flex items-baseline gap-2">
-                <span className="font-heading text-2xl font-semibold tabular-nums sm:text-3xl">
-                  {itemsDone}
-                  <span className="text-base text-muted-foreground sm:text-xl">
-                    /{itemsTotal}
-                  </span>
-                </span>
-                <span className="text-sm text-muted-foreground">
-                  {t.home.today.doneLabel}
-                </span>
-              </div>
-              <span className="text-xs text-muted-foreground tabular-nums sm:text-sm">
-                {allDone ? t.home.today.allDone : ""}
-              </span>
-            </div>
-            <Progress
-              value={dayPercent}
-              className={cn("h-1.5", allDone && "[&>div]:bg-emerald-500")}
-            />
-
-            <ul className="flex flex-col gap-1.5">
-              <PlanItemRow
-                step={step}
-                topicName={
-                  step.materials[0]?.topicId
-                    ? (topicNameById.get(step.materials[0].topicId) ?? "—")
-                    : "—"
-                }
-                onComplete={
-                  onCompleteStep
-                    ? () => onCompleteStep(step.dayIndex)
-                    : undefined
-                }
+            {goals.length > 1 ? (
+              <GoalFilter
+                goals={goals}
+                selected={effectiveSelected}
+                onSelect={setSelectedGoal}
+                allLabel={t.home.today.filterAll}
               />
-            </ul>
-
-            {plan.goal ? (
-              <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <HugeiconsIcon
-                  icon={Compass01Icon}
-                  strokeWidth={2}
-                  className="size-3.5"
-                />
-                <span className="truncate">
-                  {t.home.today.pathLine.replace("{goal}", plan.goal)}
-                </span>
-              </p>
             ) : null}
+
+            {itemsTotal === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                {t.home.today.restDay}
+              </p>
+            ) : (
+              <>
+                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-heading text-2xl font-semibold tabular-nums sm:text-3xl">
+                      {itemsDone}
+                      <span className="text-base text-muted-foreground sm:text-xl">
+                        /{itemsTotal}
+                      </span>
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                      {t.home.today.doneLabel}
+                    </span>
+                  </div>
+                  <span className="text-xs text-muted-foreground tabular-nums sm:text-sm">
+                    {allDone ? t.home.today.allDone : ""}
+                  </span>
+                </div>
+                <Progress
+                  value={dayPercent}
+                  className={cn("h-1.5", allDone && "[&>div]:bg-emerald-500")}
+                />
+
+                <ul className="flex flex-col gap-1.5">
+                  {visibleItems.map((item) => (
+                    <PlanItemRow
+                      key={`${item.planId}-${item.step.dayIndex}`}
+                      step={item.step}
+                      goalLabel={showGoalTag ? item.goal : null}
+                      topicName={
+                        item.step.materials[0]?.topicId
+                          ? (topicNameById.get(item.step.materials[0].topicId) ??
+                            "—")
+                          : "—"
+                      }
+                      onComplete={
+                        onCompleteStep
+                          ? () =>
+                              onCompleteStep(item.planId, item.step.dayIndex)
+                          : undefined
+                      }
+                    />
+                  ))}
+                </ul>
+              </>
+            )}
           </>
         )}
       </CardContent>
     </Card>
+  )
+}
+
+function GoalFilter({
+  goals,
+  selected,
+  onSelect,
+  allLabel,
+}: {
+  goals: GoalOption[]
+  selected: string | null
+  onSelect: (id: string | null) => void
+  allLabel: string
+}) {
+  const t = useT()
+  return (
+    <div className="-mx-1 flex flex-wrap items-center gap-1.5 px-1">
+      <HugeiconsIcon
+        icon={Compass01Icon}
+        strokeWidth={2}
+        className="size-3.5 text-muted-foreground"
+        aria-hidden
+      />
+      <FilterChip
+        active={selected === null}
+        onClick={() => onSelect(null)}
+        label={allLabel}
+      />
+      {goals.map((goal) => (
+        <FilterChip
+          key={goal.id}
+          active={selected === goal.id}
+          onClick={() => onSelect(goal.id)}
+          label={goal.title ?? t.home.today.goalLabel}
+        />
+      ))}
+    </div>
+  )
+}
+
+function FilterChip({
+  active,
+  onClick,
+  label,
+}: {
+  active: boolean
+  onClick: () => void
+  label: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "max-w-[12rem] truncate rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+        active
+          ? "border-primary/40 bg-primary/10 text-primary"
+          : "border-border bg-muted/40 text-muted-foreground hover:bg-muted"
+      )}
+      aria-pressed={active}
+    >
+      {label}
+    </button>
   )
 }
 
@@ -379,10 +461,12 @@ function TodaySkeleton() {
 
 function PlanItemRow({
   step,
+  goalLabel,
   topicName,
   onComplete,
 }: {
   step: PlanStep
+  goalLabel: string | null
   topicName: string
   onComplete?: () => void
 }) {
@@ -432,6 +516,12 @@ function PlanItemRow({
       >
         <span className="truncate font-medium">{step.title}</span>
         <span className="truncate text-xs text-muted-foreground">
+          {goalLabel ? (
+            <>
+              <span className="text-foreground/70">{goalLabel}</span>
+              {" · "}
+            </>
+          ) : null}
           {materialTitle ?? actionLabel} · {topicName}
         </span>
       </span>
@@ -456,307 +546,4 @@ function PlanItemRow({
       ) : null}
     </li>
   )
-}
-
-function PathsCard({
-  goals,
-  lang,
-  loading,
-  aggregatePercent,
-  aggregateDaysCompleted,
-  aggregateDaysTotal,
-}: {
-  goals: Goal[]
-  lang: Lang
-  loading: boolean
-  aggregatePercent: number
-  aggregateDaysCompleted: number
-  aggregateDaysTotal: number
-}) {
-  const t = useT()
-
-  const orderedGoals = React.useMemo(() => {
-    const rank = (g: Goal) =>
-      g.status === "ACTIVE" ? 0 : g.status === "PAUSED" ? 1 : 2
-    return [...goals].sort((a, b) => {
-      const r = rank(a) - rank(b)
-      if (r !== 0) return r
-      const aDate = a.targetDate ?? ""
-      const bDate = b.targetDate ?? ""
-      return aDate.localeCompare(bDate)
-    })
-  }, [goals])
-
-  const activeCount = goals.filter((g) => g.status === "ACTIVE").length
-  const completedCount = goals.filter((g) => g.status === "COMPLETED").length
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="inline-flex items-center gap-2">
-          <HugeiconsIcon
-            icon={Compass01Icon}
-            strokeWidth={2}
-            className="size-4"
-          />
-          {t.home.path.title}
-        </CardTitle>
-        <CardDescription>{t.home.path.subtitle}</CardDescription>
-        <CardAction>
-          <Button
-            variant="outline"
-            size="sm"
-            nativeButton={false}
-            className="hidden sm:inline-flex"
-            render={
-              <Link href="/plan">
-                <HugeiconsIcon
-                  icon={PlusSignIcon}
-                  strokeWidth={2}
-                  data-icon="inline-start"
-                />
-                {t.home.path.addGoal}
-              </Link>
-            }
-          />
-        </CardAction>
-      </CardHeader>
-
-      <CardContent className="flex flex-col gap-4">
-        {loading ? null : goals.length > 0 ? (
-          <PathsAggregate
-            aggregatePercent={aggregatePercent}
-            aggregateDaysCompleted={aggregateDaysCompleted}
-            aggregateDaysTotal={aggregateDaysTotal}
-            activeCount={activeCount}
-            completedCount={completedCount}
-          />
-        ) : null}
-
-        {loading ? (
-          <PathListSkeleton />
-        ) : orderedGoals.length === 0 ? (
-          <Empty>
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <HugeiconsIcon icon={Compass01Icon} strokeWidth={2} />
-              </EmptyMedia>
-              <EmptyTitle>{t.home.goals.emptyTitle}</EmptyTitle>
-              <EmptyDescription>
-                {t.home.goals.emptyDescription}
-              </EmptyDescription>
-            </EmptyHeader>
-            <EmptyContent>
-              <Button
-                nativeButton={false}
-                render={
-                  <Link href="/plan">
-                    <HugeiconsIcon
-                      icon={PlusSignIcon}
-                      strokeWidth={2}
-                      data-icon="inline-start"
-                    />
-                    {t.home.path.addGoal}
-                  </Link>
-                }
-              />
-            </EmptyContent>
-          </Empty>
-        ) : (
-          <ul className="flex flex-col gap-2">
-            {orderedGoals.map((goal) => (
-              <PathRow key={goal.id} goal={goal} lang={lang} />
-            ))}
-          </ul>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
-
-function PathsAggregate({
-  aggregatePercent,
-  aggregateDaysCompleted,
-  aggregateDaysTotal,
-  activeCount,
-  completedCount,
-}: {
-  aggregatePercent: number
-  aggregateDaysCompleted: number
-  aggregateDaysTotal: number
-  activeCount: number
-  completedCount: number
-}) {
-  const t = useT()
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <div className="flex items-baseline gap-1.5">
-          <span className="font-heading text-3xl font-semibold tabular-nums sm:text-4xl">
-            {aggregatePercent}
-            <span className="text-xl text-muted-foreground sm:text-2xl">%</span>
-          </span>
-          <span className="text-xs text-muted-foreground sm:text-sm">
-            {t.home.path.percentLabel}
-          </span>
-        </div>
-        <div className="flex items-center gap-3 text-xs text-muted-foreground sm:text-sm">
-          <span className="inline-flex items-center gap-1.5">
-            <span className="size-2 rounded-full bg-primary" aria-hidden />
-            <span className="font-medium text-foreground tabular-nums">
-              {activeCount}
-            </span>
-            <span>{t.home.path.activeLabel}</span>
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="size-2 rounded-full bg-emerald-500" aria-hidden />
-            <span className="font-medium text-foreground tabular-nums">
-              {completedCount}
-            </span>
-            <span>{t.home.path.completedLabel}</span>
-          </span>
-        </div>
-      </div>
-      <Progress value={aggregatePercent} className="h-1.5" />
-      <span className="text-[11px] text-muted-foreground tabular-nums">
-        {t.home.path.aggregate
-          .replace("{completed}", String(aggregateDaysCompleted))
-          .replace("{total}", String(aggregateDaysTotal))}
-      </span>
-    </div>
-  )
-}
-
-function PathRow({ goal, lang }: { goal: Goal; lang: Lang }) {
-  const t = useT()
-  const percent =
-    typeof goal.progress === "number"
-      ? Math.max(0, Math.min(100, Math.round(goal.progress)))
-      : goal.daysTotal > 0
-        ? Math.min(100, Math.round((goal.daysCompleted / goal.daysTotal) * 100))
-        : 0
-
-  const isCompleted = goal.status === "COMPLETED"
-  const isPaused = goal.status === "PAUSED"
-  const statusLabel = isCompleted
-    ? t.home.goal.statusCompleted
-    : isPaused
-      ? t.home.goal.statusPaused
-      : t.home.goal.statusActive
-  const statusVariant: React.ComponentProps<typeof Badge>["variant"] =
-    isCompleted ? "default" : isPaused ? "secondary" : "outline"
-
-  const nodeClass = isCompleted
-    ? "bg-emerald-500 text-white"
-    : isPaused
-      ? "bg-muted text-muted-foreground"
-      : "bg-primary text-primary-foreground"
-  const nodeIcon = isCompleted ? CheckmarkCircle02Icon : Target02Icon
-
-  const targetLabel = goal.targetDate
-    ? t.home.goal.targetDate.replace(
-        "{date}",
-        formatTargetDate(goal.targetDate, lang)
-      )
-    : t.home.goal.noTargetDate
-  const daysLabel = t.home.goal.daysProgress
-    .replace("{completed}", String(goal.daysCompleted))
-    .replace("{total}", String(goal.daysTotal))
-
-  return (
-    <li>
-      <Link
-        href="/plan"
-        className="group flex items-center gap-3 rounded-2xl border border-border bg-card p-3 transition-colors hover:bg-accent/40 active:scale-[0.99] sm:p-3.5"
-      >
-        <span
-          aria-hidden
-          className={cn(
-            "inline-flex size-9 shrink-0 items-center justify-center rounded-full shadow-sm",
-            nodeClass
-          )}
-        >
-          <HugeiconsIcon icon={nodeIcon} strokeWidth={2} className="size-5" />
-        </span>
-
-        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-          <div className="flex items-start justify-between gap-2">
-            <h3 className="truncate font-heading text-sm font-semibold sm:text-base">
-              {goal.title}
-            </h3>
-            <Badge
-              variant={statusVariant}
-              className="shrink-0 text-[10px] sm:text-xs"
-            >
-              {statusLabel}
-            </Badge>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Progress value={percent} className="h-1 flex-1" />
-            <span className="shrink-0 text-[11px] font-medium text-muted-foreground tabular-nums sm:text-xs">
-              {percent}%
-            </span>
-          </div>
-
-          <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground sm:text-xs">
-            <HugeiconsIcon
-              icon={Calendar03Icon}
-              strokeWidth={2}
-              className="size-3"
-            />
-            <span className="truncate">{targetLabel}</span>
-            <span aria-hidden>·</span>
-            <span className="shrink-0 tabular-nums">{daysLabel}</span>
-          </p>
-        </div>
-      </Link>
-    </li>
-  )
-}
-
-function PathListSkeleton() {
-  return (
-    <ul className="flex flex-col gap-2">
-      {[0, 1, 2].map((i) => (
-        <li
-          key={i}
-          className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3"
-        >
-          <Skeleton className="size-9 shrink-0 rounded-full" />
-          <div className="flex flex-1 flex-col gap-1.5">
-            <Skeleton className="h-4 w-3/5" />
-            <Skeleton className="h-1 w-full" />
-            <Skeleton className="h-3 w-2/5" />
-          </div>
-        </li>
-      ))}
-    </ul>
-  )
-}
-
-function formatTargetDate(iso: string, lang: Lang): string {
-  const locale = lang === "uz" ? "uz-UZ" : lang === "ru" ? "ru-RU" : "en-GB"
-  try {
-    return new Date(iso).toLocaleDateString(locale, {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    })
-  } catch {
-    return iso
-  }
-}
-
-function formatTodayDate(iso: string, lang: Lang): string {
-  const locale = lang === "uz" ? "uz-UZ" : lang === "ru" ? "ru-RU" : "en-GB"
-  try {
-    return new Date(iso).toLocaleDateString(locale, {
-      weekday: "long",
-      day: "numeric",
-      month: "short",
-    })
-  } catch {
-    return iso
-  }
 }

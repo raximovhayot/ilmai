@@ -98,7 +98,7 @@ class PlanApiIntegrationTest {
     }
 
     @Test
-    void resavingSupersedesThePreviousActivePlan() {
+    void savingDistinctGoalsKeepsBothActiveAsSeparatePlans() {
         UUID user = seedUser();
 
         planApi.savePlan(new CurrentUser(user), "First goal", null, List.of(
@@ -106,13 +106,50 @@ class PlanApiIntegrationTest {
         planApi.savePlan(new CurrentUser(user), "Second goal", null, List.of(
                 new PlanStepInput(1, LocalDate.now(), "New step", PlanActivity.QUIZ, List.of(), null)));
 
-        LearningPlanDto active = planApi.getActivePlan(new CurrentUser(user)).orElseThrow();
-        assertThat(active.getGoal()).isEqualTo("Second goal");
-        assertThat(active.getSteps()).singleElement()
-                .satisfies(step -> assertThat(step.getTitle()).isEqualTo("New step"));
+        assertThat(plans.findByUserIdAndStatus(user, PlanStatus.ACTIVE)).hasSize(2);
+        assertThat(plans.findByUserIdAndStatus(user, PlanStatus.SUPERSEDED)).isEmpty();
+
+        List<LearningPlanResponse> all = planService.listPlansResponse(new CurrentUser(user));
+        assertThat(all).extracting(LearningPlanResponse::getGoal)
+                .containsExactlyInAnyOrder("First goal", "Second goal");
+        assertThat(all).extracting(LearningPlanResponse::getGoalId).doesNotContainNull();
+    }
+
+    @Test
+    void resavingTheSameGoalSupersedesItsPreviousPlan() {
+        UUID user = seedUser();
+
+        planApi.savePlan(new CurrentUser(user), "IELTS by July", null, List.of(
+                new PlanStepInput(1, LocalDate.now(), "Old step", PlanActivity.READ, List.of(), null)));
+        planApi.savePlan(new CurrentUser(user), "ielts by july", null, List.of(
+                new PlanStepInput(1, LocalDate.now(), "New step", PlanActivity.QUIZ, List.of(), null)));
 
         assertThat(plans.findByUserIdAndStatus(user, PlanStatus.ACTIVE)).hasSize(1);
         assertThat(plans.findByUserIdAndStatus(user, PlanStatus.SUPERSEDED)).hasSize(1);
+        assertThat(planService.listPlansResponse(new CurrentUser(user)))
+                .singleElement()
+                .satisfies(p -> assertThat(p.getSteps()).singleElement()
+                        .satisfies(step -> assertThat(step.getTitle()).isEqualTo("New step")));
+    }
+
+    @Test
+    void planScopedCompleteAndStatusAreOwnerIsolated() {
+        UUID user = seedUser();
+        UUID stranger = seedUser();
+        planApi.savePlan(new CurrentUser(user), "Goal A", null, List.of(
+                new PlanStepInput(1, LocalDate.now(), "Read", PlanActivity.READ, List.of(), null)));
+        LearningPlanResponse plan = planService.listPlansResponse(new CurrentUser(user)).get(0);
+
+        LearningPlanResponse completed =
+                planService.completeStepResponse(new CurrentUser(user), plan.getId(), 1);
+        assertThat(stepResponseByDay(completed, 1).isDone()).isTrue();
+
+        LearningPlanResponse paused =
+                planService.updatePlanStatus(new CurrentUser(user), plan.getId(), PlanStatus.PAUSED);
+        assertThat(paused.getStatus()).isEqualTo(PlanStatus.PAUSED);
+        assertThat(planService.listPlansResponse(new CurrentUser(user))).hasSize(1);
+
+        assertThat(plans.findByIdAndUserId(plan.getId(), stranger)).isEmpty();
     }
 
     @Test
