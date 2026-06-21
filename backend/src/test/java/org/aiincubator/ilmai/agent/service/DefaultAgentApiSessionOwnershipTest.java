@@ -48,7 +48,8 @@ class DefaultAgentApiSessionOwnershipTest {
                 chatClientProvider,
                 mock(MessageService.class),
                 chatSessionService,
-                turnSupport);
+                turnSupport,
+                mock(ChatTranscriptService.class));
 
         assertThatThrownBy(() -> agentApi.chat(currentUser, sessionId, "hello", ChatChannel.WEB))
                 .isInstanceOf(ChatSessionException.class);

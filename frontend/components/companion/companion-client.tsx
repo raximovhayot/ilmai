@@ -54,6 +54,8 @@ import { cn } from "@/lib/utils"
 import {
   createSession,
   createCoachTransport,
+  getSessionMessages,
+  historyToCoachMessages,
   listSessions,
   messageText,
   type ChatSession,
@@ -154,7 +156,7 @@ export function CompanionClient({
     return createCoachTransport(activeId)
   }, [authenticated, activeId])
 
-  const { messages, sendMessage, status, stop, error, clearError } =
+  const { messages, setMessages, sendMessage, status, stop, error, clearError } =
     useChat<CoachUIMessage>({
       id: activeId ?? undefined,
       transport,
@@ -162,13 +164,37 @@ export function CompanionClient({
     })
   const isBusy = status === "streaming" || status === "submitted"
 
+  const pendingPromptRef = React.useRef<string | null>(null)
+  const hydratedSessionsRef = React.useRef<Set<string>>(new Set())
+
+  React.useEffect(() => {
+    if (!authenticated || !activeId) return
+    if (pendingPromptRef.current) return
+    if (hydratedSessionsRef.current.has(activeId)) return
+    if (sessionMessagesCache.has(activeId)) {
+      hydratedSessionsRef.current.add(activeId)
+      return
+    }
+    hydratedSessionsRef.current.add(activeId)
+    let cancelled = false
+    void run(() => getSessionMessages(activeId))
+      .then((history) => {
+        if (cancelled || !history || history.length === 0) return
+        const restored = historyToCoachMessages(history)
+        sessionMessagesCache.set(activeId, restored)
+        setMessages(restored)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [authenticated, activeId, run, setMessages])
+
   React.useEffect(() => {
     if (activeId) {
       sessionMessagesCache.set(activeId, messages)
     }
   }, [messages, activeId])
-
-  const pendingPromptRef = React.useRef<string | null>(null)
 
   React.useEffect(() => {
     if (activeId && pendingPromptRef.current) {

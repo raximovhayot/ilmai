@@ -227,7 +227,8 @@ class CoachStreamServiceIntegrationTest {
                 turnSupport,
                 messageService,
                 new UiMessageStreamEmitter(),
-                Runnable::run);
+                Runnable::run,
+                mock(ChatTranscriptService.class));
         AgentController controller = new AgentController(service);
         MockMvc mvc = MockMvcBuilders.standaloneSetup(controller)
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())

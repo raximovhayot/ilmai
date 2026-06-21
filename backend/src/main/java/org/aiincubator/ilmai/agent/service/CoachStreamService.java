@@ -41,6 +41,7 @@ public class CoachStreamService {
     private final MessageService messageService;
     private final UiMessageStreamEmitter transport;
     private final Executor coachStreamExecutor;
+    private final ChatTranscriptService chatTranscriptService;
 
     public CoachStreamService(
             @Qualifier(CoachChatClientConfig.COACH_CHAT_CLIENT) ObjectProvider<ChatClient> coachChatClientProvider,
@@ -48,13 +49,15 @@ public class CoachStreamService {
             CoachTurnSupport turnSupport,
             MessageService messageService,
             UiMessageStreamEmitter transport,
-            @Qualifier(CoachChatClientConfig.COACH_STREAM_EXECUTOR) Executor coachStreamExecutor) {
+            @Qualifier(CoachChatClientConfig.COACH_STREAM_EXECUTOR) Executor coachStreamExecutor,
+            ChatTranscriptService chatTranscriptService) {
         this.coachChatClientProvider = coachChatClientProvider;
         this.chatSessionService = chatSessionService;
         this.turnSupport = turnSupport;
         this.messageService = messageService;
         this.transport = transport;
         this.coachStreamExecutor = coachStreamExecutor;
+        this.chatTranscriptService = chatTranscriptService;
     }
 
     public SseEmitter stream(CurrentUser currentUser, UUID sessionId, String prompt, ChatChannel channel) {
@@ -90,6 +93,7 @@ public class CoachStreamService {
 
     private SseEmitter streamTurn(ChatClient client, CurrentUser currentUser, UUID sessionId, String userMessage) {
         IlmTokenReservation reservation = turnSupport.reserve(currentUser);
+        recordUserTurnQuietly(currentUser, sessionId, userMessage);
         SerializedPartSink sink = new SerializedPartSink();
         AgentRetrievalContext retrievalCtx = AgentRetrievalContext.create();
         ChatClientResponse turnCompleted = ChatClientResponse.builder().context(Map.of()).build();
@@ -162,6 +166,27 @@ public class CoachStreamService {
         log.debug("agent.stream committed user={} session={} actualIlmTokens={}",
                 currentUser.getUserId(), sessionId, actualIlmTokens);
         turnSupport.completeTurnQuietly(currentUser, sessionId);
+        recordAssistantTurnQuietly(currentUser, sessionId, aggregatedText, retrievalCtx, !grounded || !cited);
+    }
+
+    private void recordUserTurnQuietly(CurrentUser currentUser, UUID sessionId, String userMessage) {
+        try {
+            chatTranscriptService.recordUserTurn(currentUser, sessionId, userMessage);
+        } catch (RuntimeException ex) {
+            log.warn("agent.stream user-transcript persistence failed user={} session={}: {}",
+                    currentUser.getUserId(), sessionId, ex.toString());
+        }
+    }
+
+    private void recordAssistantTurnQuietly(CurrentUser currentUser, UUID sessionId, String assistantText,
+                                            AgentRetrievalContext retrievalCtx, boolean lowConfidence) {
+        try {
+            chatTranscriptService.recordAssistantTurn(currentUser, sessionId, assistantText,
+                    retrievalCtx.chunks(), lowConfidence);
+        } catch (RuntimeException ex) {
+            log.warn("agent.stream assistant-transcript persistence failed user={} session={}: {}",
+                    currentUser.getUserId(), sessionId, ex.toString());
+        }
     }
 
     private void accumulate(ChatClientResponse response, StringBuilder aggregatedText,

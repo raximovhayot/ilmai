@@ -88,6 +88,36 @@ export async function createSession(
   })
 }
 
+export type ChatMessageRole = "USER" | "ASSISTANT"
+
+export type ChatMessageCitation = {
+  id: string
+  materialId: string
+  materialName: string
+  locator: string | null
+  snippet: string
+  score: number
+}
+
+export type ChatMessage = {
+  id: string
+  role: ChatMessageRole
+  content: string
+  citations: ChatMessageCitation[] | null
+  lowConfidence: boolean
+  createdAt: string
+}
+
+export async function getSessionMessages(
+  sessionId: string
+): Promise<ChatMessage[]> {
+  const data = await apiFetch<ChatMessage[]>(
+    `/agent/sessions/${sessionId}/messages`,
+    { cache: "no-store" }
+  )
+  return data ?? []
+}
+
 export type QuizAnswerResult = {
   id: string
   position: number
@@ -154,6 +184,38 @@ export function messageText(message: CoachUIMessage): string {
     .filter((part) => part.type === "text")
     .map((part) => part.text)
     .join("")
+}
+
+export function historyToCoachMessages(
+  history: ChatMessage[]
+): CoachUIMessage[] {
+  return history.map((message) => {
+    const parts: CoachUIMessage["parts"] = []
+    if (message.content) {
+      parts.push({ type: "text", text: message.content })
+    }
+    for (const citation of message.citations ?? []) {
+      parts.push({
+        type: "data-citation",
+        data: {
+          id: citation.id,
+          materialId: citation.materialId,
+          materialName: citation.materialName,
+          locator: citation.locator ?? "",
+          snippet: citation.snippet,
+          score: citation.score,
+        },
+      })
+    }
+    if (message.role === "ASSISTANT" && message.lowConfidence) {
+      parts.push({ type: "data-confidence", data: { level: "low" } })
+    }
+    return {
+      id: message.id,
+      role: message.role === "USER" ? "user" : "assistant",
+      parts,
+    }
+  })
 }
 
 export function createCoachTransport(sessionId: string) {

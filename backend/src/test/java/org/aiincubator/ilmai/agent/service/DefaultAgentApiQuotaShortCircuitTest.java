@@ -53,7 +53,8 @@ class DefaultAgentApiQuotaShortCircuitTest {
                 chatClientProvider,
                 messageService,
                 mock(ChatSessionService.class),
-                turnSupport);
+                turnSupport,
+                mock(ChatTranscriptService.class));
     }
 
     @Test

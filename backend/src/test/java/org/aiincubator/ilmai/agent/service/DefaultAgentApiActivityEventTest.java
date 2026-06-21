@@ -72,7 +72,8 @@ class DefaultAgentApiActivityEventTest {
                 chatClientProvider,
                 mock(MessageService.class),
                 chatSessionService,
-                turnSupport);
+                turnSupport,
+                mock(ChatTranscriptService.class));
 
         List<MessagePart> parts = agentApi
                 .chat(currentUser, sessionId, "hello", ChatChannel.WEB)

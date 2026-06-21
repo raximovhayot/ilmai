@@ -38,16 +38,19 @@ public class DefaultAgentApi implements AgentApi {
     private final MessageService messageService;
     private final ChatSessionService chatSessionService;
     private final CoachTurnSupport turnSupport;
+    private final ChatTranscriptService chatTranscriptService;
 
     public DefaultAgentApi(
             @Qualifier(CoachChatClientConfig.COACH_CHAT_CLIENT) ObjectProvider<ChatClient> coachChatClientProvider,
             MessageService messageService,
             ChatSessionService chatSessionService,
-            CoachTurnSupport turnSupport) {
+            CoachTurnSupport turnSupport,
+            ChatTranscriptService chatTranscriptService) {
         this.coachChatClientProvider = coachChatClientProvider;
         this.messageService = messageService;
         this.chatSessionService = chatSessionService;
         this.turnSupport = turnSupport;
+        this.chatTranscriptService = chatTranscriptService;
     }
 
     @Override
@@ -107,6 +110,7 @@ public class DefaultAgentApi implements AgentApi {
             log.debug("agent.chat committed user={} session={} actualIlmTokens={}",
                     currentUser.getUserId(), sessionId, actualIlmTokens);
             turnSupport.completeTurnQuietly(currentUser, sessionId);
+            recordTranscript(currentUser, sessionId, userMessage, text, ctx, flags);
 
             List<MessagePart> parts = new ArrayList<>();
             for (RetrievedChunk chunk : ctx.chunks()) {
@@ -139,6 +143,18 @@ public class DefaultAgentApi implements AgentApi {
             AgentRetrievalContext.clear();
             AgentQuizContext.clear();
             AgentActionContext.clear();
+        }
+    }
+
+    private void recordTranscript(CurrentUser currentUser, UUID sessionId, String userMessage,
+                                  String assistantText, AgentRetrievalContext ctx, AgentResponseFlags flags) {
+        try {
+            chatTranscriptService.recordUserTurn(currentUser, sessionId, userMessage);
+            chatTranscriptService.recordAssistantTurn(currentUser, sessionId, assistantText,
+                    ctx.chunks(), flags.isLowConfidence());
+        } catch (RuntimeException ex) {
+            log.warn("agent.chat transcript persistence failed user={} session={}: {}",
+                    currentUser.getUserId(), sessionId, ex.toString());
         }
     }
 

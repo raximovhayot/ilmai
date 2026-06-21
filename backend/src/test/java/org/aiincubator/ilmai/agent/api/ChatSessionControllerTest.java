@@ -2,6 +2,7 @@ package org.aiincubator.ilmai.agent.api;
 
 import org.aiincubator.ilmai.agent.ChatChannel;
 import org.aiincubator.ilmai.agent.service.ChatSessionService;
+import org.aiincubator.ilmai.agent.service.ChatTranscriptService;
 import org.aiincubator.ilmai.common.CurrentUser;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,7 +35,8 @@ class ChatSessionControllerTest {
     @BeforeEach
     void setUp() {
         chatSessionService = mock(ChatSessionService.class);
-        mvc = MockMvcBuilders.standaloneSetup(new ChatSessionController(chatSessionService))
+        mvc = MockMvcBuilders.standaloneSetup(
+                new ChatSessionController(chatSessionService, mock(ChatTranscriptService.class)))
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .build();
     }

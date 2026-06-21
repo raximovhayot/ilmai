@@ -78,7 +78,8 @@ class DefaultAgentApiQuizCardEmissionTest {
                 chatClientProvider,
                 mock(MessageService.class),
                 mock(ChatSessionService.class),
-                turnSupport);
+                turnSupport,
+                mock(ChatTranscriptService.class));
 
         List<MessagePart> parts = agentApi
                 .chat(currentUser, sessionId, "quiz me on photosynthesis", ChatChannel.WEB)

@@ -73,7 +73,8 @@ class DefaultAgentApiActionEmissionTest {
                 chatClientProvider,
                 mock(MessageService.class),
                 mock(ChatSessionService.class),
-                turnSupport);
+                turnSupport,
+                mock(ChatTranscriptService.class));
 
         List<MessagePart> parts = agentApi
                 .chat(currentUser, sessionId, "what should I do now?", ChatChannel.WEB)
