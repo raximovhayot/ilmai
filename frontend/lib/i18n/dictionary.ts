@@ -56,6 +56,7 @@ export type Dictionary = {
     generic: string
     network: string
     signInFailed: string
+    sessionExpired: string
   }
   settings: {
     title: string
@@ -676,6 +677,7 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       generic: "Something went wrong. Please try again.",
       network: "Network error. Check your connection and try again.",
       signInFailed: "We couldn’t sign you in. Please try again.",
+      sessionExpired: "Your session has expired. Please sign in again.",
     },
     settings: {
       title: "Settings",
@@ -1345,6 +1347,7 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       generic: "Что-то пошло не так. Попробуйте ещё раз.",
       network: "Ошибка сети. Проверьте подключение и повторите попытку.",
       signInFailed: "Не удалось войти. Попробуйте ещё раз.",
+      sessionExpired: "Срок сессии истёк. Войдите снова.",
     },
     settings: {
       title: "Настройки",
@@ -2020,6 +2023,7 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       network:
         "Tarmoqda xato. Internet aloqasini tekshirib, qayta urinib ko‘ring.",
       signInFailed: "Tizimga kirib bo‘lmadi. Qayta urinib ko‘ring.",
+      sessionExpired: "Sessiya muddati tugadi. Qaytadan tizimga kiring.",
     },
     settings: {
       title: "Sozlamalar",

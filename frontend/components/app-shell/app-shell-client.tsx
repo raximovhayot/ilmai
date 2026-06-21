@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation"
 import { useSession } from "next-auth/react"
 
 import { AppShell } from "@/components/app-shell/app-shell"
+import { SessionGuard } from "@/components/auth/session-guard"
 import { listTopics, type TopicResponse } from "@/lib/topics"
 import { getPremium, type PremiumStatus } from "@/lib/premium"
 import { listSessions, type ChatSession } from "@/lib/agent"
@@ -62,6 +63,7 @@ export function AppShellClient({ user, children }: Props) {
 
   return (
     <AppShell topics={topics} sessions={sessions} premium={premium} user={user}>
+      <SessionGuard />
       {children}
     </AppShell>
   )

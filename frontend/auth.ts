@@ -110,6 +110,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             delete token.error
           } else {
             token.error = "RefreshAccessTokenError"
+            delete token.accessToken
+            delete token.refreshToken
+            delete token.accessExpiresAt
+            delete token.refreshExpiresAt
           }
         }
       }
