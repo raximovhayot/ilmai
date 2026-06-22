@@ -165,17 +165,17 @@ export function CompanionClient({
   const isBusy = status === "streaming" || status === "submitted"
 
   const pendingPromptRef = React.useRef<string | null>(null)
-  const hydratedSessionsRef = React.useRef<Set<string>>(new Set())
 
   React.useEffect(() => {
     if (!authenticated || !activeId) return
     if (pendingPromptRef.current) return
-    if (hydratedSessionsRef.current.has(activeId)) return
-    if (sessionMessagesCache.has(activeId)) {
-      hydratedSessionsRef.current.add(activeId)
+
+    const cached = sessionMessagesCache.get(activeId)
+    if (cached && cached.length > 0) {
+      setMessages(cached)
       return
     }
-    hydratedSessionsRef.current.add(activeId)
+
     let cancelled = false
     void run(() => getSessionMessages(activeId))
       .then((history) => {
@@ -191,7 +191,7 @@ export function CompanionClient({
   }, [authenticated, activeId, run, setMessages])
 
   React.useEffect(() => {
-    if (activeId) {
+    if (activeId && messages.length > 0) {
       sessionMessagesCache.set(activeId, messages)
     }
   }, [messages, activeId])
