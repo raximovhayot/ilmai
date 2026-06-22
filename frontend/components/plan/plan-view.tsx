@@ -2,8 +2,6 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { useSession } from "next-auth/react"
-import { toast } from "sonner"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   ArrowRight01Icon,
@@ -19,13 +17,9 @@ import {
 import { Response } from "@/components/ai-elements/response"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
+import { Card, CardContent } from "@/components/ui/card"
 import { Spinner } from "@/components/ui/spinner"
 import {
-  completePlanStep,
-  generateStepLesson,
-  getPlans,
   type LearningPlan,
   type PlanActivity,
   type PlanStep,
@@ -35,257 +29,419 @@ import { useT } from "@/lib/i18n/provider"
 import type { TopicResponse } from "@/lib/topics"
 import { cn } from "@/lib/utils"
 
-type Props = {
-  initialPlan: LearningPlan | null
-  topics: TopicResponse[]
+function stepKey(planId: string, dayIndex: number) {
+  return `${planId}:${dayIndex}`
 }
 
-export function PlanView({ initialPlan, topics }: Props) {
+type StepState = "done" | "current" | "upcoming"
+
+type PlanRoadmapProps = {
+  plan: LearningPlan
+  topics: TopicResponse[]
+  today: string
+  completingKey: string | null
+  lessons: Record<string, StepLesson>
+  expandedKey: string | null
+  lessonLoadingKey: string | null
+  onComplete: (planId: string, dayIndex: number) => void
+  onToggleLesson: (planId: string, dayIndex: number) => void
+  onRegenerate: (planId: string, dayIndex: number) => void
+}
+
+type PlanModule = {
+  week: number
+  steps: PlanStep[]
+}
+
+export function PlanRoadmap({
+  plan,
+  topics,
+  completingKey,
+  lessons,
+  expandedKey,
+  lessonLoadingKey,
+  onComplete,
+  onToggleLesson,
+  onRegenerate,
+}: PlanRoadmapProps) {
   const t = useT()
-  const { status } = useSession()
-  const [plan, setPlan] = React.useState<LearningPlan | null>(initialPlan)
-  const [completing, setCompleting] = React.useState<number | null>(null)
-  const [refreshing, setRefreshing] = React.useState(false)
-  const [syncedInitial, setSyncedInitial] = React.useState(initialPlan)
-  const [lessons, setLessons] = React.useState<Record<number, StepLesson>>({})
-  const [expanded, setExpanded] = React.useState<number | null>(null)
-  const [lessonLoading, setLessonLoading] = React.useState<number | null>(null)
-
-  if (initialPlan !== syncedInitial) {
-    setSyncedInitial(initialPlan)
-    setPlan(initialPlan)
-  }
-
   const topicNameById = React.useMemo(
     () => new Map(topics.map((tp) => [tp.id, tp.name])),
     [topics]
   )
-  const today = new Date().toISOString().slice(0, 10)
+  const steps = React.useMemo(
+    () => [...plan.steps].sort((a, b) => a.dayIndex - b.dayIndex),
+    [plan.steps]
+  )
+  const currentDay = React.useMemo(() => {
+    const next = steps.find((s) => !s.done)
+    return next ? next.dayIndex : null
+  }, [steps])
 
-  const onComplete = async (dayIndex: number) => {
-    if (status !== "authenticated" || !plan) return
-    setCompleting(dayIndex)
-    try {
-      const fresh = await completePlanStep(plan.id, dayIndex)
-      if (fresh) setPlan(fresh)
-    } catch {
-      toast.error(t.errors.generic)
-    } finally {
-      setCompleting(null)
+  const modules = React.useMemo<PlanModule[]>(() => {
+    const byWeek = new Map<number, PlanStep[]>()
+    for (const step of steps) {
+      const week = Math.floor((step.dayIndex - 1) / 7) + 1
+      const bucket = byWeek.get(week)
+      if (bucket) bucket.push(step)
+      else byWeek.set(week, [step])
     }
+    return [...byWeek.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([week, items]) => ({ week, steps: items }))
+  }, [steps])
+
+  const currentWeek =
+    currentDay != null
+      ? Math.floor((currentDay - 1) / 7) + 1
+      : (modules[0]?.week ?? 1)
+
+  const [openOverrides, setOpenOverrides] = React.useState<
+    Record<number, boolean>
+  >({})
+  const [focusedDay, setFocusedDay] = React.useState<number | null>(null)
+
+  const isModuleOpen = (week: number) =>
+    openOverrides[week] ?? week === currentWeek
+  const toggleModule = (week: number) =>
+    setOpenOverrides((prev) => ({
+      ...prev,
+      [week]: !(prev[week] ?? week === currentWeek),
+    }))
+
+  const stateFor = (step: PlanStep): StepState => {
+    if (step.done) return "done"
+    if (step.dayIndex === currentDay) return "current"
+    return "upcoming"
   }
-
-  const onRefresh = async () => {
-    if (status !== "authenticated" || !plan) return
-    setRefreshing(true)
-    try {
-      const all = await getPlans()
-      const fresh = all.find((p) => p.id === plan.id)
-      if (fresh) setPlan(fresh)
-    } catch {
-      toast.error(t.errors.generic)
-    } finally {
-      setRefreshing(false)
-    }
-  }
-
-  const onToggleLesson = async (dayIndex: number) => {
-    if (status !== "authenticated" || !plan) return
-    if (expanded === dayIndex) {
-      setExpanded(null)
-      return
-    }
-    if (lessons[dayIndex]) {
-      setExpanded(dayIndex)
-      return
-    }
-    setLessonLoading(dayIndex)
-    try {
-      const lesson = await generateStepLesson(plan.id, dayIndex)
-      if (lesson) {
-        setLessons((prev) => ({ ...prev, [dayIndex]: lesson }))
-        setExpanded(dayIndex)
-      }
-    } catch {
-      toast.error(t.errors.generic)
-    } finally {
-      setLessonLoading(null)
-    }
-  }
-
-  const onRegenerateLesson = async (dayIndex: number) => {
-    if (status !== "authenticated" || !plan) return
-    setLessonLoading(dayIndex)
-    try {
-      const lesson = await generateStepLesson(plan.id, dayIndex, true)
-      if (lesson) {
-        setLessons((prev) => ({ ...prev, [dayIndex]: lesson }))
-        setExpanded(dayIndex)
-      }
-    } catch {
-      toast.error(t.errors.generic)
-    } finally {
-      setLessonLoading(null)
-    }
-  }
-
-  const progress =
-    plan && plan.daysTotal > 0
-      ? Math.min(100, Math.round((plan.daysCompleted / plan.daysTotal) * 100))
-      : 0
-
-  if (!plan) return null
 
   return (
     <div id={`plan-${plan.id}`} className="flex scroll-mt-24 flex-col gap-4">
-      {plan.replanNeeded ? (
-        <ReplanBanner onRefresh={onRefresh} refreshing={refreshing} />
-      ) : null}
+      <JourneyHeader plan={plan} />
 
-      <>
-          <Card>
-            <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <HugeiconsIcon
-                  icon={Flag03Icon}
-                  strokeWidth={2}
-                  className="size-5"
-                />
-                {t.plan.goal}
-              </CardTitle>
-              <Badge variant="outline" className="tabular-nums">
-                {plan.daysCompleted}/{plan.daysTotal}
-              </Badge>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-3">
-              <div className="flex flex-col gap-1">
-                <span className="text-sm font-medium">
-                  {plan.goal ?? t.plan.empty}
-                </span>
-                {plan.targetDate ? (
-                  <span className="text-xs text-muted-foreground">
-                    {t.plan.target}: {plan.targetDate}
-                  </span>
-                ) : null}
-              </div>
-              <Button
-                nativeButton={false}
-                variant="outline"
-                size="sm"
-                className="self-start"
-                render={
-                  <Link href="/profile">
-                    <HugeiconsIcon
-                      icon={Flag03Icon}
-                      strokeWidth={2}
-                      data-icon="inline-start"
-                    />
-                    {plan.goal ? t.plan.editGoal : t.plan.setGoal}
-                  </Link>
-                }
-              />
-              <div>
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{t.plan.progress}</span>
-                  <span className="tabular-nums">{progress}%</span>
-                </div>
-                <Progress value={progress} className="mt-1" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <HugeiconsIcon
-                  icon={RoadIcon}
-                  strokeWidth={2}
-                  className="size-5"
-                />
-                {t.plan.upcoming}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-3">
-              {plan.steps.length === 0 ? (
-                <p className="text-sm text-muted-foreground">{t.plan.empty}</p>
-              ) : (
-                plan.steps.map((step) => (
-                  <StepCard
-                    key={step.dayIndex}
-                    step={step}
-                    isToday={
-                      !!step.scheduledDate && step.scheduledDate === today
-                    }
-                    completing={completing === step.dayIndex}
-                    topicNameById={topicNameById}
-                    onComplete={() => onComplete(step.dayIndex)}
-                    lesson={lessons[step.dayIndex]}
-                    lessonOpen={expanded === step.dayIndex}
-                    lessonLoading={lessonLoading === step.dayIndex}
-                    onToggleLesson={() => onToggleLesson(step.dayIndex)}
-                    onRegenerateLesson={() =>
-                      onRegenerateLesson(step.dayIndex)
-                    }
-                  />
-                ))
-              )}
-            </CardContent>
-          </Card>
-      </>
+      {steps.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{t.plan.empty}</p>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {modules.map((module) => (
+            <ModuleSection
+              key={module.week}
+              module={module}
+              open={isModuleOpen(module.week)}
+              onToggle={() => toggleModule(module.week)}
+              stateFor={stateFor}
+              focusedDay={focusedDay}
+              onFocus={(dayIndex) =>
+                setFocusedDay((prev) => (prev === dayIndex ? null : dayIndex))
+              }
+              planId={plan.id}
+              topicNameById={topicNameById}
+              completingKey={completingKey}
+              lessons={lessons}
+              expandedKey={expandedKey}
+              lessonLoadingKey={lessonLoadingKey}
+              onComplete={onComplete}
+              onToggleLesson={onToggleLesson}
+              onRegenerate={onRegenerate}
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
 
-function ReplanBanner({
-  onRefresh,
-  refreshing,
+function ModuleSection({
+  module,
+  open,
+  onToggle,
+  stateFor,
+  focusedDay,
+  onFocus,
+  planId,
+  topicNameById,
+  completingKey,
+  lessons,
+  expandedKey,
+  lessonLoadingKey,
+  onComplete,
+  onToggleLesson,
+  onRegenerate,
 }: {
-  onRefresh: () => void
-  refreshing: boolean
+  module: PlanModule
+  open: boolean
+  onToggle: () => void
+  stateFor: (step: PlanStep) => StepState
+  focusedDay: number | null
+  onFocus: (dayIndex: number) => void
+  planId: string
+  topicNameById: Map<string, string>
+  completingKey: string | null
+  lessons: Record<string, StepLesson>
+  expandedKey: string | null
+  lessonLoadingKey: string | null
+  onComplete: (planId: string, dayIndex: number) => void
+  onToggleLesson: (planId: string, dayIndex: number) => void
+  onRegenerate: (planId: string, dayIndex: number) => void
 }) {
   const t = useT()
+  const total = module.steps.length
+  const done = module.steps.filter((s) => s.done).length
+  const progress = total > 0 ? Math.round((done / total) * 100) : 0
+  const allDone = total > 0 && done >= total
+
   return (
-    <Card className="border-amber-500/30 bg-amber-500/10">
-      <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-start gap-3">
-          <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400">
+    <div className="overflow-hidden rounded-xl border border-border">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className="flex w-full items-center gap-3 bg-muted/30 p-4 text-start transition-colors hover:bg-muted/50"
+      >
+        <span
+          className={cn(
+            "flex size-8 shrink-0 items-center justify-center rounded-full",
+            allDone
+              ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+              : "bg-primary/10 text-primary"
+          )}
+        >
+          {allDone ? (
             <HugeiconsIcon
-              icon={RefreshIcon}
+              icon={CheckmarkCircle02Icon}
               strokeWidth={2}
               className="size-4"
             />
-          </span>
-          <div className="flex flex-col gap-0.5">
-            <span className="text-sm font-medium">{t.plan.replanTitle}</span>
-            <span className="text-xs text-muted-foreground">
-              {t.plan.replanDescription}
-            </span>
-          </div>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onRefresh}
-          disabled={refreshing}
-          className="shrink-0"
-        >
-          {refreshing ? (
-            <Spinner data-icon="inline-start" />
           ) : (
             <HugeiconsIcon
-              icon={RefreshIcon}
+              icon={BookOpen01Icon}
               strokeWidth={2}
-              data-icon="inline-start"
+              className="size-4"
             />
           )}
-          {t.plan.refresh}
-        </Button>
-      </CardContent>
-    </Card>
+        </span>
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <div className="flex items-center justify-between gap-2">
+            <span className="truncate text-sm font-semibold">
+              {t.plan.moduleLabel.replace("{n}", String(module.week))}
+            </span>
+            <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+              {done}/{total}
+            </span>
+          </div>
+          <div className="h-1.5 overflow-hidden rounded-full bg-border">
+            <div
+              className={cn(
+                "h-full rounded-full transition-all",
+                allDone ? "bg-emerald-500" : "bg-primary"
+              )}
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        </div>
+        <HugeiconsIcon
+          icon={ArrowRight01Icon}
+          strokeWidth={2}
+          className={cn(
+            "size-4 shrink-0 text-muted-foreground transition-transform",
+            open ? "rotate-90" : "rtl:rotate-180"
+          )}
+        />
+      </button>
+
+      {open ? (
+        <ul className="flex flex-col divide-y divide-border border-t border-border">
+          {module.steps.map((step) => {
+            const key = stepKey(planId, step.dayIndex)
+            const state = stateFor(step)
+            const focused = focusedDay === step.dayIndex
+            return (
+              <li key={step.dayIndex} className="flex flex-col">
+                <StepRow
+                  step={step}
+                  state={state}
+                  expanded={focused}
+                  onToggle={() => onFocus(step.dayIndex)}
+                />
+                {focused ? (
+                  <div className="px-3 pb-3">
+                    <StepCard
+                      step={step}
+                      isToday={state === "current"}
+                      completing={completingKey === key}
+                      topicNameById={topicNameById}
+                      onComplete={() => onComplete(planId, step.dayIndex)}
+                      lesson={lessons[key]}
+                      lessonOpen={expandedKey === key}
+                      lessonLoading={lessonLoadingKey === key}
+                      onToggleLesson={() =>
+                        onToggleLesson(planId, step.dayIndex)
+                      }
+                      onRegenerateLesson={() =>
+                        onRegenerate(planId, step.dayIndex)
+                      }
+                    />
+                  </div>
+                ) : null}
+              </li>
+            )
+          })}
+        </ul>
+      ) : null}
+    </div>
   )
 }
 
-function StepCard({
+function StepRow({
+  step,
+  state,
+  expanded,
+  onToggle,
+}: {
+  step: PlanStep
+  state: StepState
+  expanded: boolean
+  onToggle: () => void
+}) {
+  const t = useT()
+  const activityLabel = labelForAction(step.activity, t)
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={expanded}
+      className={cn(
+        "flex w-full items-center gap-3 px-4 py-3 text-start transition-colors hover:bg-accent/40",
+        state === "current" && !expanded && "bg-primary/5"
+      )}
+    >
+      <span
+        className={cn(
+          "flex size-7 shrink-0 items-center justify-center rounded-full",
+          state === "done" &&
+            "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+          state === "current" && "bg-primary text-primary-foreground",
+          state === "upcoming" && "bg-muted text-muted-foreground"
+        )}
+      >
+        {state === "done" ? (
+          <HugeiconsIcon
+            icon={CheckmarkCircle02Icon}
+            strokeWidth={2.5}
+            className="size-4"
+          />
+        ) : (
+          <HugeiconsIcon
+            icon={iconForAction(step.activity)}
+            strokeWidth={2}
+            className="size-4"
+          />
+        )}
+      </span>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <span
+          className={cn(
+            "truncate text-sm font-medium",
+            step.done && "text-muted-foreground line-through"
+          )}
+        >
+          {step.title}
+        </span>
+        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <span>{t.plan.dayLabel.replace("{n}", String(step.dayIndex))}</span>
+          <span aria-hidden>·</span>
+          <span>{activityLabel}</span>
+        </span>
+      </div>
+      {state === "current" ? (
+        <Badge variant="default" className="shrink-0">
+          {t.plan.youAreHere}
+        </Badge>
+      ) : null}
+      <HugeiconsIcon
+        icon={ArrowRight01Icon}
+        strokeWidth={2}
+        className={cn(
+          "size-4 shrink-0 text-muted-foreground transition-transform",
+          expanded ? "rotate-90" : "rtl:rotate-180"
+        )}
+      />
+    </button>
+  )
+}
+
+function JourneyHeader({ plan }: { plan: LearningPlan }) {
+  const t = useT()
+  const progress =
+    plan.daysTotal > 0
+      ? Math.min(100, Math.round((plan.daysCompleted / plan.daysTotal) * 100))
+      : 0
+  const allDone = plan.daysTotal > 0 && plan.daysCompleted >= plan.daysTotal
+  const currentNumber = Math.min(plan.daysCompleted + 1, plan.daysTotal)
+  const toGo = Math.max(plan.daysTotal - plan.daysCompleted, 0)
+
+  return (
+    <div
+      className={cn(
+        "sticky top-2 z-10 flex flex-col gap-3 rounded-2xl border-b-4 p-4 shadow-sm",
+        allDone
+          ? "border-emerald-700 bg-emerald-500 text-white dark:text-emerald-950"
+          : "border-primary/70 bg-primary text-primary-foreground"
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <span className="text-[0.7rem] font-semibold tracking-wide uppercase opacity-80">
+            {allDone
+              ? t.plan.journeyComplete
+              : t.plan.dayOf
+                  .replace("{n}", String(currentNumber))
+                  .replace("{total}", String(plan.daysTotal))}
+          </span>
+          <span className="truncate text-lg font-bold">
+            {plan.goal ?? t.plan.goal}
+          </span>
+        </div>
+        <Button
+          nativeButton={false}
+          variant="secondary"
+          size="sm"
+          className="shrink-0"
+          render={
+            <Link href="/profile">
+              <HugeiconsIcon
+                icon={Flag03Icon}
+                strokeWidth={2}
+                data-icon="inline-start"
+              />
+              {plan.goal ? t.plan.editGoal : t.plan.setGoal}
+            </Link>
+          }
+        />
+      </div>
+      <div className="flex flex-col gap-1">
+        <div className="h-2.5 overflow-hidden rounded-full bg-black/20">
+          <div
+            className="h-full rounded-full bg-white/90 transition-all"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <div className="flex items-center justify-between text-[0.7rem] font-medium opacity-90">
+          <span className="tabular-nums">
+            {allDone ? "100%" : t.plan.stepsToGo.replace("{n}", String(toGo))}
+          </span>
+          {plan.targetDate ? (
+            <span className="tabular-nums">
+              {t.plan.target}: {plan.targetDate}
+            </span>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function StepCard({
   step,
   isToday,
   completing,
@@ -503,7 +659,7 @@ function LessonPanel({
   return (
     <div className="mt-3 rounded-lg border border-border bg-muted/30 p-4">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <span className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
           <HugeiconsIcon
             icon={BookOpen01Icon}
             strokeWidth={2}

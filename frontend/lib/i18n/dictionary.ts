@@ -355,6 +355,21 @@ export type Dictionary = {
     lessonGenerating: string
     startQuiz: string
     hideLesson: string
+    todayEmpty: string
+    thisWeek: string
+    later: string
+    doneSection: string
+    statusActive: string
+    statusCompleted: string
+    statusPaused: string
+    goalsTitle: string
+    noGoalsInStatus: string
+    youAreHere: string
+    journeyComplete: string
+    dayOf: string
+    stepsToGo: string
+    goalMilestone: string
+    moduleLabel: string
     empty: string
   }
   stats: {
@@ -1039,6 +1054,21 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       lessonGenerating: "Building your lesson from your materials…",
       startQuiz: "Start quiz",
       hideLesson: "Hide",
+      todayEmpty: "You're all caught up for today.",
+      thisWeek: "This week",
+      later: "Later",
+      doneSection: "Done",
+      statusActive: "Active",
+      statusCompleted: "Completed",
+      statusPaused: "Paused",
+      goalsTitle: "Your goals",
+      noGoalsInStatus: "Nothing here yet.",
+      youAreHere: "You are here",
+      moduleLabel: "Week {n}",
+      journeyComplete: "Journey complete — every step done!",
+      dayOf: "Day {n} of {total}",
+      stepsToGo: "{n} to go",
+      goalMilestone: "Goal reached",
       empty: "Set a goal and target date on your profile to generate a plan.",
     },
     stats: {
@@ -1760,6 +1790,21 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       lessonGenerating: "Готовим урок по вашим материалам…",
       startQuiz: "Начать тест",
       hideLesson: "Скрыть",
+      todayEmpty: "На сегодня всё выполнено.",
+      thisWeek: "На этой неделе",
+      later: "Позже",
+      doneSection: "Выполнено",
+      statusActive: "Активные",
+      statusCompleted: "Завершённые",
+      statusPaused: "На паузе",
+      goalsTitle: "Ваши цели",
+      noGoalsInStatus: "Здесь пока пусто.",
+      youAreHere: "Вы здесь",
+      moduleLabel: "Неделя {n}",
+      journeyComplete: "Путь пройден — все шаги выполнены!",
+      dayOf: "День {n} из {total}",
+      stepsToGo: "осталось {n}",
+      goalMilestone: "Цель достигнута",
       empty: "Задайте цель и дату в профиле, чтобы создать план.",
     },
     stats: {
@@ -2490,6 +2535,21 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       lessonGenerating: "Materiallaringiz asosida dars tayyorlanmoqda…",
       startQuiz: "Testni boshlash",
       hideLesson: "Yashirish",
+      todayEmpty: "Bugun uchun hammasi bajarildi.",
+      thisWeek: "Bu hafta",
+      later: "Keyinroq",
+      doneSection: "Bajarildi",
+      statusActive: "Faol",
+      statusCompleted: "Yakunlangan",
+      statusPaused: "Pauzada",
+      goalsTitle: "Maqsadlaringiz",
+      noGoalsInStatus: "Bu yerda hozircha bo‘sh.",
+      youAreHere: "Siz shu yerdasiz",
+      moduleLabel: "{n}-hafta",
+      journeyComplete: "Yo‘l yakunlandi — barcha qadamlar bajarildi!",
+      dayOf: "{total} dan {n}-kun",
+      stepsToGo: "{n} ta qoldi",
+      goalMilestone: "Maqsadga erishildi",
       empty: "Reja olish uchun profilingizda maqsad va sana kiriting.",
     },
     stats: {
