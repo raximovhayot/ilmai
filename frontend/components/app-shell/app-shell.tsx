@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { usePathname } from "next/navigation"
 
 import { AppSidebar } from "@/components/app-shell/sidebar"
 import { BottomTabBar } from "@/components/app-shell/bottom-tab-bar"
@@ -27,9 +28,17 @@ export function AppShell({
   children,
 }: AppShellProps) {
   const [collapsed, setCollapsed] = React.useState(false)
+  const pathname = usePathname()
+  const isFullBleed = pathname?.startsWith("/companion") ?? false
 
   return (
-    <div className="flex min-h-dvh bg-background text-foreground">
+    <div
+      className={cn(
+        "flex bg-background text-foreground",
+        isFullBleed ? "overflow-hidden" : "min-h-dvh"
+      )}
+      style={isFullBleed ? { height: "100dvh" } : undefined}
+    >
       <AppSidebar
         topics={topics}
         sessions={sessions}
@@ -45,11 +54,17 @@ export function AppShell({
         )}
       >
         <MobileTopBar user={user} />
-        <main className="flex-1 overflow-y-auto pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:pb-0">
-          <div className="mx-auto w-full max-w-6xl px-4 py-6 md:px-6 md:py-8">
+        {isFullBleed ? (
+          <main className="flex min-h-0 flex-1 flex-col overflow-hidden pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:pb-0">
             {children}
-          </div>
-        </main>
+          </main>
+        ) : (
+          <main className="flex-1 overflow-y-auto pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:pb-0">
+            <div className="mx-auto w-full max-w-6xl px-4 py-6 md:px-6 md:py-8">
+              {children}
+            </div>
+          </main>
+        )}
         <BottomTabBar />
       </div>
     </div>

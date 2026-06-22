@@ -487,7 +487,7 @@ export function CompanionClient({
   )
 
   return (
-    <div className="flex h-[calc(100dvh-7.5rem)] flex-col bg-background lg:h-[calc(100dvh-4rem)]">
+    <div className="flex min-h-0 flex-1 flex-col bg-background">
       {isEmpty ? (
         <div className="flex flex-1 flex-col items-center justify-center px-4">
           <div className="w-full max-w-2xl">
