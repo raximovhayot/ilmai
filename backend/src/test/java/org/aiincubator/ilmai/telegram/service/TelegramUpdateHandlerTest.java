@@ -342,6 +342,20 @@ class TelegramUpdateHandlerTest {
         verify(agentApi, never()).chat(any(), any(), anyString(), any());
     }
 
+    @Test
+    void startOnAlreadyLinkedChatRepliesAlreadyLinkedAndDoesNotRelink() {
+        long chatId = 3001L;
+        UUID userId = UUID.randomUUID();
+        when(telegramService.findLinkedUser(chatId)).thenReturn(Optional.of(userId));
+        when(profilesApi.find(userId)).thenReturn(Optional.of(profile(userId)));
+
+        handler.handleUpdate(update(chatId, "/start SOMECODE"));
+
+        verify(messageService).get(eq("telegram.bot.start.alreadyLinked"), any(), any());
+        verify(telegramApiClient).sendMessage(eq(chatId), anyString());
+        verify(telegramService, never()).linkChat(anyLong(), any(), any(), anyString());
+    }
+
     private ProfileDto profile(UUID userId) {
         return new ProfileDto(userId, SupportedLocale.EN, "Asia/Tashkent", null, null, null, null, 0, 0, 0, null);
     }

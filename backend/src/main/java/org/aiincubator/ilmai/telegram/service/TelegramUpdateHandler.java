@@ -306,6 +306,12 @@ public class TelegramUpdateHandler {
     }
 
     private void handleStart(long chatId, Long from, String username, String text) {
+        Optional<UUID> existing = telegramService.findLinkedUser(chatId);
+        if (existing.isPresent()) {
+            SupportedLocale existingLocale = localeOf(profilesApi.find(existing.get()).orElse(null));
+            send(chatId, copy("telegram.bot.start.alreadyLinked", existingLocale));
+            return;
+        }
         String[] segments = text.split("\\s+", 2);
         if (segments.length < 2 || segments[1].isBlank()) {
             send(chatId, copy("telegram.bot.start.needCode", SupportedLocale.DEFAULT));
