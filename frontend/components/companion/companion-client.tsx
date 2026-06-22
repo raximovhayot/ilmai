@@ -17,6 +17,7 @@ import {
 import { useChat } from "@ai-sdk/react"
 
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import { QuizRunner } from "@/components/companion/quiz-runner"
 import {
   Conversation,
@@ -165,6 +166,7 @@ export function CompanionClient({
   const isBusy = status === "streaming" || status === "submitted"
 
   const pendingPromptRef = React.useRef<string | null>(null)
+  const [loadingHistory, setLoadingHistory] = React.useState(false)
 
   React.useEffect(() => {
     if (!authenticated || !activeId) return
@@ -177,6 +179,7 @@ export function CompanionClient({
     }
 
     let cancelled = false
+    setLoadingHistory(true)
     void run(() => getSessionMessages(activeId))
       .then((history) => {
         if (cancelled || !history || history.length === 0) return
@@ -185,6 +188,9 @@ export function CompanionClient({
         setMessages(restored)
       })
       .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setLoadingHistory(false)
+      })
     return () => {
       cancelled = true
     }
@@ -486,9 +492,38 @@ export function CompanionClient({
     </PromptInput>
   )
 
+  const showHistorySkeleton = loadingHistory && isEmpty
+
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-background">
-      {isEmpty ? (
+      {showHistorySkeleton ? (
+        <>
+          <header className="flex h-12 shrink-0 items-center justify-between gap-3 px-4">
+            <Skeleton className="h-5 w-40 rounded-lg" />
+          </header>
+          <Conversation>
+            <ConversationContent>
+              <ul className="flex flex-col gap-8">
+                <li className="flex justify-end">
+                  <Skeleton className="h-10 w-2/3 rounded-2xl" />
+                </li>
+                <li className="flex flex-col gap-2">
+                  <Skeleton className="h-4 w-11/12 rounded-lg" />
+                  <Skeleton className="h-4 w-4/5 rounded-lg" />
+                  <Skeleton className="h-4 w-2/3 rounded-lg" />
+                </li>
+                <li className="flex justify-end">
+                  <Skeleton className="h-10 w-1/2 rounded-2xl" />
+                </li>
+                <li className="flex flex-col gap-2">
+                  <Skeleton className="h-4 w-10/12 rounded-lg" />
+                  <Skeleton className="h-4 w-3/5 rounded-lg" />
+                </li>
+              </ul>
+            </ConversationContent>
+          </Conversation>
+        </>
+      ) : isEmpty ? (
         <div className="flex flex-1 flex-col items-center justify-center px-4">
           <div className="w-full max-w-2xl">
             <div className="mb-8 flex flex-col items-center gap-3 text-center">
