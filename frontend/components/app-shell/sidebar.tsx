@@ -7,9 +7,9 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import {
   ArrowLeft01Icon,
   ArrowRight01Icon,
-  BookOpen01Icon,
   Chatting01Icon,
   Crown02Icon,
+  DatabaseIcon,
   Home03Icon,
   MoreHorizontalIcon,
   PlusSignIcon,
@@ -56,15 +56,9 @@ export function AppSidebar({
   const items: NavItem[] = [
     { href: "/home", label: t.nav.home, icon: Home03Icon },
     {
-      href: "/companion",
-      label: t.nav.companion,
-      icon: Chatting01Icon,
-      matchPrefix: "/companion",
-    },
-    {
       href: "/data",
       label: t.nav.topics,
-      icon: BookOpen01Icon,
+      icon: DatabaseIcon,
       matchPrefix: "/data",
     },
     { href: "/gaps", label: t.nav.gaps, icon: PuzzleIcon },

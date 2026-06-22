@@ -5,14 +5,16 @@ import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { FinishStep } from "@/components/onboarding/finish-step"
 import { GoalStep, type GoalDraft } from "@/components/onboarding/goal-step"
+import { PlanStep } from "@/components/onboarding/plan-step"
+import { PremiumStep } from "@/components/onboarding/premium-step"
+import { TelegramStep } from "@/components/onboarding/telegram-step"
 import { UploadStep } from "@/components/onboarding/upload-step"
 import { WelcomeStep } from "@/components/onboarding/welcome-step"
 import { useT } from "@/lib/i18n/provider"
 import { saveOnboarding } from "@/lib/onboarding"
 
-const STEP_COUNT = 4
+const STEP_COUNT = 6
 
 export function OnboardingWizard() {
   const t = useT()
@@ -102,16 +104,17 @@ export function OnboardingWizard() {
           <UploadStep onBack={() => setStep(1)} onReady={() => setStep(3)} />
         )}
         {step === 3 && (
-          <FinishStep
+          <PlanStep onBack={() => setStep(2)} onNext={() => setStep(4)} />
+        )}
+        {step === 4 && (
+          <TelegramStep onBack={() => setStep(3)} onNext={() => setStep(5)} />
+        )}
+        {step === 5 && (
+          <PremiumStep
             saving={saving}
-            onStartChat={(prompt) =>
-              void finish(
-                prompt && prompt.trim().length > 0
-                  ? `/companion?seed=${encodeURIComponent(prompt.trim())}`
-                  : "/companion"
-              )
-            }
-            onExplore={() => void finish("/home")}
+            onBack={() => setStep(4)}
+            onGoPremium={() => void finish("/premium")}
+            onMaybeLater={() => void finish("/home")}
           />
         )}
       </div>

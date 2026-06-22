@@ -1105,6 +1105,13 @@ export const handlers = [
     return envelope(enrichPlan(db.plan))
   }),
 
+  http.post(`${BASE}/plan/generate`, async ({ request }) => {
+    const guard = requireAuth(request)
+    if (guard instanceof HttpResponse) return guard
+    await delay(900)
+    return envelope(enrichPlan(db.plan))
+  }),
+
   http.get(`${BASE}/goals`, async ({ request }) => {
     const guard = requireAuth(request)
     if (guard instanceof HttpResponse) return guard

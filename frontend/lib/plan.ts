@@ -55,6 +55,13 @@ export type LearningPlan = {
   steps: PlanStep[]
 }
 
+export async function generatePlan(): Promise<LearningPlan | null> {
+  const result = await apiFetch<LearningPlan | null>("/plan/generate", {
+    method: "POST",
+  })
+  return result && result.id ? result : null
+}
+
 export async function getPlan(): Promise<LearningPlan | null> {
   const result = await apiFetch<LearningPlan | null>("/plan", {
     cache: "no-store",

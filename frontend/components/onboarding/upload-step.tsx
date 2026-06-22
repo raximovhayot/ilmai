@@ -1,12 +1,14 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   AlertCircleIcon,
   CheckmarkCircle02Icon,
   CloudUploadIcon,
+  Crown02Icon,
   Delete02Icon,
 } from "@hugeicons/core-free-icons"
 
@@ -57,6 +59,7 @@ export function UploadStep({ onReady, onBack }: Props) {
   const [dragOver, setDragOver] = React.useState(false)
   const [pasteTitle, setPasteTitle] = React.useState("")
   const [pasteContent, setPasteContent] = React.useState("")
+  const [quotaReached, setQuotaReached] = React.useState(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
   const cancelledRef = React.useRef(false)
   const keyRef = React.useRef(0)
@@ -78,6 +81,10 @@ export function UploadStep({ onReady, onBack }: Props) {
 
   function describeError(error: unknown): string {
     if (error instanceof ApiClientError) {
+      if (error.status === 402) {
+        setQuotaReached(true)
+        return c.limitTitle
+      }
       return error.errors[0]?.message ?? t.materials.errors.generic
     }
     return t.materials.errors.generic
@@ -282,6 +289,24 @@ export function UploadStep({ onReady, onBack }: Props) {
           >
             {c.pasteSubmit}
           </Button>
+        </div>
+      )}
+
+      {quotaReached && (
+        <div className="flex flex-col items-center gap-2 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-4 text-center">
+          <HugeiconsIcon
+            icon={Crown02Icon}
+            strokeWidth={2}
+            className="size-6 text-amber-600 dark:text-amber-400"
+          />
+          <p className="text-sm font-medium">{c.limitTitle}</p>
+          <p className="text-xs text-muted-foreground">{c.limitDescription}</p>
+          <Button
+            type="button"
+            size="sm"
+            nativeButton={false}
+            render={<Link href="/premium">{c.upgrade}</Link>}
+          />
         </div>
       )}
 

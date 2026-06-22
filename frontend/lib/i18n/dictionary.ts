@@ -619,6 +619,43 @@ export type Dictionary = {
       showAll: string
       showLess: string
       delete: string
+      limitTitle: string
+      limitDescription: string
+      upgrade: string
+    }
+    plan: {
+      title: string
+      subtitle: string
+      generating: string
+      generatingHint: string
+      emptyTitle: string
+      emptyHint: string
+      daysLabel: string
+      stepsLabel: string
+      retry: string
+      failed: string
+      continue: string
+    }
+    telegram: {
+      title: string
+      subtitle: string
+      benefit1: string
+      benefit2: string
+      connect: string
+      connecting: string
+      openTelegram: string
+      connected: string
+      skip: string
+      continue: string
+    }
+    premium: {
+      title: string
+      subtitle: string
+      benefit1: string
+      benefit2: string
+      benefit3: string
+      goPremium: string
+      maybeLater: string
     }
     finish: {
       title: string
@@ -1287,6 +1324,45 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
         showAll: "Show all ({count})",
         showLess: "Show less",
         delete: "Delete",
+        limitTitle: "You've reached the free upload limit",
+        limitDescription:
+          "Upgrade to Premium to add more materials to your library.",
+        upgrade: "Upgrade to Premium",
+      },
+      plan: {
+        title: "Your personalized plan",
+        subtitle: "Built from your goal and the materials you uploaded.",
+        generating: "Building your plan…",
+        generatingHint: "Grounding it in your materials — this takes a moment.",
+        emptyTitle: "No plan yet",
+        emptyHint:
+          "We couldn't build a plan yet. Make sure a material finished processing.",
+        daysLabel: "{days} days",
+        stepsLabel: "{count} steps",
+        retry: "Try again",
+        failed: "We couldn't build your plan.",
+        continue: "Continue",
+      },
+      telegram: {
+        title: "Get reminders on Telegram",
+        subtitle: "I'll nudge you to study and send quick quizzes.",
+        benefit1: "Daily study reminders at your time",
+        benefit2: "Quiz yourself on the go",
+        connect: "Connect Telegram",
+        connecting: "Generating your link…",
+        openTelegram: "Open Telegram",
+        connected: "Telegram connected",
+        skip: "Not now",
+        continue: "Continue",
+      },
+      premium: {
+        title: "Unlock Ilm AI Premium",
+        subtitle: "More uploads, unlimited tutoring, and deeper plans.",
+        benefit1: "Unlimited materials & topics",
+        benefit2: "Unlimited chat & quizzes",
+        benefit3: "Priority plan generation",
+        goPremium: "Go Premium",
+        maybeLater: "Maybe later",
       },
       finish: {
         title: "You're all set",
@@ -1962,6 +2038,45 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
         showAll: "Показать все ({count})",
         showLess: "Свернуть",
         delete: "Удалить",
+        limitTitle: "Достигнут лимит загрузок на бесплатном тарифе",
+        limitDescription:
+          "Перейдите на Premium, чтобы добавлять больше материалов.",
+        upgrade: "Перейти на Premium",
+      },
+      plan: {
+        title: "Ваш персональный план",
+        subtitle: "Составлен по вашей цели и загруженным материалам.",
+        generating: "Составляем ваш план…",
+        generatingHint: "Опираемся на ваши материалы — это займёт момент.",
+        emptyTitle: "Плана пока нет",
+        emptyHint:
+          "Пока не удалось составить план. Убедитесь, что материал обработан.",
+        daysLabel: "{days} дн.",
+        stepsLabel: "{count} шагов",
+        retry: "Повторить",
+        failed: "Не удалось составить план.",
+        continue: "Продолжить",
+      },
+      telegram: {
+        title: "Напоминания в Telegram",
+        subtitle: "Буду напоминать об учёбе и присылать короткие тесты.",
+        benefit1: "Ежедневные напоминания в удобное время",
+        benefit2: "Тесты на ходу",
+        connect: "Подключить Telegram",
+        connecting: "Создаём ссылку…",
+        openTelegram: "Открыть Telegram",
+        connected: "Telegram подключён",
+        skip: "Не сейчас",
+        continue: "Продолжить",
+      },
+      premium: {
+        title: "Откройте Ilm AI Premium",
+        subtitle: "Больше загрузок, безлимитное обучение и глубже планы.",
+        benefit1: "Безлимитные материалы и темы",
+        benefit2: "Безлимитные чат и тесты",
+        benefit3: "Приоритетная генерация плана",
+        goPremium: "Перейти на Premium",
+        maybeLater: "Позже",
       },
       finish: {
         title: "Всё готово",
@@ -2647,6 +2762,44 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
         showAll: "Hammasini ko‘rsatish ({count})",
         showLess: "Yig‘ish",
         delete: "O‘chirish",
+        limitTitle: "Bepul yuklash chegarasiga yetdingiz",
+        limitDescription: "Ko‘proq material qo‘shish uchun Premium’ga o‘ting.",
+        upgrade: "Premium’ga o‘tish",
+      },
+      plan: {
+        title: "Shaxsiy rejangiz",
+        subtitle: "Maqsadingiz va yuklagan materiallaringiz asosida tuzildi.",
+        generating: "Rejangiz tuzilmoqda…",
+        generatingHint: "Materiallaringizga asoslanyapmiz — bir lahza kuting.",
+        emptyTitle: "Hozircha reja yo‘q",
+        emptyHint:
+          "Hozircha reja tuzilmadi. Material ishlanib bo‘lganiga ishonch hosil qiling.",
+        daysLabel: "{days} kun",
+        stepsLabel: "{count} qadam",
+        retry: "Qayta urinish",
+        failed: "Rejangizni tuza olmadik.",
+        continue: "Davom etish",
+      },
+      telegram: {
+        title: "Telegram’da eslatmalar oling",
+        subtitle: "O‘qishni eslataman va qisqa testlar yuboraman.",
+        benefit1: "O‘zingiz tanlagan vaqtda kunlik eslatmalar",
+        benefit2: "Yo‘l-yo‘lakay test topshiring",
+        connect: "Telegram’ni ulash",
+        connecting: "Havola tayyorlanmoqda…",
+        openTelegram: "Telegram’ni ochish",
+        connected: "Telegram ulandi",
+        skip: "Hozir emas",
+        continue: "Davom etish",
+      },
+      premium: {
+        title: "Ilm AI Premium’ni oching",
+        subtitle: "Ko‘proq yuklash, cheksiz ustozlik va chuqurroq rejalar.",
+        benefit1: "Cheksiz material va mavzular",
+        benefit2: "Cheksiz suhbat va testlar",
+        benefit3: "Ustuvor reja tuzish",
+        goPremium: "Premium’ga o‘tish",
+        maybeLater: "Keyinroq",
       },
       finish: {
         title: "Hammasi tayyor",
