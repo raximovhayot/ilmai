@@ -137,7 +137,7 @@ export function PlanView({ initialPlan, topics }: Props) {
   if (!plan) return null
 
   return (
-    <div className="flex flex-col gap-4">
+    <div id={`plan-${plan.id}`} className="flex scroll-mt-24 flex-col gap-4">
       {plan.replanNeeded ? (
         <ReplanBanner onRefresh={onRefresh} refreshing={refreshing} />
       ) : null}

@@ -14,6 +14,7 @@ import {
   RefreshIcon,
   Settings01Icon,
   Sun03Icon,
+  UserCircleIcon,
 } from "@hugeicons/core-free-icons"
 
 import {
@@ -165,6 +166,18 @@ export function UserMenu({
                 className="size-4 text-amber-500"
               />
               {t.nav.upgrade}
+            </Link>
+          }
+        />
+        <DropdownMenuItem
+          render={
+            <Link href="/profile" onClick={onNavigate} className="gap-2">
+              <HugeiconsIcon
+                icon={UserCircleIcon}
+                strokeWidth={2}
+                className="size-4"
+              />
+              {t.nav.profile}
             </Link>
           }
         />

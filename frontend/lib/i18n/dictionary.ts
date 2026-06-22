@@ -385,6 +385,8 @@ export type Dictionary = {
     saveGoal: string
     goalSaved: string
     memberSince: string
+    allGoalsTitle: string
+    noGoals: string
   }
   telegram: {
     title: string
@@ -472,6 +474,9 @@ export type Dictionary = {
     payRefunded: string
     quotaQuizzes: string
     quotaUploads: string
+    tierCurrent: string
+    tierFreePrice: string
+    comparePlans: string
   }
   topicCard: {
     materials: string
@@ -596,6 +601,8 @@ export type Dictionary = {
       minutesSuffix: string
       customOption: string
       customPlaceholder: string
+      targetPastError: string
+      goalRequired: string
     }
     upload: {
       title: string
@@ -645,6 +652,8 @@ export type Dictionary = {
       connecting: string
       openTelegram: string
       connected: string
+      connectedHint: string
+      checking: string
       skip: string
       continue: string
     }
@@ -1060,6 +1069,8 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       saveGoal: "Save goal",
       goalSaved: "Goal saved",
       memberSince: "Learning since",
+      allGoalsTitle: "All goals",
+      noGoals: "No goals yet.",
     },
     telegram: {
       title: "Telegram reminders",
@@ -1168,6 +1179,9 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       payRefunded: "Refunded",
       quotaQuizzes: "You're on the Free plan — upgrade for unlimited quizzes.",
       quotaUploads: "You're on the Free plan — upgrade for unlimited uploads.",
+      tierCurrent: "Current plan",
+      tierFreePrice: "Free forever",
+      comparePlans: "Compare plans",
     },
     topicCard: {
       materials: "materials",
@@ -1301,6 +1315,8 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
         minutesSuffix: "min",
         customOption: "Custom",
         customPlaceholder: "Minutes",
+        targetPastError: "Target date must be today or later.",
+        goalRequired: "Add a goal to continue.",
       },
       upload: {
         title: "Upload your first material",
@@ -1352,6 +1368,8 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
         connecting: "Generating your link…",
         openTelegram: "Open Telegram",
         connected: "Telegram connected",
+        connectedHint: "You'll get reminders and quizzes right in Telegram.",
+        checking: "Checking connection…",
         skip: "Not now",
         continue: "Continue",
       },
@@ -1772,6 +1790,8 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       saveGoal: "Сохранить",
       goalSaved: "Цель сохранена",
       memberSince: "Учится с",
+      allGoalsTitle: "Все цели",
+      noGoals: "Пока нет целей.",
     },
     telegram: {
       title: "Напоминания в Telegram",
@@ -1882,6 +1902,9 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
         "Вы на бесплатном плане — оформите Premium для безлимитных квизов.",
       quotaUploads:
         "Вы на бесплатном плане — оформите Premium для безлимитных загрузок.",
+      tierCurrent: "Текущий план",
+      tierFreePrice: "Бесплатно навсегда",
+      comparePlans: "Сравните планы",
     },
     topicCard: {
       materials: "материалов",
@@ -2015,6 +2038,8 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
         minutesSuffix: "мин",
         customOption: "Своё",
         customPlaceholder: "Минуты",
+        targetPastError: "Дата цели должна быть сегодня или позже.",
+        goalRequired: "Укажите цель, чтобы продолжить.",
       },
       upload: {
         title: "Загрузите первый материал",
@@ -2066,6 +2091,8 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
         connecting: "Создаём ссылку…",
         openTelegram: "Открыть Telegram",
         connected: "Telegram подключён",
+        connectedHint: "Напоминания и тесты будут приходить прямо в Telegram.",
+        checking: "Проверяем подключение…",
         skip: "Не сейчас",
         continue: "Продолжить",
       },
@@ -2494,6 +2521,8 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       saveGoal: "Saqlash",
       goalSaved: "Maqsad saqlandi",
       memberSince: "O‘rganadi:",
+      allGoalsTitle: "Barcha maqsadlar",
+      noGoals: "Hozircha maqsadlar yo‘q.",
     },
     telegram: {
       title: "Telegram eslatmalari",
@@ -2604,6 +2633,9 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
         "Siz bepul rejadasiz — cheksiz quizlar uchun Premium oling.",
       quotaUploads:
         "Siz bepul rejadasiz — cheksiz yuklashlar uchun Premium oling.",
+      tierCurrent: "Joriy reja",
+      tierFreePrice: "Doimo bepul",
+      comparePlans: "Rejalarni solishtiring",
     },
     topicCard: {
       materials: "material",
@@ -2739,6 +2771,8 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
         minutesSuffix: "daq",
         customOption: "Boshqa",
         customPlaceholder: "Daqiqa",
+        targetPastError: "Maqsad sanasi bugun yoki keyinroq bo‘lishi kerak.",
+        goalRequired: "Davom etish uchun maqsad kiriting.",
       },
       upload: {
         title: "Birinchi materialni yuklang",
@@ -2789,6 +2823,9 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
         connecting: "Havola tayyorlanmoqda…",
         openTelegram: "Telegram’ni ochish",
         connected: "Telegram ulandi",
+        connectedHint:
+          "Eslatma va testlar to‘g‘ridan-to‘g‘ri Telegram’ga keladi.",
+        checking: "Ulanish tekshirilmoqda…",
         skip: "Hozir emas",
         continue: "Davom etish",
       },

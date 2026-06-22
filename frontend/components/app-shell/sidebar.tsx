@@ -16,7 +16,6 @@ import {
   PuzzleIcon,
   RoadIcon,
   SparklesIcon,
-  UserCircleIcon,
 } from "@hugeicons/core-free-icons"
 
 import { Button } from "@/components/ui/button"
@@ -63,7 +62,6 @@ export function AppSidebar({
     },
     { href: "/gaps", label: t.nav.gaps, icon: PuzzleIcon },
     { href: "/plan", label: t.nav.plan, icon: RoadIcon },
-    { href: "/profile", label: t.nav.profile, icon: UserCircleIcon },
   ]
 
   return (

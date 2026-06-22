@@ -4,11 +4,7 @@ import * as React from "react"
 import { toast } from "sonner"
 import { useSession } from "next-auth/react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import {
-  CheckmarkCircle02Icon,
-  Crown02Icon,
-  SparklesIcon,
-} from "@hugeicons/core-free-icons"
+import { CheckmarkCircle02Icon, Crown02Icon } from "@hugeicons/core-free-icons"
 
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
@@ -426,16 +422,66 @@ function ChoosePlanCard({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <HugeiconsIcon
-            icon={SparklesIcon}
-            strokeWidth={2}
-            className="size-5"
-          />
+          <span className="text-xl motion-safe:animate-bounce" aria-hidden>
+            ✨
+          </span>
           {t.premium.choosePlanTitle}
         </CardTitle>
         <CardDescription>{t.premium.choosePlanSubtitle}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-5">
+        <div className="flex flex-col gap-2">
+          <span className="text-sm font-medium">{t.premium.comparePlans}</span>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="flex flex-col gap-3 rounded-2xl border border-border bg-muted/30 p-4">
+              <div className="flex items-center justify-between gap-2">
+                <span className="flex items-center gap-2 font-heading text-lg font-medium">
+                  <span className="text-xl" aria-hidden>
+                    📘
+                  </span>
+                  {t.premium.tierFree}
+                </span>
+                <Badge variant="outline">{t.premium.tierCurrent}</Badge>
+              </div>
+              <span className="text-sm text-muted-foreground">
+                {t.premium.tierFreePrice}
+              </span>
+              <ul className="flex flex-col gap-2">
+                {t.premium.freeFeatures.map((label, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm">
+                    <HugeiconsIcon
+                      icon={CheckmarkCircle02Icon}
+                      strokeWidth={2}
+                      className="mt-0.5 size-4 text-muted-foreground"
+                    />
+                    <span>{label}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="flex flex-col gap-3 rounded-2xl border border-amber-400/50 bg-amber-400/5 p-4">
+              <span className="flex items-center gap-2 font-heading text-lg font-medium">
+                <span className="text-xl motion-safe:animate-pulse" aria-hidden>
+                  👑
+                </span>
+                {t.premium.tierPremium}
+              </span>
+              <ul className="flex flex-col gap-2">
+                {t.premium.premiumFeatures.map((label, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm">
+                    <HugeiconsIcon
+                      icon={CheckmarkCircle02Icon}
+                      strokeWidth={2}
+                      className="mt-0.5 size-4 text-emerald-600 dark:text-emerald-400"
+                    />
+                    <span>{label}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+
         <div className="flex flex-col gap-2">
           <span className="text-sm font-medium">{t.premium.providerLabel}</span>
           <RadioGroup
@@ -499,22 +545,6 @@ function ChoosePlanCard({
             </div>
           ))}
         </div>
-
-        <ul className="grid grid-cols-1 gap-2 md:grid-cols-2">
-          {t.premium.premiumFeatures.map((label, i) => (
-            <li
-              key={i}
-              className="flex items-start gap-2 rounded-lg border border-border bg-card p-3 text-sm"
-            >
-              <HugeiconsIcon
-                icon={CheckmarkCircle02Icon}
-                strokeWidth={2}
-                className="mt-0.5 size-4 text-emerald-600 dark:text-emerald-400"
-              />
-              <span>{label}</span>
-            </li>
-          ))}
-        </ul>
       </CardContent>
     </Card>
   )

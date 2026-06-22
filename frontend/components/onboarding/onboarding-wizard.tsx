@@ -15,6 +15,7 @@ import { useT } from "@/lib/i18n/provider"
 import { saveOnboarding } from "@/lib/onboarding"
 
 const STEP_COUNT = 6
+const SKIPPABLE_STEPS = new Set([0, 1])
 
 export function OnboardingWizard() {
   const t = useT()
@@ -35,23 +36,13 @@ export function OnboardingWizard() {
     }
   }
 
-  async function persistGoal() {
-    try {
-      await saveOnboarding(goalPayload())
-    } catch {
-      // non-blocking — collected again at finish
-    }
+  async function submitGoal() {
+    await saveOnboarding(goalPayload())
+    setStep(2)
   }
 
-  async function handleSkip() {
-    if (saving) return
-    setSaving(true)
-    try {
-      await saveOnboarding({ onboardingPassed: false })
-    } catch {
-      // ignore — still leave onboarding
-    }
-    router.replace("/home")
+  function skipStep() {
+    setStep((current) => Math.min(current + 1, STEP_COUNT - 1))
   }
 
   async function finish(destination: string) {
@@ -76,15 +67,6 @@ export function OnboardingWizard() {
             .replace("{current}", String(step + 1))
             .replace("{total}", String(STEP_COUNT))}
         </span>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={handleSkip}
-          disabled={saving}
-        >
-          {t.onboarding.skip}
-        </Button>
       </div>
 
       <div className="flex flex-1 flex-col justify-center">
@@ -94,14 +76,15 @@ export function OnboardingWizard() {
             value={goal}
             onChange={setGoal}
             onBack={() => setStep(0)}
-            onNext={() => {
-              void persistGoal()
-              setStep(2)
-            }}
+            onNext={submitGoal}
           />
         )}
         {step === 2 && (
-          <UploadStep onBack={() => setStep(1)} onReady={() => setStep(3)} />
+          <UploadStep
+            onBack={() => setStep(1)}
+            onReady={() => setStep(3)}
+            onUpgrade={() => void finish("/premium")}
+          />
         )}
         {step === 3 && (
           <PlanStep onBack={() => setStep(2)} onNext={() => setStep(4)} />
@@ -118,6 +101,21 @@ export function OnboardingWizard() {
           />
         )}
       </div>
+
+      {SKIPPABLE_STEPS.has(step) && (
+        <div className="mt-6 flex justify-center">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground"
+            onClick={skipStep}
+            disabled={saving}
+          >
+            {t.onboarding.skip}
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

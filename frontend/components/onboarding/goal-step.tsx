@@ -5,6 +5,8 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Spinner } from "@/components/ui/spinner"
+import { ApiClientError } from "@/lib/api"
 import { useT } from "@/lib/i18n/provider"
 
 export type GoalDraft = {
@@ -18,7 +20,7 @@ const DAILY_PRESETS = [15, 30, 45, 60] as const
 type Props = {
   value: GoalDraft
   onChange: (next: GoalDraft) => void
-  onNext: () => void
+  onNext: () => Promise<void>
   onBack: () => void
 }
 
@@ -26,6 +28,39 @@ export function GoalStep({ value, onChange, onNext, onBack }: Props) {
   const t = useT()
   const c = t.onboarding.goal
   const today = new Date().toISOString().slice(0, 10)
+  const [error, setError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+
+  async function handleNext() {
+    if (submitting) return
+    setError(null)
+    if (value.goal.trim().length === 0) {
+      setError(c.goalRequired)
+      return
+    }
+    if (value.targetDate.length > 0 && value.targetDate < today) {
+      setError(c.targetPastError)
+      return
+    }
+    setSubmitting(true)
+    try {
+      await onNext()
+    } catch (err) {
+      if (
+        err instanceof ApiClientError &&
+        err.errors[0]?.code === "PROFILE_INVALID_TARGET_DATE"
+      ) {
+        setError(c.targetPastError)
+      } else {
+        setError(
+          err instanceof ApiClientError
+            ? (err.errors[0]?.message ?? t.errors.generic)
+            : t.errors.generic
+        )
+      }
+      setSubmitting(false)
+    }
+  }
   const isPreset =
     value.dailyStudyMinutes != null &&
     DAILY_PRESETS.includes(
@@ -59,9 +94,10 @@ export function GoalStep({ value, onChange, onNext, onBack }: Props) {
           type="date"
           min={today}
           value={value.targetDate}
-          onChange={(event) =>
+          onChange={(event) => {
+            setError(null)
             onChange({ ...value, targetDate: event.target.value })
-          }
+          }}
         />
         <p className="text-xs text-muted-foreground">{c.targetHint}</p>
       </div>
@@ -133,12 +169,24 @@ export function GoalStep({ value, onChange, onNext, onBack }: Props) {
         <p className="text-xs text-muted-foreground">{c.dailyHint}</p>
       </div>
 
+      {error && (
+        <p className="text-center text-sm text-destructive" role="alert">
+          {error}
+        </p>
+      )}
+
       <div className="flex items-center justify-between gap-3 pt-2">
-        <Button type="button" variant="ghost" onClick={onBack}>
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={onBack}
+          disabled={submitting}
+        >
           {t.onboarding.back}
         </Button>
-        <Button type="button" onClick={onNext}>
-          {t.onboarding.next}
+        <Button type="button" onClick={handleNext} disabled={submitting}>
+          {submitting && <Spinner className="size-4" />}
+          {submitting ? t.onboarding.saving : t.onboarding.next}
         </Button>
       </div>
     </div>

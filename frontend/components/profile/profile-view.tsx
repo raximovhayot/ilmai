@@ -1,71 +1,46 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import { useSession } from "next-auth/react"
-import { toast } from "sonner"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   BookOpen01Icon,
   Clock01Icon,
   Flag03Icon,
   PuzzleIcon,
-  Target02Icon,
 } from "@hugeicons/core-free-icons"
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Field, FieldLabel } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
+import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { Spinner } from "@/components/ui/spinner"
-import { UserAvatar, type UserSummary } from "@/components/app-shell/user-menu"
-import { apiFetch } from "@/lib/api"
 import { useT } from "@/lib/i18n/provider"
-import { saveOnboarding } from "@/lib/onboarding"
-import { getPlan, type LearningPlan } from "@/lib/plan"
+import { getPlans, type LearningPlan } from "@/lib/plan"
+import { getProfile } from "@/lib/profile"
 import { getStats, type Stats } from "@/lib/stats"
 import { cn } from "@/lib/utils"
 
-type Props = {
-  user: UserSummary
-}
-
-type AuthMe = {
-  id: string
-  username: string
-  status: string
-  createdAt: string
-}
-
-export function ProfileView({ user }: Props) {
+export function ProfileView() {
   const t = useT()
   const { status } = useSession()
 
   const [stats, setStats] = React.useState<Stats | null>(null)
-  const [plan, setPlan] = React.useState<LearningPlan | null>(null)
-  const [memberSinceIso, setMemberSinceIso] = React.useState<string | null>(
-    null
-  )
-  const [goal, setGoal] = React.useState("")
-  const [target, setTarget] = React.useState("")
-  const [saving, setSaving] = React.useState(false)
+  const [plans, setPlans] = React.useState<LearningPlan[]>([])
+  const [dailyMinutes, setDailyMinutes] = React.useState<number | null>(null)
 
   React.useEffect(() => {
     if (status !== "authenticated") return
     let cancelled = false
     void (async () => {
       try {
-        const [s, p, me] = await Promise.all([
+        const [s, p, profile] = await Promise.all([
           getStats(),
-          getPlan(),
-          apiFetch<AuthMe>("/auth/me").catch(() => null),
+          getPlans(),
+          getProfile().catch(() => null),
         ])
         if (!cancelled) {
           setStats(s)
-          setPlan(p)
-          setGoal(p?.goal ?? "")
-          setTarget(p?.targetDate ?? "")
-          setMemberSinceIso(me?.createdAt ?? null)
+          setPlans(p)
+          setDailyMinutes(profile?.dailyStudyMinutes ?? null)
         }
       } catch {
         // ignore
@@ -76,22 +51,6 @@ export function ProfileView({ user }: Props) {
     }
   }, [status])
 
-  const onSaveGoal = async () => {
-    if (status !== "authenticated" || !goal.trim() || !target) return
-    setSaving(true)
-    try {
-      await saveOnboarding({
-        goal: goal.trim(),
-        targetDate: target,
-      })
-      toast.success(t.profile.goalSaved)
-    } catch {
-      toast.error(t.errors.generic)
-    } finally {
-      setSaving(false)
-    }
-  }
-
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-1">
@@ -100,32 +59,6 @@ export function ProfileView({ user }: Props) {
         </h1>
         <p className="text-sm text-muted-foreground">{t.profile.subtitle}</p>
       </header>
-
-      <Card>
-        <CardContent className="flex items-center gap-4 p-5">
-          <UserAvatar
-            name={user.name}
-            email={user.email}
-            image={user.image}
-            size="md"
-          />
-          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <span className="truncate text-base font-semibold">
-              {user.name ?? t.settings.account.unknownName}
-            </span>
-            {user.email && (
-              <span className="truncate text-sm text-muted-foreground">
-                {user.email}
-              </span>
-            )}
-            {memberSinceIso && (
-              <span className="text-xs text-muted-foreground">
-                {t.profile.memberSince} {formatMonth(memberSinceIso)}
-              </span>
-            )}
-          </div>
-        </CardContent>
-      </Card>
 
       {stats && (
         <section className="flex flex-col gap-3">
@@ -155,73 +88,90 @@ export function ProfileView({ user }: Props) {
         </section>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <HugeiconsIcon
-              icon={Target02Icon}
-              strokeWidth={2}
-              className="size-5"
-            />
-            {t.profile.goalTitle}
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">
-            {t.profile.goalSubtitle}
-          </p>
-        </CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-[1fr_180px_auto]">
-          <Field>
-            <FieldLabel htmlFor="profile-goal">
-              {t.profile.goalLabel}
-            </FieldLabel>
-            <Input
-              id="profile-goal"
-              value={goal}
-              onChange={(e) => setGoal(e.target.value)}
-              placeholder={t.profile.goalPlaceholder}
-            />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="profile-target">
-              {t.profile.targetLabel}
-            </FieldLabel>
-            <Input
-              id="profile-target"
-              type="date"
-              value={target}
-              onChange={(e) => setTarget(e.target.value)}
-            />
-          </Field>
-          <div className="flex items-end">
-            <Button
-              onClick={onSaveGoal}
-              disabled={saving || !goal.trim() || !target}
-              className="w-full md:w-auto"
-            >
-              {saving ? <Spinner data-icon="inline-start" /> : null}
-              {t.profile.saveGoal}
-            </Button>
+      <section className="flex flex-col gap-3">
+        <h2 className="text-sm font-medium tracking-wider text-muted-foreground uppercase">
+          {t.profile.allGoalsTitle}
+        </h2>
+        {plans.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{t.profile.noGoals}</p>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {plans.map((p) => (
+              <GoalCard key={p.id} plan={p} dailyMinutes={dailyMinutes} />
+            ))}
           </div>
-        </CardContent>
-        {plan && plan.daysTotal > 0 && (
-          <CardContent>
+        )}
+      </section>
+    </div>
+  )
+}
+
+function GoalCard({
+  plan,
+  dailyMinutes,
+}: {
+  plan: LearningPlan
+  dailyMinutes: number | null
+}) {
+  const t = useT()
+  const progress =
+    plan.daysTotal > 0
+      ? Math.min(100, Math.round((plan.daysCompleted / plan.daysTotal) * 100))
+      : 0
+  const done = plan.status === "COMPLETED" || progress >= 100
+  return (
+    <Link
+      href={`/plan#plan-${plan.id}`}
+      className="rounded-4xl outline-none transition-shadow hover:ring-2 hover:ring-primary/40 focus-visible:ring-2 focus-visible:ring-primary/60"
+    >
+      <Card className="h-full">
+      <CardContent className="flex flex-col gap-2.5 p-4">
+        <div className="flex items-start gap-2.5">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-base">
+            {done ? "🏆" : "🎯"}
+          </span>
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span className="truncate text-sm font-medium">
+              {plan.goal ?? t.plan.empty}
+            </span>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+              {plan.targetDate && (
+                <span className="flex items-center gap-1">
+                  <HugeiconsIcon
+                    icon={Flag03Icon}
+                    strokeWidth={2}
+                    className="size-3.5"
+                  />
+                  {plan.targetDate}
+                </span>
+              )}
+              {dailyMinutes != null && dailyMinutes > 0 && (
+                <span className="flex items-center gap-1">
+                  <HugeiconsIcon
+                    icon={Clock01Icon}
+                    strokeWidth={2}
+                    className="size-3.5"
+                  />
+                  {dailyMinutes} {t.onboarding.goal.minutesSuffix}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+        {plan.daysTotal > 0 && (
+          <div>
             <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>{t.plan.progress}</span>
               <span className="tabular-nums">
                 {plan.daysCompleted}/{plan.daysTotal}
               </span>
+              <span className="tabular-nums">{progress}%</span>
             </div>
-            <Progress
-              value={Math.min(
-                100,
-                Math.round((plan.daysCompleted / plan.daysTotal) * 100)
-              )}
-              className="mt-1"
-            />
-          </CardContent>
+            <Progress value={progress} className="mt-1" />
+          </div>
         )}
+      </CardContent>
       </Card>
-    </div>
+    </Link>
   )
 }
 
@@ -263,15 +213,4 @@ function StatTile({
       </CardContent>
     </Card>
   )
-}
-
-function formatMonth(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "long",
-    })
-  } catch {
-    return iso
-  }
 }

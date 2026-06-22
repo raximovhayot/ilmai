@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
 
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -46,9 +45,10 @@ const COLLAPSED_COUNT = 3
 type Props = {
   onReady: () => void
   onBack: () => void
+  onUpgrade: () => void
 }
 
-export function UploadStep({ onReady, onBack }: Props) {
+export function UploadStep({ onReady, onBack, onUpgrade }: Props) {
   const t = useT()
   const c = t.onboarding.upload
 
@@ -301,12 +301,9 @@ export function UploadStep({ onReady, onBack }: Props) {
           />
           <p className="text-sm font-medium">{c.limitTitle}</p>
           <p className="text-xs text-muted-foreground">{c.limitDescription}</p>
-          <Button
-            type="button"
-            size="sm"
-            nativeButton={false}
-            render={<Link href="/premium">{c.upgrade}</Link>}
-          />
+          <Button type="button" size="sm" onClick={onUpgrade}>
+            {c.upgrade}
+          </Button>
         </div>
       )}
 
