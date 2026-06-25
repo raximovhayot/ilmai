@@ -11,9 +11,10 @@ import { PlanRoadmap } from "@/components/plan/plan-view"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
-  completePlanStep,
-  generateStepLesson,
+  completePlanTask,
+  generateTaskLesson,
   getPlans,
+  type CompleteTaskPayload,
   type LearningPlan,
   type PlanStatus,
   type StepLesson,
@@ -24,8 +25,8 @@ import { cn } from "@/lib/utils"
 
 type StatusFilter = "ACTIVE" | "COMPLETED" | "PAUSED"
 
-function stepKey(planId: string, dayIndex: number) {
-  return `${planId}:${dayIndex}`
+function stepKey(planId: string, dayIndex: number, orderInDay: number) {
+  return `${planId}:${dayIndex}:${orderInDay}`
 }
 
 export function PlanViewClient() {
@@ -74,11 +75,21 @@ export function PlanViewClient() {
   }, [])
 
   const onComplete = React.useCallback(
-    async (planId: string, dayIndex: number) => {
+    async (
+      planId: string,
+      dayIndex: number,
+      orderInDay: number,
+      payload?: CompleteTaskPayload
+    ) => {
       if (status !== "authenticated") return
-      setCompletingKey(stepKey(planId, dayIndex))
+      setCompletingKey(stepKey(planId, dayIndex, orderInDay))
       try {
-        const fresh = await completePlanStep(planId, dayIndex)
+        const fresh = await completePlanTask(
+          planId,
+          dayIndex,
+          orderInDay,
+          payload
+        )
         if (fresh) updatePlan(fresh)
       } catch {
         toast.error(t.errors.generic)
@@ -90,9 +101,9 @@ export function PlanViewClient() {
   )
 
   const onToggleLesson = React.useCallback(
-    async (planId: string, dayIndex: number) => {
+    async (planId: string, dayIndex: number, orderInDay: number) => {
       if (status !== "authenticated") return
-      const key = stepKey(planId, dayIndex)
+      const key = stepKey(planId, dayIndex, orderInDay)
       if (expandedKey === key) {
         setExpandedKey(null)
         return
@@ -103,7 +114,7 @@ export function PlanViewClient() {
       }
       setLessonLoadingKey(key)
       try {
-        const lesson = await generateStepLesson(planId, dayIndex)
+        const lesson = await generateTaskLesson(planId, dayIndex, orderInDay)
         if (lesson) {
           setLessons((prev) => ({ ...prev, [key]: lesson }))
           setExpandedKey(key)
@@ -118,12 +129,17 @@ export function PlanViewClient() {
   )
 
   const onRegenerate = React.useCallback(
-    async (planId: string, dayIndex: number) => {
+    async (planId: string, dayIndex: number, orderInDay: number) => {
       if (status !== "authenticated") return
-      const key = stepKey(planId, dayIndex)
+      const key = stepKey(planId, dayIndex, orderInDay)
       setLessonLoadingKey(key)
       try {
-        const lesson = await generateStepLesson(planId, dayIndex, true)
+        const lesson = await generateTaskLesson(
+          planId,
+          dayIndex,
+          orderInDay,
+          true
+        )
         if (lesson) {
           setLessons((prev) => ({ ...prev, [key]: lesson }))
           setExpandedKey(key)

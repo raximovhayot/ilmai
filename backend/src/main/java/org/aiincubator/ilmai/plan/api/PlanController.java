@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.aiincubator.ilmai.common.CurrentUser;
 import org.aiincubator.ilmai.common.payload.ApiResponse;
+import org.aiincubator.ilmai.plan.payload.CompleteStepRequest;
 import org.aiincubator.ilmai.plan.payload.LearningPlanResponse;
 import org.aiincubator.ilmai.plan.payload.StepLessonResponse;
 import org.aiincubator.ilmai.plan.payload.UpdatePlanStatusRequest;
@@ -66,6 +67,26 @@ public class PlanController {
                                                       @PathVariable int dayIndex,
                                                       @RequestParam(defaultValue = "false") boolean regenerate) {
         return ApiResponse.ok(planService.generateLessonResponse(currentUser, planId, dayIndex, regenerate));
+    }
+
+    @PostMapping("/{planId}/steps/{dayIndex}/{orderInDay}/complete")
+    public ApiResponse<LearningPlanResponse> completePlanTask(@AuthenticationPrincipal CurrentUser currentUser,
+                                                             @PathVariable UUID planId,
+                                                             @PathVariable int dayIndex,
+                                                             @PathVariable int orderInDay,
+                                                             @RequestBody(required = false) CompleteStepRequest request) {
+        return ApiResponse.ok(
+                planService.completeTaskResponse(currentUser, planId, dayIndex, orderInDay, request));
+    }
+
+    @PostMapping("/{planId}/steps/{dayIndex}/{orderInDay}/lesson")
+    public ApiResponse<StepLessonResponse> planTaskLesson(@AuthenticationPrincipal CurrentUser currentUser,
+                                                          @PathVariable UUID planId,
+                                                          @PathVariable int dayIndex,
+                                                          @PathVariable int orderInDay,
+                                                          @RequestParam(defaultValue = "false") boolean regenerate) {
+        return ApiResponse.ok(
+                planService.generateLessonResponse(currentUser, planId, dayIndex, orderInDay, regenerate));
     }
 
     @PatchMapping("/{planId}")

@@ -90,7 +90,14 @@ class PlanBuilderTest {
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<PlanStepInput>> stepsCaptor = ArgumentCaptor.forClass(List.class);
         verify(planApi).savePlan(any(), eq("IELTS"), isNull(), stepsCaptor.capture());
-        assertThat(stepsCaptor.getValue()).containsExactly(stepInput);
+        List<PlanStepInput> captured = stepsCaptor.getValue();
+        assertThat(captured).hasSize(3);
+        assertThat(captured.get(0)).isSameAs(stepInput);
+        assertThat(captured).extracting(PlanStepInput::getActivity)
+                .containsExactly(PlanActivity.READ, PlanActivity.QUIZ, PlanActivity.INDEPENDENT);
+        assertThat(captured.get(1).getTitle()).isEqualTo("Quiz \u2014 Read Notes");
+        assertThat(captured.get(1).getDayIndex()).isEqualTo(1);
+        assertThat(captured.get(2).getTitle()).isEqualTo("Independent practice");
         verify(quotaService).commit(reservation, 5);
         verify(quotaService, never()).refund(any());
     }

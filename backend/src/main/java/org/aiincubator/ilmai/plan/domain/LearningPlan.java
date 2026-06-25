@@ -57,7 +57,7 @@ public class LearningPlan extends DateAuditable {
     private boolean replanNeeded;
 
     @OneToMany(mappedBy = "plan", cascade = CascadeType.ALL, orphanRemoval = true)
-    @OrderBy("dayIndex ASC")
+    @OrderBy("dayIndex ASC, orderInDay ASC")
     private List<PlanStep> steps = new ArrayList<>();
 
     @Override

@@ -338,6 +338,15 @@ export type Dictionary = {
     actionRead: string
     actionQuiz: string
     actionReview: string
+    actionIndependent: string
+    reflectionLabel: string
+    reflectionPlaceholder: string
+    quizScoreLabel: string
+    quizScorePlaceholder: string
+    lockReadHint: string
+    lockQuizHint: string
+    lockIndependentHint: string
+    tasksCount: string
     markDone: string
     completed: string
     replanTitle: string
@@ -1036,6 +1045,16 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       actionRead: "Read",
       actionQuiz: "Quiz",
       actionReview: "Review",
+      actionIndependent: "Independent",
+      reflectionLabel: "Your reflection",
+      reflectionPlaceholder:
+        "Write a few sentences about what you did and learned…",
+      quizScoreLabel: "Your score (%)",
+      quizScorePlaceholder: "e.g. 80",
+      lockReadHint: "Open the lesson to mark this done.",
+      lockQuizHint: "Take the quiz and enter a score of 70% or higher.",
+      lockIndependentHint: "Write a short reflection to mark this done.",
+      tasksCount: "{n} tasks",
       markDone: "Mark done",
       completed: "Completed",
       replanTitle: "Your plan may be out of date",
@@ -1772,6 +1791,17 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       actionRead: "Чтение",
       actionQuiz: "Тест",
       actionReview: "Повторение",
+      actionIndependent: "Самостоятельно",
+      reflectionLabel: "Ваша рефлексия",
+      reflectionPlaceholder:
+        "Напишите пару предложений о том, что вы сделали и поняли…",
+      quizScoreLabel: "Ваш результат (%)",
+      quizScorePlaceholder: "напр. 80",
+      lockReadHint: "Откройте урок, чтобы отметить выполненным.",
+      lockQuizHint: "Пройдите тест и введите результат 70% или выше.",
+      lockIndependentHint:
+        "Напишите короткую рефлексию, чтобы отметить выполненным.",
+      tasksCount: "{n} заданий",
       markDone: "Отметить",
       completed: "Выполнено",
       replanTitle: "План мог устареть",
@@ -2517,6 +2547,17 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       actionRead: "O‘qish",
       actionQuiz: "Test",
       actionReview: "Takrorlash",
+      actionIndependent: "Mustaqil",
+      reflectionLabel: "Mulohazangiz",
+      reflectionPlaceholder:
+        "Nima qilganingiz va nimani o‘rganganingiz haqida bir necha gap yozing…",
+      quizScoreLabel: "Natijangiz (%)",
+      quizScorePlaceholder: "masalan 80",
+      lockReadHint: "Bajarildi deb belgilash uchun darsni oching.",
+      lockQuizHint: "Testdan o‘ting va 70% yoki undan yuqori natija kiriting.",
+      lockIndependentHint:
+        "Bajarildi deb belgilash uchun qisqacha mulohaza yozing.",
+      tasksCount: "{n} ta vazifa",
       markDone: "Belgilash",
       completed: "Bajarildi",
       replanTitle: "Rejangiz eskirgan bo‘lishi mumkin",

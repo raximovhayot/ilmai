@@ -46,6 +46,9 @@ public class PlanStep extends DateAuditable {
     @Column(name = "day_index", nullable = false)
     private int dayIndex;
 
+    @Column(name = "order_in_day", nullable = false)
+    private int orderInDay;
+
     @Column(name = "scheduled_date")
     private LocalDate scheduledDate;
 
@@ -62,6 +65,12 @@ public class PlanStep extends DateAuditable {
 
     @Column(columnDefinition = "text")
     private String note;
+
+    @Column(name = "reflection_note", columnDefinition = "text")
+    private String reflectionNote;
+
+    @Column(name = "quiz_score")
+    private Integer quizScore;
 
     @Column(nullable = false)
     private boolean done;

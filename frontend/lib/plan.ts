@@ -1,6 +1,6 @@
 import { apiFetch } from "@/lib/api"
 
-export type PlanActivity = "READ" | "QUIZ" | "REVIEW"
+export type PlanActivity = "READ" | "QUIZ" | "REVIEW" | "INDEPENDENT"
 
 export type LearningPlanItemAction = PlanActivity
 
@@ -16,15 +16,23 @@ export type PlanMaterial = {
 
 export type PlanStep = {
   dayIndex: number
+  orderInDay: number
   scheduledDate: string | null
   title: string
   activity: PlanActivity
   materials: PlanMaterial[]
   note: string | null
+  reflectionNote: string | null
+  quizScore: number | null
   done: boolean
   completedAt: string | null
   hasLesson: boolean
   lessonGeneratedAt: string | null
+}
+
+export type CompleteTaskPayload = {
+  reflectionNote?: string
+  quizScore?: number
 }
 
 export type LessonCitation = {
@@ -94,6 +102,31 @@ export async function generateStepLesson(
 ): Promise<StepLesson | null> {
   return await apiFetch<StepLesson>(
     `/plan/${planId}/steps/${dayIndex}/lesson?regenerate=${regenerate}`,
+    { method: "POST" }
+  )
+}
+
+export async function completePlanTask(
+  planId: string,
+  dayIndex: number,
+  orderInDay: number,
+  payload?: CompleteTaskPayload
+): Promise<LearningPlan | null> {
+  const result = await apiFetch<LearningPlan | null>(
+    `/plan/${planId}/steps/${dayIndex}/${orderInDay}/complete`,
+    { method: "POST", body: payload ?? {} }
+  )
+  return result && result.id ? result : null
+}
+
+export async function generateTaskLesson(
+  planId: string,
+  dayIndex: number,
+  orderInDay: number,
+  regenerate = false
+): Promise<StepLesson | null> {
+  return await apiFetch<StepLesson>(
+    `/plan/${planId}/steps/${dayIndex}/${orderInDay}/lesson?regenerate=${regenerate}`,
     { method: "POST" }
   )
 }

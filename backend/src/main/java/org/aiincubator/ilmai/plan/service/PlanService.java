@@ -10,6 +10,7 @@ import org.aiincubator.ilmai.plan.PlanStepInput;
 import org.aiincubator.ilmai.plan.domain.LearningPlan;
 import org.aiincubator.ilmai.plan.domain.LearningPlanRepository;
 import org.aiincubator.ilmai.plan.domain.PlanStep;
+import org.aiincubator.ilmai.plan.payload.CompleteStepRequest;
 import org.aiincubator.ilmai.plan.payload.LearningPlanResponse;
 import org.aiincubator.ilmai.plan.payload.StepLessonResponse;
 import org.aiincubator.ilmai.profiles.ProfileDto;
@@ -22,8 +23,10 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -35,6 +38,8 @@ public class PlanService {
     static final ZoneId DEFAULT_ZONE = ZoneId.of("Asia/Tashkent");
 
     static final int LESSON_ESTIMATE_ILM_TOKENS = 8;
+
+    static final int QUIZ_PASS_SCORE = 70;
 
     private final LearningPlanRepository learningPlanRepository;
     private final ProfilesApi profilesApi;
@@ -59,8 +64,10 @@ public class PlanService {
         plan.setTargetDate(targetDate);
         plan.setStatus(PlanStatus.ACTIVE);
         if (steps != null) {
+            Map<Integer, Integer> orderByDay = new HashMap<>();
             for (PlanStepInput input : steps) {
-                plan.getSteps().add(toStep(plan, input));
+                int order = orderByDay.merge(input.getDayIndex(), 0, (existing, ignored) -> existing + 1);
+                plan.getSteps().add(toStep(plan, input, order));
             }
         }
         return learningPlanRepository.save(plan);
@@ -125,6 +132,52 @@ public class PlanService {
     }
 
     @Transactional
+    public LearningPlanResponse completeTaskResponse(CurrentUser currentUser, UUID planId, int dayIndex,
+                                                    int orderInDay, CompleteStepRequest request) {
+        LearningPlan plan = requireOwnedPlan(currentUser, planId);
+        PlanStep step = findStep(plan, dayIndex, orderInDay);
+        markTaskDone(step, request);
+        return planMapper.toResponse(plan);
+    }
+
+    private void markTaskDone(PlanStep step, CompleteStepRequest request) {
+        if (step.isDone()) {
+            return;
+        }
+        PlanActivity activity = step.getActivity() == null ? PlanActivity.READ : step.getActivity();
+        switch (activity) {
+            case READ, REVIEW -> {
+                if (!hasLesson(step)) {
+                    throw new PlanException(PlanException.Reason.PLAN_STEP_NOT_COMPLETABLE);
+                }
+            }
+            case QUIZ -> {
+                Integer score = request == null ? null : request.getQuizScore();
+                if (score == null || score < QUIZ_PASS_SCORE) {
+                    throw new PlanException(PlanException.Reason.PLAN_STEP_NOT_COMPLETABLE);
+                }
+                step.setQuizScore(score);
+            }
+            case INDEPENDENT -> {
+                String note = request == null ? null : request.getReflectionNote();
+                if (note == null || note.isBlank()) {
+                    throw new PlanException(PlanException.Reason.PLAN_STEP_NOT_COMPLETABLE);
+                }
+                step.setReflectionNote(note.strip());
+            }
+        }
+        step.setDone(true);
+        step.setCompletedAt(OffsetDateTime.now(clock));
+    }
+
+    private PlanStep findStep(LearningPlan plan, int dayIndex, int orderInDay) {
+        return plan.getSteps().stream()
+                .filter(s -> s.getDayIndex() == dayIndex && s.getOrderInDay() == orderInDay)
+                .findFirst()
+                .orElseThrow(() -> new PlanException(PlanException.Reason.PLAN_STEP_NOT_FOUND));
+    }
+
+    @Transactional
     public LearningPlanResponse updatePlanStatus(CurrentUser currentUser, UUID planId, PlanStatus status) {
         if (status != PlanStatus.ACTIVE && status != PlanStatus.PAUSED && status != PlanStatus.COMPLETED) {
             throw new PlanException(PlanException.Reason.PLAN_STATUS_INVALID);
@@ -144,14 +197,30 @@ public class PlanService {
     public StepLessonResponse generateLessonResponse(CurrentUser currentUser, int dayIndex, boolean regenerate) {
         LearningPlan plan = findActivePlan(currentUser.getUserId())
                 .orElseThrow(() -> new PlanException(PlanException.Reason.PLAN_NOT_FOUND));
-        return generateLesson(currentUser.getUserId(), plan, dayIndex, regenerate);
+        PlanStep step = plan.getSteps().stream()
+                .filter(s -> s.getDayIndex() == dayIndex)
+                .findFirst()
+                .orElseThrow(() -> new PlanException(PlanException.Reason.PLAN_STEP_NOT_FOUND));
+        return generateLesson(currentUser.getUserId(), step, regenerate);
     }
 
     @Transactional
     public StepLessonResponse generateLessonResponse(CurrentUser currentUser, UUID planId, int dayIndex,
                                                      boolean regenerate) {
         LearningPlan plan = requireOwnedPlan(currentUser, planId);
-        return generateLesson(currentUser.getUserId(), plan, dayIndex, regenerate);
+        PlanStep step = plan.getSteps().stream()
+                .filter(s -> s.getDayIndex() == dayIndex)
+                .findFirst()
+                .orElseThrow(() -> new PlanException(PlanException.Reason.PLAN_STEP_NOT_FOUND));
+        return generateLesson(currentUser.getUserId(), step, regenerate);
+    }
+
+    @Transactional
+    public StepLessonResponse generateLessonResponse(CurrentUser currentUser, UUID planId, int dayIndex,
+                                                     int orderInDay, boolean regenerate) {
+        LearningPlan plan = requireOwnedPlan(currentUser, planId);
+        PlanStep step = findStep(plan, dayIndex, orderInDay);
+        return generateLesson(currentUser.getUserId(), step, regenerate);
     }
 
     private LearningPlan requireOwnedPlan(CurrentUser currentUser, UUID planId) {
@@ -159,12 +228,7 @@ public class PlanService {
                 .orElseThrow(() -> new PlanException(PlanException.Reason.PLAN_NOT_FOUND));
     }
 
-    private StepLessonResponse generateLesson(UUID userId, LearningPlan plan, int dayIndex, boolean regenerate) {
-        PlanStep step = plan.getSteps().stream()
-                .filter(s -> s.getDayIndex() == dayIndex)
-                .findFirst()
-                .orElseThrow(() -> new PlanException(PlanException.Reason.PLAN_STEP_NOT_FOUND));
-
+    private StepLessonResponse generateLesson(UUID userId, PlanStep step, boolean regenerate) {
         if (!regenerate && hasLesson(step)) {
             return planMapper.toLesson(step);
         }
@@ -258,10 +322,11 @@ public class PlanService {
         }
     }
 
-    private PlanStep toStep(LearningPlan plan, PlanStepInput input) {
+    private PlanStep toStep(LearningPlan plan, PlanStepInput input, int orderInDay) {
         PlanStep step = new PlanStep();
         step.setPlan(plan);
         step.setDayIndex(input.getDayIndex());
+        step.setOrderInDay(orderInDay);
         step.setScheduledDate(input.getScheduledDate());
         step.setTitle(input.getTitle());
         step.setActivity(input.getActivity() == null ? PlanActivity.READ : input.getActivity());

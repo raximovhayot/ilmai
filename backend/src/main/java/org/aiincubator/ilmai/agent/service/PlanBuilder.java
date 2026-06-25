@@ -11,7 +11,9 @@ import org.aiincubator.ilmai.gaps.GapsReportDto;
 import org.aiincubator.ilmai.materials.MaterialDto;
 import org.aiincubator.ilmai.materials.MaterialsApi;
 import org.aiincubator.ilmai.plan.LearningPlanDto;
+import org.aiincubator.ilmai.plan.PlanActivity;
 import org.aiincubator.ilmai.plan.PlanApi;
+import org.aiincubator.ilmai.plan.PlanStepInput;
 import org.aiincubator.ilmai.profiles.ProfileDto;
 import org.aiincubator.ilmai.profiles.ProfilesApi;
 import org.springframework.stereotype.Component;
@@ -80,7 +82,8 @@ public class PlanBuilder {
             if (draft == null) {
                 return Optional.empty();
             }
-            LearningPlanDto saved = planApi.savePlan(currentUser, goal, targetDate, draft.getSteps());
+            List<PlanStepInput> tasks = expandTasks(draft.getSteps(), resolvedLanguage);
+            LearningPlanDto saved = planApi.savePlan(currentUser, goal, targetDate, tasks);
             quotaService.commit(reservation, draft.getIlmTokenCost());
             committed = true;
             return Optional.of(saved);
@@ -89,6 +92,65 @@ public class PlanBuilder {
                 quotaService.refund(reservation);
             }
         }
+    }
+
+    private List<PlanStepInput> expandTasks(List<PlanStepInput> steps, String language) {
+        if (steps == null || steps.isEmpty()) {
+            return steps;
+        }
+        String lang = normalizeLang(language);
+        List<PlanStepInput> expanded = new ArrayList<>();
+        PlanStepInput last = steps.get(steps.size() - 1);
+        for (PlanStepInput step : steps) {
+            expanded.add(step);
+            PlanActivity activity = step.getActivity();
+            if (activity == PlanActivity.READ || activity == PlanActivity.REVIEW) {
+                expanded.add(new PlanStepInput(step.getDayIndex(), step.getScheduledDate(),
+                        quizTitle(lang, step.getTitle()), PlanActivity.QUIZ, step.getMaterialIds(), null));
+            }
+        }
+        expanded.add(new PlanStepInput(last.getDayIndex(), last.getScheduledDate(),
+                independentTitle(lang), PlanActivity.INDEPENDENT, last.getMaterialIds(), independentNote(lang)));
+        return expanded;
+    }
+
+    private static String normalizeLang(String language) {
+        if (language == null || language.isBlank()) {
+            return "en";
+        }
+        String lang = language.trim().toLowerCase(Locale.ROOT);
+        if (lang.startsWith("ru")) {
+            return "ru";
+        }
+        if (lang.startsWith("uz")) {
+            return "uz";
+        }
+        return "en";
+    }
+
+    private static String quizTitle(String lang, String readTitle) {
+        String base = readTitle == null ? "" : readTitle.trim();
+        return switch (lang) {
+            case "ru" -> "Тест — " + base;
+            case "uz" -> "Test — " + base;
+            default -> "Quiz — " + base;
+        };
+    }
+
+    private static String independentTitle(String lang) {
+        return switch (lang) {
+            case "ru" -> "Самостоятельная практика";
+            case "uz" -> "Mustaqil mashq";
+            default -> "Independent practice";
+        };
+    }
+
+    private static String independentNote(String lang) {
+        return switch (lang) {
+            case "ru" -> "Примените изученное своими словами и напишите короткую рефлексию.";
+            case "uz" -> "O‘rganganlaringizni o‘z so‘zlaringiz bilan qo‘llang va qisqacha mulohaza yozing.";
+            default -> "Apply what you learned in your own words, then write a short reflection.";
+        };
     }
 
     private String resolveLanguage(String language, ProfileDto profile) {

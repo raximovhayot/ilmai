@@ -4,5 +4,6 @@ public enum PlanActivity {
 
     READ,
     QUIZ,
-    REVIEW
+    REVIEW,
+    INDEPENDENT
 }

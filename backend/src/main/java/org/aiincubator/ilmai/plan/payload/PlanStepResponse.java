@@ -19,11 +19,14 @@ import java.util.List;
 public class PlanStepResponse {
 
     private int dayIndex;
+    private int orderInDay;
     private LocalDate scheduledDate;
     private String title;
     private PlanActivity activity;
     private List<PlanMaterialRef> materials;
     private String note;
+    private String reflectionNote;
+    private Integer quizScore;
     private boolean done;
     private OffsetDateTime completedAt;
     private boolean hasLesson;

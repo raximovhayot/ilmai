@@ -11,7 +11,8 @@ public class PlanException extends RuntimeException {
         PLAN_STEP_NOT_FOUND("plan.error.stepNotFound"),
         PLAN_STATUS_INVALID("plan.error.statusInvalid"),
         PLAN_LESSON_UNAVAILABLE("plan.error.lessonUnavailable"),
-        PLAN_LESSON_QUOTA_EXCEEDED("plan.error.lessonQuotaExceeded");
+        PLAN_LESSON_QUOTA_EXCEEDED("plan.error.lessonQuotaExceeded"),
+        PLAN_STEP_NOT_COMPLETABLE("plan.error.stepNotCompletable");
 
         private final String messageKey;
 

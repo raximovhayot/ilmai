@@ -24,7 +24,7 @@ public class PlanExceptionHandler {
         HttpStatus status = switch (ex.getReason()) {
             case PLAN_NOT_FOUND, PLAN_STEP_NOT_FOUND -> HttpStatus.NOT_FOUND;
             case PLAN_STATUS_INVALID -> HttpStatus.BAD_REQUEST;
-            case PLAN_LESSON_UNAVAILABLE -> HttpStatus.UNPROCESSABLE_ENTITY;
+            case PLAN_LESSON_UNAVAILABLE, PLAN_STEP_NOT_COMPLETABLE -> HttpStatus.UNPROCESSABLE_ENTITY;
             case PLAN_LESSON_QUOTA_EXCEEDED -> HttpStatus.TOO_MANY_REQUESTS;
         };
         String localized = messages.get(ex.getReason().getMessageKey(), ex.getMessageArgs());
