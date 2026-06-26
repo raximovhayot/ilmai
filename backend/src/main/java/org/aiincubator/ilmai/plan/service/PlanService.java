@@ -39,8 +39,6 @@ public class PlanService {
 
     static final int LESSON_ESTIMATE_ILM_TOKENS = 8;
 
-    static final int QUIZ_PASS_SCORE = 70;
-
     private final LearningPlanRepository learningPlanRepository;
     private final ProfilesApi profilesApi;
     private final PlanMapper planMapper;
@@ -152,11 +150,6 @@ public class PlanService {
                 }
             }
             case QUIZ -> {
-                Integer score = request == null ? null : request.getQuizScore();
-                if (score == null || score < QUIZ_PASS_SCORE) {
-                    throw new PlanException(PlanException.Reason.PLAN_STEP_NOT_COMPLETABLE);
-                }
-                step.setQuizScore(score);
             }
             case INDEPENDENT -> {
                 String note = request == null ? null : request.getReflectionNote();

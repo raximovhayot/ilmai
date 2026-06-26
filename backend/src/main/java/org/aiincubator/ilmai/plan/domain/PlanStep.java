@@ -69,9 +69,6 @@ public class PlanStep extends DateAuditable {
     @Column(name = "reflection_note", columnDefinition = "text")
     private String reflectionNote;
 
-    @Column(name = "quiz_score")
-    private Integer quizScore;
-
     @Column(nullable = false)
     private boolean done;
 

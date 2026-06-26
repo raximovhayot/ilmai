@@ -6,7 +6,6 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import {
   ArrowRight01Icon,
   BookOpen01Icon,
-  Calendar03Icon,
   CheckmarkCircle02Icon,
   Flag03Icon,
   PuzzleIcon,
@@ -571,29 +570,20 @@ export function StepCard({
     step.activity === "READ" || step.activity === "REVIEW"
 
   const [reflection, setReflection] = React.useState(step.reflectionNote ?? "")
-  const [scoreInput, setScoreInput] = React.useState(
-    step.quizScore != null ? String(step.quizScore) : ""
-  )
 
   const lessonReady = step.hasLesson || !!lesson
-  const parsedScore = Number.parseInt(scoreInput, 10)
-  const scoreValid =
-    Number.isFinite(parsedScore) && parsedScore >= 70 && parsedScore <= 100
   const reflectionValid = reflection.trim().length > 0
-  const canComplete = isQuiz
-    ? scoreValid
-    : isIndependent
-      ? reflectionValid
-      : lessonReady
-  const lockHint = isQuiz
-    ? t.plan.lockQuizHint
-    : isIndependent
-      ? t.plan.lockIndependentHint
-      : t.plan.lockReadHint
+  const canComplete = isIndependent
+    ? reflectionValid
+    : isLessonActivity
+      ? lessonReady
+      : true
+  const lockHint = isIndependent
+    ? t.plan.lockIndependentHint
+    : t.plan.lockReadHint
 
   const handleComplete = () => {
-    if (isQuiz) onComplete({ quizScore: parsedScore })
-    else if (isIndependent) onComplete({ reflectionNote: reflection.trim() })
+    if (isIndependent) onComplete({ reflectionNote: reflection.trim() })
     else onComplete()
   }
 
@@ -610,52 +600,8 @@ export function StepCard({
         isToday && "border-primary/40 bg-primary/5"
       )}
     >
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <HugeiconsIcon
-            icon={Calendar03Icon}
-            strokeWidth={2}
-            className="size-4 text-muted-foreground"
-          />
-          <span className="text-sm font-medium">
-            {t.plan.dayLabel.replace("{n}", String(step.dayIndex))}
-          </span>
-          {step.scheduledDate ? (
-            <span className="text-xs text-muted-foreground">
-              {step.scheduledDate}
-            </span>
-          ) : null}
-          {isToday ? (
-            <Badge variant="default">{t.plan.todayBadge}</Badge>
-          ) : null}
-        </div>
-        <Badge
-          variant="outline"
-          className={cn(
-            "gap-1",
-            step.activity === "READ"
-              ? "text-primary"
-              : step.activity === "QUIZ"
-                ? "text-amber-600 dark:text-amber-400"
-                : step.activity === "INDEPENDENT"
-                  ? "text-violet-600 dark:text-violet-400"
-                  : "text-emerald-600 dark:text-emerald-400"
-          )}
-        >
-          <HugeiconsIcon
-            icon={iconForAction(step.activity)}
-            strokeWidth={2}
-            className="size-3.5"
-          />
-          {activityLabel}
-        </Badge>
-      </div>
-
-      <p className={cn("text-sm font-medium", step.done && "line-through")}>
-        {step.title}
-      </p>
       {step.note ? (
-        <p className="mt-0.5 text-xs text-muted-foreground">{step.note}</p>
+        <p className="text-xs text-muted-foreground">{step.note}</p>
       ) : null}
 
       {step.materials.length > 0 ? (
@@ -717,31 +663,9 @@ export function StepCard({
         </div>
       ) : null}
 
-      {!step.done && isQuiz ? (
-        <div className="mt-3 flex flex-col gap-1">
-          <label className="text-xs font-medium text-muted-foreground">
-            {t.plan.quizScoreLabel}
-          </label>
-          <input
-            type="number"
-            min={0}
-            max={100}
-            value={scoreInput}
-            onChange={(e) => setScoreInput(e.target.value)}
-            placeholder={t.plan.quizScorePlaceholder}
-            className="w-28 rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
-        </div>
-      ) : null}
-
       {step.done && isIndependent && step.reflectionNote ? (
         <p className="mt-2 rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
           {step.reflectionNote}
-        </p>
-      ) : null}
-      {step.done && isQuiz && step.quizScore != null ? (
-        <p className="mt-2 text-xs text-muted-foreground">
-          {t.plan.quizScoreLabel}: {step.quizScore}%
         </p>
       ) : null}
 
@@ -873,32 +797,6 @@ function LessonPanel({
       </div>
 
       <Response>{lesson.content}</Response>
-
-      {lesson.citations.length > 0 ? (
-        <div className="mt-3 border-t border-border pt-2">
-          <p className="mb-1 text-xs font-medium text-muted-foreground">
-            {t.plan.lessonSources}
-          </p>
-          <ul className="flex flex-col gap-1">
-            {lesson.citations.map((citation, index) => (
-              <li
-                key={`${citation.materialId ?? "m"}-${index}`}
-                className="flex items-start gap-1.5 text-xs text-muted-foreground"
-              >
-                <span className="font-medium text-foreground/70">
-                  [{index + 1}]
-                </span>
-                <span className="truncate">
-                  {citation.materialName ?? "material"}
-                  {typeof citation.chunkIndex === "number"
-                    ? ` · #${citation.chunkIndex}`
-                    : ""}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
     </div>
   )
 }

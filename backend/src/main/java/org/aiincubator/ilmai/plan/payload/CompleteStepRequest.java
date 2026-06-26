@@ -10,5 +10,4 @@ import lombok.Setter;
 public class CompleteStepRequest {
 
     private String reflectionNote;
-    private Integer quizScore;
 }

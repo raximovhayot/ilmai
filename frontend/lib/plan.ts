@@ -23,7 +23,6 @@ export type PlanStep = {
   materials: PlanMaterial[]
   note: string | null
   reflectionNote: string | null
-  quizScore: number | null
   done: boolean
   completedAt: string | null
   hasLesson: boolean
@@ -32,7 +31,6 @@ export type PlanStep = {
 
 export type CompleteTaskPayload = {
   reflectionNote?: string
-  quizScore?: number
 }
 
 export type LessonCitation = {

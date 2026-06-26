@@ -26,7 +26,6 @@ public class PlanStepResponse {
     private List<PlanMaterialRef> materials;
     private String note;
     private String reflectionNote;
-    private Integer quizScore;
     private boolean done;
     private OffsetDateTime completedAt;
     private boolean hasLesson;
