@@ -186,18 +186,20 @@ export function CompanionClient({
     }
 
     let cancelled = false
-    setLoadingHistory(true)
-    void run(() => getSessionMessages(activeId))
-      .then((history) => {
+    const load = async () => {
+      setLoadingHistory(true)
+      try {
+        const history = await run(() => getSessionMessages(activeId))
         if (cancelled || !history || history.length === 0) return
         const restored = historyToCoachMessages(history)
         sessionMessagesCache.set(activeId, restored)
         setMessages(restored)
-      })
-      .catch(() => {})
-      .finally(() => {
+      } catch {
+      } finally {
         if (!cancelled) setLoadingHistory(false)
-      })
+      }
+    }
+    void load()
     return () => {
       cancelled = true
     }

@@ -6,9 +6,11 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Cancel01Icon,
   CheckmarkCircle02Icon,
+  Clock01Icon,
   PuzzleIcon,
 } from "@hugeicons/core-free-icons"
 
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Spinner } from "@/components/ui/spinner"
@@ -25,6 +27,15 @@ import { cn } from "@/lib/utils"
 
 type Phase = "intro" | "running" | "result"
 
+const EXAM_SECONDS_PER_QUESTION = 45
+
+function formatClock(seconds: number): string {
+  const safe = Math.max(0, seconds)
+  const m = Math.floor(safe / 60)
+  const s = safe % 60
+  return `${m}:${s.toString().padStart(2, "0")}`
+}
+
 type Graded = {
   isCorrect: boolean
   userAnswer: string
@@ -37,15 +48,18 @@ export function TaskQuiz({
   planId,
   step,
   topicId,
+  mode,
   onCompleted,
 }: {
   planId: string
   step: PlanStep
   topicId: string | null
+  mode: "practice" | "exam"
   onCompleted: (plan: LearningPlan) => void
 }) {
   const t = useT().plan
   const errors = useT().errors
+  const isExam = mode === "exam"
 
   const [phase, setPhase] = React.useState<Phase>(
     step.done ? "result" : "intro"
@@ -56,6 +70,8 @@ export function TaskQuiz({
   const [graded, setGraded] = React.useState<Record<string, Graded>>({})
   const [submittingId, setSubmittingId] = React.useState<string | null>(null)
   const [finishing, setFinishing] = React.useState(false)
+  const [secondsLeft, setSecondsLeft] = React.useState<number | null>(null)
+  const finishedRef = React.useRef(false)
 
   const questions = React.useMemo(
     () =>
@@ -73,9 +89,15 @@ export function TaskQuiz({
     try {
       const next = await startQuizSession({ topicId })
       if (next && (next.questions?.length ?? 0) > 0) {
+        finishedRef.current = false
         setSession(next)
         setAnswers({})
         setGraded({})
+        setSecondsLeft(
+          isExam
+            ? (next.questions?.length ?? 0) * EXAM_SECONDS_PER_QUESTION
+            : null
+        )
         setPhase("running")
       } else {
         toast.error(errors.generic)
@@ -85,7 +107,7 @@ export function TaskQuiz({
     } finally {
       setStarting(false)
     }
-  }, [topicId, errors.generic])
+  }, [topicId, errors.generic, isExam])
 
   const submitAnswer = React.useCallback(
     async (q: QuizQuestion) => {
@@ -117,7 +139,8 @@ export function TaskQuiz({
   )
 
   const finish = React.useCallback(async () => {
-    if (!session) return
+    if (!session || finishedRef.current) return
+    finishedRef.current = true
     setFinishing(true)
     try {
       const plan = await completePlanTask(
@@ -128,9 +151,13 @@ export function TaskQuiz({
       )
       if (plan) {
         onCompleted(plan)
+        setSecondsLeft(null)
         setPhase("result")
+      } else {
+        finishedRef.current = false
       }
     } catch {
+      finishedRef.current = false
       toast.error(errors.generic)
     } finally {
       setFinishing(false)
@@ -143,6 +170,28 @@ export function TaskQuiz({
     onCompleted,
     errors.generic,
   ])
+
+  const finishRef = React.useRef(finish)
+  React.useEffect(() => {
+    finishRef.current = finish
+  }, [finish])
+
+  React.useEffect(() => {
+    if (phase !== "running" || !isExam) return
+    const id = window.setInterval(() => {
+      setSecondsLeft((prev) => {
+        const current = prev ?? 0
+        if (current <= 1) {
+          window.clearInterval(id)
+          toast.warning(t.wsExamTimeUp)
+          void finishRef.current()
+          return 0
+        }
+        return current - 1
+      })
+    }, 1000)
+    return () => window.clearInterval(id)
+  }, [phase, isExam, t.wsExamTimeUp])
 
   if (phase === "result") {
     const passed = step.quizPassed === true
@@ -172,6 +221,8 @@ export function TaskQuiz({
         {!passed ? (
           <Button
             onClick={() => {
+              finishedRef.current = false
+              setSecondsLeft(null)
               setSession(null)
               setPhase("intro")
             }}
@@ -226,7 +277,28 @@ export function TaskQuiz({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-2">
-        <h1 className="text-xl font-semibold tracking-tight">{step.title}</h1>
+        <div className="flex min-w-0 items-center gap-2">
+          <h1 className="truncate text-xl font-semibold tracking-tight">
+            {step.title}
+          </h1>
+          {isExam && secondsLeft != null ? (
+            <Badge
+              variant="outline"
+              aria-label={t.wsExamTimeLeft}
+              className={cn(
+                "shrink-0 gap-1 font-mono tabular-nums",
+                secondsLeft <= 30 && "border-destructive/50 text-destructive"
+              )}
+            >
+              <HugeiconsIcon
+                icon={Clock01Icon}
+                strokeWidth={2}
+                className="size-3.5"
+              />
+              {formatClock(secondsLeft)}
+            </Badge>
+          ) : null}
+        </div>
         <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
           {t.wsQuizProgress
             .replace("{answered}", String(answeredCount))
@@ -247,6 +319,7 @@ export function TaskQuiz({
               question={q}
               value={answers[q.id] ?? ""}
               graded={graded[q.id]}
+              exam={isExam}
               submitting={submittingId === q.id}
               onChange={(value) =>
                 setAnswers((prev) => ({ ...prev, [q.id]: value }))
@@ -282,6 +355,7 @@ function QuestionCard({
   question,
   value,
   graded,
+  exam,
   submitting,
   onChange,
   onSubmit,
@@ -289,6 +363,7 @@ function QuestionCard({
   question: QuizQuestion
   value: string
   graded?: Graded
+  exam?: boolean
   submitting: boolean
   onChange: (value: string) => void
   onSubmit: () => void
@@ -296,6 +371,7 @@ function QuestionCard({
   const t = useT().plan
   const options = question.options ?? []
   const answered = graded != null
+  const reveal = answered && !exam
 
   return (
     <div className="flex flex-col gap-2 rounded-xl border border-border p-4">
@@ -305,9 +381,8 @@ function QuestionCard({
         <div className="flex flex-col gap-2">
           {options.map((option) => {
             const selected = value === option
-            const correctOption = answered && graded?.correctAnswer === option
-            const wrongChoice =
-              answered && selected && graded?.isCorrect !== true
+            const correctOption = reveal && graded?.correctAnswer === option
+            const wrongChoice = reveal && selected && graded?.isCorrect !== true
             return (
               <button
                 key={option}
@@ -354,7 +429,16 @@ function QuestionCard({
         />
       )}
 
-      {answered ? (
+      {answered && exam ? (
+        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+          <HugeiconsIcon
+            icon={CheckmarkCircle02Icon}
+            strokeWidth={2}
+            className="size-4"
+          />
+          {t.wsExamAnswered}
+        </span>
+      ) : answered ? (
         <div className="flex flex-col gap-1 rounded-lg border border-border/60 bg-muted/30 p-3 text-xs">
           <span
             className={cn(

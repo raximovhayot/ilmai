@@ -327,6 +327,7 @@ export function TaskWorkspace({
                 planId={planId}
                 step={step}
                 topicId={quizTopicId}
+                mode={quizMode}
                 onCompleted={setPlan}
               />
             ) : (

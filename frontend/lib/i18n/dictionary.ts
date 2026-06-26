@@ -396,6 +396,9 @@ export type Dictionary = {
     wsModePractice: string
     wsModeExam: string
     wsExamLocked: string
+    wsExamTimeLeft: string
+    wsExamAnswered: string
+    wsExamTimeUp: string
     wsBackToPlan: string
     wsShowChat: string
     wsHideChat: string
@@ -1149,6 +1152,9 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       wsModePractice: "Practice",
       wsModeExam: "Exam",
       wsExamLocked: "Chat and sources are turned off in exam mode.",
+      wsExamTimeLeft: "Time left",
+      wsExamAnswered: "Answered",
+      wsExamTimeUp: "Time is up — submitting your exam.",
       wsBackToPlan: "Back to plan",
       wsShowChat: "Show chat",
       wsHideChat: "Hide chat",
@@ -1942,6 +1948,9 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       wsModePractice: "Практика",
       wsModeExam: "Экзамен",
       wsExamLocked: "В режиме экзамена чат и источники отключены.",
+      wsExamTimeLeft: "Осталось времени",
+      wsExamAnswered: "Отвечено",
+      wsExamTimeUp: "Время вышло — отправляем ваш экзамен.",
       wsBackToPlan: "К плану",
       wsShowChat: "Показать чат",
       wsHideChat: "Скрыть чат",
@@ -2746,6 +2755,9 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       wsModePractice: "Mashq",
       wsModeExam: "Imtihon",
       wsExamLocked: "Imtihon rejimida chat va manbalar o'chirilgan.",
+      wsExamTimeLeft: "Qolgan vaqt",
+      wsExamAnswered: "Javob berildi",
+      wsExamTimeUp: "Vaqt tugadi — imtihoningiz yuborilmoqda.",
       wsBackToPlan: "Rejaga qaytish",
       wsShowChat: "Chatni ko'rsatish",
       wsHideChat: "Chatni yashirish",
