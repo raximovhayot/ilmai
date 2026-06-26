@@ -283,11 +283,19 @@ export function TaskWorkspace({
         </Button>
       </header>
 
-      <div className="flex min-h-0 flex-1">
+      <div className="relative flex min-h-0 flex-1">
         {chatVisible && step ? (
-          <aside className="hidden w-80 shrink-0 flex-col border-r border-border md:flex">
-            <TaskChatPanel taskTitle={step.title} />
-          </aside>
+          <>
+            <button
+              type="button"
+              aria-label={t.wsHideChat}
+              onClick={() => setChatOpen(false)}
+              className="absolute inset-0 z-10 bg-foreground/40 md:hidden"
+            />
+            <aside className="absolute inset-y-0 start-0 z-20 flex w-full max-w-sm flex-col border-e border-border bg-background md:static md:z-auto md:w-80 md:max-w-none md:shrink-0">
+              <TaskChatPanel taskTitle={step.title} />
+            </aside>
+          </>
         ) : null}
 
         <main className="min-w-0 flex-1 overflow-y-auto">
@@ -349,9 +357,17 @@ export function TaskWorkspace({
         </main>
 
         {sourceVisible && step ? (
-          <aside className="hidden w-80 shrink-0 flex-col border-l border-border lg:flex">
-            <SourcePanel lesson={lesson} step={step} />
-          </aside>
+          <>
+            <button
+              type="button"
+              aria-label={t.wsSourceTitle}
+              onClick={() => setSourceOpen(false)}
+              className="absolute inset-0 z-10 bg-foreground/40 lg:hidden"
+            />
+            <aside className="absolute inset-y-0 end-0 z-20 flex w-full max-w-sm flex-col border-s border-border bg-background lg:static lg:z-auto lg:w-80 lg:max-w-none lg:shrink-0">
+              <SourcePanel lesson={lesson} step={step} />
+            </aside>
+          </>
         ) : null}
       </div>
     </div>

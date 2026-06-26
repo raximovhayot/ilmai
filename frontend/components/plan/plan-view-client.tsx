@@ -2,22 +2,18 @@
 
 import * as React from "react"
 import { useSession } from "next-auth/react"
-import { toast } from "sonner"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { RoadIcon } from "@hugeicons/core-free-icons"
 
 import { AddGoalDialog } from "@/components/home/add-goal-dialog"
 import { PlanRoadmap } from "@/components/plan/plan-view"
 import { Card, CardContent } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
-  completePlanTask,
-  generateTaskLesson,
   getPlans,
-  type CompleteTaskPayload,
   type LearningPlan,
   type PlanStatus,
-  type StepLesson,
 } from "@/lib/plan"
 import { useT } from "@/lib/i18n/provider"
 import { listTopics, type TopicResponse } from "@/lib/topics"
@@ -25,22 +21,12 @@ import { cn } from "@/lib/utils"
 
 type StatusFilter = "ACTIVE" | "COMPLETED" | "PAUSED"
 
-function stepKey(planId: string, dayIndex: number, orderInDay: number) {
-  return `${planId}:${dayIndex}:${orderInDay}`
-}
-
 export function PlanViewClient() {
   const t = useT()
   const { status } = useSession()
   const [plans, setPlans] = React.useState<LearningPlan[]>([])
   const [topics, setTopics] = React.useState<TopicResponse[]>([])
   const [loaded, setLoaded] = React.useState(false)
-  const [completingKey, setCompletingKey] = React.useState<string | null>(null)
-  const [lessons, setLessons] = React.useState<Record<string, StepLesson>>({})
-  const [expandedKey, setExpandedKey] = React.useState<string | null>(null)
-  const [lessonLoadingKey, setLessonLoadingKey] = React.useState<string | null>(
-    null
-  )
   const [statusFilter, setStatusFilter] = React.useState<StatusFilter>("ACTIVE")
   const [selectedId, setSelectedId] = React.useState<string | null>(null)
 
@@ -70,89 +56,6 @@ export function PlanViewClient() {
 
   const today = React.useMemo(() => new Date().toISOString().slice(0, 10), [])
 
-  const updatePlan = React.useCallback((fresh: LearningPlan) => {
-    setPlans((prev) => prev.map((p) => (p.id === fresh.id ? fresh : p)))
-  }, [])
-
-  const onComplete = React.useCallback(
-    async (
-      planId: string,
-      dayIndex: number,
-      orderInDay: number,
-      payload?: CompleteTaskPayload
-    ) => {
-      if (status !== "authenticated") return
-      setCompletingKey(stepKey(planId, dayIndex, orderInDay))
-      try {
-        const fresh = await completePlanTask(
-          planId,
-          dayIndex,
-          orderInDay,
-          payload
-        )
-        if (fresh) updatePlan(fresh)
-      } catch {
-        toast.error(t.errors.generic)
-      } finally {
-        setCompletingKey(null)
-      }
-    },
-    [status, t.errors.generic, updatePlan]
-  )
-
-  const onToggleLesson = React.useCallback(
-    async (planId: string, dayIndex: number, orderInDay: number) => {
-      if (status !== "authenticated") return
-      const key = stepKey(planId, dayIndex, orderInDay)
-      if (expandedKey === key) {
-        setExpandedKey(null)
-        return
-      }
-      if (lessons[key]) {
-        setExpandedKey(key)
-        return
-      }
-      setLessonLoadingKey(key)
-      try {
-        const lesson = await generateTaskLesson(planId, dayIndex, orderInDay)
-        if (lesson) {
-          setLessons((prev) => ({ ...prev, [key]: lesson }))
-          setExpandedKey(key)
-        }
-      } catch {
-        toast.error(t.errors.generic)
-      } finally {
-        setLessonLoadingKey(null)
-      }
-    },
-    [status, expandedKey, lessons, t.errors.generic]
-  )
-
-  const onRegenerate = React.useCallback(
-    async (planId: string, dayIndex: number, orderInDay: number) => {
-      if (status !== "authenticated") return
-      const key = stepKey(planId, dayIndex, orderInDay)
-      setLessonLoadingKey(key)
-      try {
-        const lesson = await generateTaskLesson(
-          planId,
-          dayIndex,
-          orderInDay,
-          true
-        )
-        if (lesson) {
-          setLessons((prev) => ({ ...prev, [key]: lesson }))
-          setExpandedKey(key)
-        }
-      } catch {
-        toast.error(t.errors.generic)
-      } finally {
-        setLessonLoadingKey(null)
-      }
-    },
-    [status, t.errors.generic]
-  )
-
   const filteredPlans = React.useMemo(
     () => plans.filter((p) => p.status === (statusFilter as PlanStatus)),
     [plans, statusFilter]
@@ -166,7 +69,21 @@ export function PlanViewClient() {
     [filteredPlans, selectedId]
   )
 
-  if (loaded && plans.length === 0) {
+  if (!loaded) {
+    return (
+      <div className="flex flex-col gap-6">
+        <PlanHeader />
+        <Skeleton className="h-32 w-full rounded-2xl" />
+        <div className="flex flex-col gap-3">
+          <Skeleton className="h-20 w-full rounded-xl" />
+          <Skeleton className="h-20 w-full rounded-xl" />
+          <Skeleton className="h-20 w-full rounded-xl" />
+        </div>
+      </div>
+    )
+  }
+
+  if (plans.length === 0) {
     return (
       <div className="flex flex-col gap-6">
         <PlanHeader />
@@ -229,18 +146,7 @@ export function PlanViewClient() {
       </div>
 
       {selectedPlan ? (
-        <PlanRoadmap
-          plan={selectedPlan}
-          topics={topics}
-          today={today}
-          completingKey={completingKey}
-          lessons={lessons}
-          expandedKey={expandedKey}
-          lessonLoadingKey={lessonLoadingKey}
-          onComplete={onComplete}
-          onToggleLesson={onToggleLesson}
-          onRegenerate={onRegenerate}
-        />
+        <PlanRoadmap plan={selectedPlan} topics={topics} today={today} />
       ) : null}
     </div>
   )

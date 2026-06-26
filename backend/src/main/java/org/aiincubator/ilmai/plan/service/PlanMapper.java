@@ -13,7 +13,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Mapper(componentModel = "spring")
 public abstract class PlanMapper {
@@ -25,7 +27,7 @@ public abstract class PlanMapper {
         this.materialsApi = materialsApi;
     }
 
-    @Mapping(target = "daysTotal", expression = "java(plan.getSteps().size())")
+    @Mapping(target = "daysTotal", expression = "java(countDays(plan))")
     @Mapping(target = "daysCompleted", expression = "java(countDone(plan))")
     public abstract LearningPlanResponse toResponse(LearningPlan plan);
 
@@ -42,8 +44,19 @@ public abstract class PlanMapper {
         return step.getLessonContent() != null && !step.getLessonContent().isBlank();
     }
 
+    protected int countDays(LearningPlan plan) {
+        return (int) plan.getSteps().stream()
+                .map(PlanStep::getDayIndex)
+                .distinct()
+                .count();
+    }
+
     protected int countDone(LearningPlan plan) {
-        return (int) plan.getSteps().stream().filter(PlanStep::isDone).count();
+        Map<Integer, List<PlanStep>> stepsByDay = plan.getSteps().stream()
+                .collect(Collectors.groupingBy(PlanStep::getDayIndex));
+        return (int) stepsByDay.values().stream()
+                .filter(daySteps -> daySteps.stream().allMatch(PlanStep::isDone))
+                .count();
     }
 
     protected List<PlanMaterialRef> resolveMaterials(List<UUID> materialIds) {

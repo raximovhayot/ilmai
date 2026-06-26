@@ -9,28 +9,19 @@ import {
   CheckmarkCircle02Icon,
   Flag03Icon,
   PuzzleIcon,
-  RefreshIcon,
   RoadIcon,
 } from "@hugeicons/core-free-icons"
 
-import { Response } from "@/components/ai-elements/response"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
-import { Spinner } from "@/components/ui/spinner"
 import {
-  type CompleteTaskPayload,
   type LearningPlan,
   type PlanActivity,
   type PlanStep,
-  type StepLesson,
 } from "@/lib/plan"
 import { useT } from "@/lib/i18n/provider"
 import type { TopicResponse } from "@/lib/topics"
 import { cn } from "@/lib/utils"
-
-function stepKey(planId: string, dayIndex: number, orderInDay: number) {
-  return `${planId}:${dayIndex}:${orderInDay}`
-}
 
 function focusKey(dayIndex: number, orderInDay: number) {
   return `${dayIndex}:${orderInDay}`
@@ -38,30 +29,10 @@ function focusKey(dayIndex: number, orderInDay: number) {
 
 type StepState = "done" | "current" | "upcoming"
 
-type CompleteHandler = (
-  planId: string,
-  dayIndex: number,
-  orderInDay: number,
-  payload?: CompleteTaskPayload
-) => void
-
-type LessonHandler = (
-  planId: string,
-  dayIndex: number,
-  orderInDay: number
-) => void
-
 type PlanRoadmapProps = {
   plan: LearningPlan
   topics: TopicResponse[]
   today: string
-  completingKey: string | null
-  lessons: Record<string, StepLesson>
-  expandedKey: string | null
-  lessonLoadingKey: string | null
-  onComplete: CompleteHandler
-  onToggleLesson: LessonHandler
-  onRegenerate: LessonHandler
 }
 
 type PlanDay = {
@@ -75,22 +46,8 @@ type PlanModule = {
   days: PlanDay[]
 }
 
-export function PlanRoadmap({
-  plan,
-  topics,
-  completingKey,
-  lessons,
-  expandedKey,
-  lessonLoadingKey,
-  onComplete,
-  onToggleLesson,
-  onRegenerate,
-}: PlanRoadmapProps) {
+export function PlanRoadmap({ plan }: PlanRoadmapProps) {
   const t = useT()
-  const topicNameById = React.useMemo(
-    () => new Map(topics.map((tp) => [tp.id, tp.name])),
-    [topics]
-  )
   const steps = React.useMemo(
     () =>
       [...plan.steps].sort(
@@ -180,14 +137,6 @@ export function PlanRoadmap({
                 setFocusedKey((prev) => (prev === key ? null : key))
               }
               planId={plan.id}
-              topicNameById={topicNameById}
-              completingKey={completingKey}
-              lessons={lessons}
-              expandedKey={expandedKey}
-              lessonLoadingKey={lessonLoadingKey}
-              onComplete={onComplete}
-              onToggleLesson={onToggleLesson}
-              onRegenerate={onRegenerate}
             />
           ))}
         </div>
@@ -201,14 +150,6 @@ type DaySectionProps = {
   focusedKey: string | null
   onFocus: (key: string) => void
   planId: string
-  topicNameById: Map<string, string>
-  completingKey: string | null
-  lessons: Record<string, StepLesson>
-  expandedKey: string | null
-  lessonLoadingKey: string | null
-  onComplete: CompleteHandler
-  onToggleLesson: LessonHandler
-  onRegenerate: LessonHandler
 }
 
 function ModuleSection({
@@ -300,20 +241,7 @@ function ModuleSection({
 
 function DayBlock({ day, ...rest }: DaySectionProps & { day: PlanDay }) {
   const t = useT()
-  const {
-    stateFor,
-    focusedKey,
-    onFocus,
-    planId,
-    topicNameById,
-    completingKey,
-    lessons,
-    expandedKey,
-    lessonLoadingKey,
-    onComplete,
-    onToggleLesson,
-    onRegenerate,
-  } = rest
+  const { stateFor, focusedKey, onFocus, planId } = rest
   const total = day.steps.length
   const done = day.steps.filter((s) => s.done).length
   const dayDone = total > 0 && done >= total
@@ -347,7 +275,6 @@ function DayBlock({ day, ...rest }: DaySectionProps & { day: PlanDay }) {
       </div>
       <ul className="flex flex-col divide-y divide-border">
         {day.steps.map((step) => {
-          const key = stepKey(planId, step.dayIndex, step.orderInDay)
           const fkey = focusKey(step.dayIndex, step.orderInDay)
           const state = stateFor(step)
           const focused = focusedKey === fkey
@@ -365,25 +292,6 @@ function DayBlock({ day, ...rest }: DaySectionProps & { day: PlanDay }) {
                     step={step}
                     planId={planId}
                     isToday={state === "current"}
-                    completing={completingKey === key}
-                    topicNameById={topicNameById}
-                    onComplete={(payload) =>
-                      onComplete(
-                        planId,
-                        step.dayIndex,
-                        step.orderInDay,
-                        payload
-                      )
-                    }
-                    lesson={lessons[key]}
-                    lessonOpen={expandedKey === key}
-                    lessonLoading={lessonLoadingKey === key}
-                    onToggleLesson={() =>
-                      onToggleLesson(planId, step.dayIndex, step.orderInDay)
-                    }
-                    onRegenerateLesson={() =>
-                      onRegenerate(planId, step.dayIndex, step.orderInDay)
-                    }
                   />
                 </div>
               ) : null}
@@ -544,57 +452,14 @@ export function StepCard({
   step,
   planId,
   isToday,
-  completing,
-  topicNameById,
-  onComplete,
-  lesson,
-  lessonOpen,
-  lessonLoading,
-  onToggleLesson,
-  onRegenerateLesson,
 }: {
   step: PlanStep
   planId: string
   isToday: boolean
-  completing: boolean
-  topicNameById: Map<string, string>
-  onComplete: (payload?: CompleteTaskPayload) => void
-  lesson: StepLesson | undefined
-  lessonOpen: boolean
-  lessonLoading: boolean
-  onToggleLesson: () => void
-  onRegenerateLesson: () => void
 }) {
   const t = useT()
-  const activityLabel = labelForAction(step.activity, t)
-  const isQuiz = step.activity === "QUIZ"
   const isIndependent = step.activity === "INDEPENDENT"
-  const isLessonActivity =
-    step.activity === "READ" || step.activity === "REVIEW"
 
-  const [reflection, setReflection] = React.useState(step.reflectionNote ?? "")
-
-  const lessonReady = step.hasLesson || !!lesson
-  const reflectionValid = reflection.trim().length > 0
-  const canComplete = isIndependent
-    ? reflectionValid
-    : isLessonActivity
-      ? lessonReady
-      : true
-  const lockHint = isIndependent
-    ? t.plan.lockIndependentHint
-    : t.plan.lockReadHint
-
-  const handleComplete = () => {
-    if (isIndependent) onComplete({ reflectionNote: reflection.trim() })
-    else onComplete()
-  }
-
-  const lessonButtonLabel = lessonOpen
-    ? t.plan.hideLesson
-    : lessonReady
-      ? t.plan.openLesson
-      : t.plan.startLesson
   return (
     <div
       className={cn(
@@ -603,82 +468,8 @@ export function StepCard({
         isToday && "border-primary/40 bg-primary/5"
       )}
     >
-      <div className="mb-2 flex justify-end">
-        <Link
-          href={`/task/${planId}/${step.dayIndex}/${step.orderInDay}`}
-          className={buttonVariants({ variant: "outline", size: "sm" })}
-        >
-          {t.plan.openTask}
-          <HugeiconsIcon
-            icon={ArrowRight01Icon}
-            strokeWidth={2}
-            data-icon="inline-end"
-            className="rtl:rotate-180"
-          />
-        </Link>
-      </div>
-
       {step.note ? (
         <p className="text-xs text-muted-foreground">{step.note}</p>
-      ) : null}
-
-      {step.materials.length > 0 ? (
-        <ul className="mt-2 flex flex-col gap-1">
-          {step.materials.map((material) => {
-            const topicName = material.topicId
-              ? topicNameById.get(material.topicId)
-              : undefined
-            const label = material.title ?? topicName ?? activityLabel
-            const inner = (
-              <>
-                <HugeiconsIcon
-                  icon={BookOpen01Icon}
-                  strokeWidth={2}
-                  className="size-3.5 shrink-0 text-muted-foreground"
-                />
-                <span className="truncate">{label}</span>
-                {material.topicId ? (
-                  <HugeiconsIcon
-                    icon={ArrowRight01Icon}
-                    strokeWidth={2}
-                    className="size-3.5 shrink-0 text-muted-foreground rtl:rotate-180"
-                  />
-                ) : null}
-              </>
-            )
-            return (
-              <li key={material.id}>
-                {material.topicId ? (
-                  <Link
-                    href={`/data/${material.topicId}`}
-                    className="flex items-center gap-1.5 rounded-md px-1 py-0.5 text-xs text-muted-foreground hover:bg-accent/40 hover:text-foreground"
-                  >
-                    {inner}
-                  </Link>
-                ) : (
-                  <span className="flex items-center gap-1.5 px-1 py-0.5 text-xs text-muted-foreground">
-                    {inner}
-                  </span>
-                )}
-              </li>
-            )
-          })}
-        </ul>
-      ) : null}
-
-      {!step.done && isIndependent ? (
-        <div className="mt-3 flex flex-col gap-1">
-          <label className="text-xs font-medium text-muted-foreground">
-            {t.plan.reflectionLabel}
-          </label>
-          <textarea
-            value={reflection}
-            onChange={(e) => setReflection(e.target.value)}
-            placeholder={t.plan.reflectionPlaceholder}
-            rows={3}
-            className="w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
-        </div>
       ) : null}
 
       {step.done && isIndependent && step.reflectionNote ? (
@@ -687,49 +478,7 @@ export function StepCard({
         </p>
       ) : null}
 
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-        {isQuiz ? (
-          <Button
-            nativeButton={false}
-            variant="outline"
-            size="sm"
-            render={
-              <Link
-                href={`/companion?seed=${encodeURIComponent(
-                  `${t.plan.startQuiz}: ${step.title}`
-                )}`}
-              >
-                <HugeiconsIcon
-                  icon={PuzzleIcon}
-                  strokeWidth={2}
-                  data-icon="inline-start"
-                />
-                {t.plan.startQuiz}
-              </Link>
-            }
-          />
-        ) : isIndependent ? (
-          <span />
-        ) : (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onToggleLesson}
-            disabled={lessonLoading}
-          >
-            {lessonLoading ? (
-              <Spinner data-icon="inline-start" />
-            ) : (
-              <HugeiconsIcon
-                icon={BookOpen01Icon}
-                strokeWidth={2}
-                data-icon="inline-start"
-              />
-            )}
-            {lessonButtonLabel}
-          </Button>
-        )}
-
+      <div className="mt-3 flex items-center justify-end">
         {step.done ? (
           <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
             <HugeiconsIcon
@@ -740,81 +489,20 @@ export function StepCard({
             {t.plan.completed}
           </span>
         ) : (
-          <Button
-            size="sm"
-            onClick={handleComplete}
-            disabled={completing || !canComplete}
+          <Link
+            href={`/task/${planId}/${step.dayIndex}/${step.orderInDay}`}
+            className={buttonVariants({ size: "sm" })}
           >
-            {completing ? (
-              <Spinner data-icon="inline-start" />
-            ) : (
-              <HugeiconsIcon
-                icon={CheckmarkCircle02Icon}
-                strokeWidth={2}
-                data-icon="inline-start"
-              />
-            )}
-            {t.plan.markDone}
-          </Button>
+            {t.plan.openTask}
+            <HugeiconsIcon
+              icon={ArrowRight01Icon}
+              strokeWidth={2}
+              data-icon="inline-end"
+              className="rtl:rotate-180"
+            />
+          </Link>
         )}
       </div>
-
-      {!step.done && !canComplete ? (
-        <p className="mt-2 text-xs text-muted-foreground">{lockHint}</p>
-      ) : null}
-
-      {isLessonActivity && lessonOpen && lesson ? (
-        <LessonPanel
-          lesson={lesson}
-          regenerating={lessonLoading}
-          onRegenerate={onRegenerateLesson}
-        />
-      ) : null}
-    </div>
-  )
-}
-
-function LessonPanel({
-  lesson,
-  regenerating,
-  onRegenerate,
-}: {
-  lesson: StepLesson
-  regenerating: boolean
-  onRegenerate: () => void
-}) {
-  const t = useT()
-  return (
-    <div className="mt-3 rounded-lg border border-border bg-muted/30 p-4">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-          <HugeiconsIcon
-            icon={BookOpen01Icon}
-            strokeWidth={2}
-            className="size-3.5"
-          />
-          {t.plan.lessonHeading}
-        </span>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onRegenerate}
-          disabled={regenerating}
-        >
-          {regenerating ? (
-            <Spinner data-icon="inline-start" />
-          ) : (
-            <HugeiconsIcon
-              icon={RefreshIcon}
-              strokeWidth={2}
-              data-icon="inline-start"
-            />
-          )}
-          {t.plan.regenerateLesson}
-        </Button>
-      </div>
-
-      <Response>{lesson.content}</Response>
     </div>
   )
 }
