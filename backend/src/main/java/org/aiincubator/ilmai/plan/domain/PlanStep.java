@@ -85,6 +85,15 @@ public class PlanStep extends DateAuditable {
     @Column(name = "lesson_generated_at")
     private OffsetDateTime lessonGeneratedAt;
 
+    @Column(name = "quiz_session_id")
+    private UUID quizSessionId;
+
+    @Column(name = "quiz_passed")
+    private Boolean quizPassed;
+
+    @Column(name = "quiz_score")
+    private Integer quizScore;
+
     @Override
     public final boolean equals(Object o) {
         if (this == o) return true;

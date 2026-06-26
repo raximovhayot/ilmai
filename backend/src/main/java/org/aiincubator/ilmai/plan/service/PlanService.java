@@ -15,6 +15,9 @@ import org.aiincubator.ilmai.plan.payload.LearningPlanResponse;
 import org.aiincubator.ilmai.plan.payload.StepLessonResponse;
 import org.aiincubator.ilmai.profiles.ProfileDto;
 import org.aiincubator.ilmai.profiles.ProfilesApi;
+import org.aiincubator.ilmai.quiz.QuizApi;
+import org.aiincubator.ilmai.quiz.QuizQuestionDto;
+import org.aiincubator.ilmai.quiz.QuizSessionDto;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,11 +42,14 @@ public class PlanService {
 
     static final int LESSON_ESTIMATE_ILM_TOKENS = 8;
 
+    static final int QUIZ_PASS_THRESHOLD = 70;
+
     private final LearningPlanRepository learningPlanRepository;
     private final ProfilesApi profilesApi;
     private final PlanMapper planMapper;
     private final PlanLessonGenerator lessonGenerator;
     private final QuotaService quotaService;
+    private final QuizApi quizApi;
     private final Clock clock;
 
     @Transactional
@@ -134,23 +140,23 @@ public class PlanService {
                                                     int orderInDay, CompleteStepRequest request) {
         LearningPlan plan = requireOwnedPlan(currentUser, planId);
         PlanStep step = findStep(plan, dayIndex, orderInDay);
-        markTaskDone(step, request);
+        markTaskDone(currentUser, step, request);
         return planMapper.toResponse(plan);
     }
 
-    private void markTaskDone(PlanStep step, CompleteStepRequest request) {
+    private void markTaskDone(CurrentUser currentUser, PlanStep step, CompleteStepRequest request) {
         if (step.isDone()) {
             return;
         }
         PlanActivity activity = step.getActivity() == null ? PlanActivity.READ : step.getActivity();
+        boolean complete = true;
         switch (activity) {
             case READ, REVIEW -> {
                 if (!hasLesson(step)) {
                     throw new PlanException(PlanException.Reason.PLAN_STEP_NOT_COMPLETABLE);
                 }
             }
-            case QUIZ -> {
-            }
+            case QUIZ -> complete = recordQuizResult(currentUser, step, request);
             case INDEPENDENT -> {
                 String note = request == null ? null : request.getReflectionNote();
                 if (note == null || note.isBlank()) {
@@ -159,8 +165,30 @@ public class PlanService {
                 step.setReflectionNote(note.strip());
             }
         }
-        step.setDone(true);
-        step.setCompletedAt(OffsetDateTime.now(clock));
+        if (complete) {
+            step.setDone(true);
+            step.setCompletedAt(OffsetDateTime.now(clock));
+        }
+    }
+
+    private boolean recordQuizResult(CurrentUser currentUser, PlanStep step, CompleteStepRequest request) {
+        UUID sessionId = request == null ? null : request.getQuizSessionId();
+        if (sessionId == null) {
+            throw new PlanException(PlanException.Reason.PLAN_STEP_NOT_COMPLETABLE);
+        }
+        QuizSessionDto session = quizApi.findSessionForUser(currentUser, sessionId)
+                .orElseThrow(() -> new PlanException(PlanException.Reason.PLAN_STEP_NOT_COMPLETABLE));
+        List<QuizQuestionDto> questions = session.getQuestions() == null ? List.of() : session.getQuestions();
+        int total = questions.size();
+        long correct = questions.stream()
+                .filter(q -> Boolean.TRUE.equals(q.getIsCorrect()))
+                .count();
+        int score = total > 0 ? (int) Math.round(100.0 * correct / total) : 0;
+        boolean passed = total > 0 && score >= QUIZ_PASS_THRESHOLD;
+        step.setQuizSessionId(sessionId);
+        step.setQuizScore(score);
+        step.setQuizPassed(passed);
+        return passed;
     }
 
     private PlanStep findStep(LearningPlan plan, int dayIndex, int orderInDay) {

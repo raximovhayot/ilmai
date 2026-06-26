@@ -18,6 +18,7 @@ import {
 
 import { Response } from "@/components/ai-elements/response"
 import { TaskChatPanel } from "@/components/task/task-chat-panel"
+import { TaskQuiz } from "@/components/task/task-quiz"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
@@ -62,7 +63,7 @@ export function TaskWorkspace({
   const [completing, setCompleting] = React.useState(false)
   const [reflection, setReflection] = React.useState("")
   const [quizMode, setQuizMode] = React.useState<QuizMode>("practice")
-  const [chatOpen, setChatOpen] = React.useState(true)
+  const [chatOpen, setChatOpen] = React.useState(false)
   const [sourceOpen, setSourceOpen] = React.useState(false)
   const [seededKey, setSeededKey] = React.useState<string | null>(null)
 
@@ -77,6 +78,10 @@ export function TaskWorkspace({
 
   const isQuiz = step?.activity === "QUIZ"
   const isIndependent = step?.activity === "INDEPENDENT"
+  const quizTopicId = React.useMemo(
+    () => step?.materials?.find((m) => m.topicId)?.topicId ?? null,
+    [step]
+  )
   const isLessonActivity =
     step?.activity === "READ" || step?.activity === "REVIEW"
   const examLocked = isQuiz && quizMode === "exam"
@@ -308,51 +313,58 @@ export function TaskWorkspace({
               <p className="py-20 text-center text-sm text-muted-foreground">
                 {t.wsContentEmpty}
               </p>
-            ) : (
-              <TaskContent
+            ) : isQuiz ? (
+              <TaskQuiz
+                planId={planId}
                 step={step}
-                lesson={lesson}
-                lessonLoading={lessonLoading}
-                isLessonActivity={isLessonActivity}
-                isIndependent={!!isIndependent}
-                isQuiz={!!isQuiz}
-                examLocked={!!examLocked}
-                reflection={reflection}
-                onReflectionChange={setReflection}
-                onRegenerate={() => void loadLesson(true)}
+                topicId={quizTopicId}
+                onCompleted={setPlan}
               />
-            )}
+            ) : (
+              <>
+                <TaskContent
+                  step={step}
+                  lesson={lesson}
+                  lessonLoading={lessonLoading}
+                  isLessonActivity={isLessonActivity}
+                  isIndependent={!!isIndependent}
+                  isQuiz={!!isQuiz}
+                  examLocked={!!examLocked}
+                  reflection={reflection}
+                  onReflectionChange={setReflection}
+                  onRegenerate={() => void loadLesson(true)}
+                />
 
-            {step ? (
-              <div className="flex items-center justify-end gap-3 border-t border-border pt-4">
-                {step.done ? (
-                  <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600 dark:text-emerald-400">
-                    <HugeiconsIcon
-                      icon={CheckmarkCircle02Icon}
-                      strokeWidth={2}
-                      className="size-4"
-                    />
-                    {t.completed}
-                  </span>
-                ) : (
-                  <Button
-                    onClick={() => void handleComplete()}
-                    disabled={completing || !canComplete}
-                  >
-                    {completing ? (
-                      <Spinner data-icon="inline-start" />
-                    ) : (
+                <div className="flex items-center justify-end gap-3 border-t border-border pt-4">
+                  {step.done ? (
+                    <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600 dark:text-emerald-400">
                       <HugeiconsIcon
                         icon={CheckmarkCircle02Icon}
                         strokeWidth={2}
-                        data-icon="inline-start"
+                        className="size-4"
                       />
-                    )}
-                    {t.markDone}
-                  </Button>
-                )}
-              </div>
-            ) : null}
+                      {t.completed}
+                    </span>
+                  ) : (
+                    <Button
+                      onClick={() => void handleComplete()}
+                      disabled={completing || !canComplete}
+                    >
+                      {completing ? (
+                        <Spinner data-icon="inline-start" />
+                      ) : (
+                        <HugeiconsIcon
+                          icon={CheckmarkCircle02Icon}
+                          strokeWidth={2}
+                          data-icon="inline-start"
+                        />
+                      )}
+                      {t.markDone}
+                    </Button>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </main>
 

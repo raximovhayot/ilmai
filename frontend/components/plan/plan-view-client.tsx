@@ -10,11 +10,7 @@ import { PlanRoadmap } from "@/components/plan/plan-view"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  getPlans,
-  type LearningPlan,
-  type PlanStatus,
-} from "@/lib/plan"
+import { getPlans, type LearningPlan, type PlanStatus } from "@/lib/plan"
 import { useT } from "@/lib/i18n/provider"
 import { listTopics, type TopicResponse } from "@/lib/topics"
 import { cn } from "@/lib/utils"

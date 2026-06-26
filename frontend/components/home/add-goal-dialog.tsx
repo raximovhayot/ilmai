@@ -58,9 +58,7 @@ export function AddGoalDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
-        render={
-          <Button variant={variant} size={size} className={className} />
-        }
+        render={<Button variant={variant} size={size} className={className} />}
       >
         {withIcon ? (
           <HugeiconsIcon

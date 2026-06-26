@@ -51,9 +51,7 @@ export function HomeDashboardClient({ greetingName }: Props) {
       try {
         const fresh = await completePlanStep(planId, dayIndex)
         if (fresh) {
-          setPlans((prev) =>
-            prev.map((p) => (p.id === fresh.id ? fresh : p))
-          )
+          setPlans((prev) => prev.map((p) => (p.id === fresh.id ? fresh : p)))
         }
       } catch {
         // ignore

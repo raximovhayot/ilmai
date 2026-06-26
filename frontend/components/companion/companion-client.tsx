@@ -157,12 +157,19 @@ export function CompanionClient({
     return createCoachTransport(activeId)
   }, [authenticated, activeId])
 
-  const { messages, setMessages, sendMessage, status, stop, error, clearError } =
-    useChat<CoachUIMessage>({
-      id: activeId ?? undefined,
-      transport,
-      messages: activeId ? (sessionMessagesCache.get(activeId) ?? []) : [],
-    })
+  const {
+    messages,
+    setMessages,
+    sendMessage,
+    status,
+    stop,
+    error,
+    clearError,
+  } = useChat<CoachUIMessage>({
+    id: activeId ?? undefined,
+    transport,
+    messages: activeId ? (sessionMessagesCache.get(activeId) ?? []) : [],
+  })
   const isBusy = status === "streaming" || status === "submitted"
 
   const pendingPromptRef = React.useRef<string | null>(null)

@@ -10,6 +10,7 @@ import org.aiincubator.ilmai.plan.PlanActivity;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -30,4 +31,7 @@ public class PlanStepResponse {
     private OffsetDateTime completedAt;
     private boolean hasLesson;
     private OffsetDateTime lessonGeneratedAt;
+    private UUID quizSessionId;
+    private Boolean quizPassed;
+    private Integer quizScore;
 }

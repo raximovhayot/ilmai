@@ -397,6 +397,24 @@ export type Dictionary = {
     wsQuizPracticeHint: string
     wsQuizExamHint: string
     wsContentEmpty: string
+    wsQuizIntro: string
+    wsQuizStart: string
+    wsQuizStarting: string
+    wsQuizNoTopic: string
+    wsQuizSubmit: string
+    wsQuizFinish: string
+    wsQuizGrading: string
+    wsQuizAnswerPlaceholder: string
+    wsQuizProgress: string
+    wsQuizCorrect: string
+    wsQuizIncorrect: string
+    wsQuizCorrectAnswer: string
+    wsQuizResult: string
+    wsQuizPassed: string
+    wsQuizFailed: string
+    wsQuizRetry: string
+    quizPassedBadge: string
+    quizFailedBadge: string
     moduleLabel: string
     empty: string
   }
@@ -1129,6 +1147,25 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       wsQuizExamHint:
         "Exam mode: no chat, no sources — just you and the questions.",
       wsContentEmpty: "Nothing to show for this task yet.",
+      wsQuizIntro:
+        "We'll quiz you on this material. Score 70% or higher to complete this task.",
+      wsQuizStart: "Start quiz",
+      wsQuizStarting: "Starting…",
+      wsQuizNoTopic: "This quiz isn't linked to any material yet.",
+      wsQuizSubmit: "Submit answer",
+      wsQuizFinish: "Finish & grade",
+      wsQuizGrading: "Grading…",
+      wsQuizAnswerPlaceholder: "Type your answer…",
+      wsQuizProgress: "{answered}/{total} answered",
+      wsQuizCorrect: "Correct",
+      wsQuizIncorrect: "Incorrect",
+      wsQuizCorrectAnswer: "Correct answer",
+      wsQuizResult: "Your score",
+      wsQuizPassed: "Passed!",
+      wsQuizFailed: "Not passed — you need 70%.",
+      wsQuizRetry: "Try again",
+      quizPassedBadge: "Passed · {n}%",
+      quizFailedBadge: "Not passed · {n}%",
       empty: "Set a goal and target date on your profile to generate a plan.",
     },
     stats: {
@@ -1898,6 +1935,25 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       wsQuizExamHint:
         "Режим экзамена: без чата и источников — только вы и вопросы.",
       wsContentEmpty: "Для этой задачи пока нечего показать.",
+      wsQuizIntro:
+        "Мы проверим вас по этому материалу. Наберите 70% или больше, чтобы завершить задание.",
+      wsQuizStart: "Начать тест",
+      wsQuizStarting: "Запуск…",
+      wsQuizNoTopic: "Этот тест пока не привязан к материалу.",
+      wsQuizSubmit: "Ответить",
+      wsQuizFinish: "Завершить и оценить",
+      wsQuizGrading: "Оценка…",
+      wsQuizAnswerPlaceholder: "Введите ответ…",
+      wsQuizProgress: "{answered}/{total} отвечено",
+      wsQuizCorrect: "Верно",
+      wsQuizIncorrect: "Неверно",
+      wsQuizCorrectAnswer: "Правильный ответ",
+      wsQuizResult: "Ваш результат",
+      wsQuizPassed: "Пройдено!",
+      wsQuizFailed: "Не пройдено — нужно 70%.",
+      wsQuizRetry: "Попробовать снова",
+      quizPassedBadge: "Пройдено · {n}%",
+      quizFailedBadge: "Не пройдено · {n}%",
       empty: "Задайте цель и дату в профиле, чтобы создать план.",
     },
     stats: {
@@ -2611,8 +2667,10 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       actionQuiz: "Test",
       actionReview: "Takrorlash",
       actionIndependent: "Mustaqil",
-      descRead: "Ushbu materialni o‘qib chiqing va tushunganingizga ishonch hosil qiling.",
-      descQuiz: "Ushbu mavzu bo‘yicha qisqa test bilan o‘zingizni sinab ko‘ring.",
+      descRead:
+        "Ushbu materialni o‘qib chiqing va tushunganingizga ishonch hosil qiling.",
+      descQuiz:
+        "Ushbu mavzu bo‘yicha qisqa test bilan o‘zingizni sinab ko‘ring.",
       descReview: "O‘rganganlaringizni yangilab turish uchun takrorlang.",
       descIndependent:
         "Buni mustaqil bajaring, so‘ng qanday o‘tgani haqida qisqacha mulohaza yozing.",
@@ -2676,6 +2734,25 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       wsQuizExamHint:
         "Imtihon rejimi: chat va manbalar yo'q — faqat siz va savollar.",
       wsContentEmpty: "Bu vazifa uchun hozircha ko'rsatadigan narsa yo'q.",
+      wsQuizIntro:
+        "Sizni ushbu material bo‘yicha sinaymiz. Vazifani yakunlash uchun 70% yoki undan yuqori natija to‘plang.",
+      wsQuizStart: "Testni boshlash",
+      wsQuizStarting: "Boshlanmoqda…",
+      wsQuizNoTopic: "Bu test hali materialga bog‘lanmagan.",
+      wsQuizSubmit: "Javob berish",
+      wsQuizFinish: "Yakunlash va baholash",
+      wsQuizGrading: "Baholanmoqda…",
+      wsQuizAnswerPlaceholder: "Javobingizni yozing…",
+      wsQuizProgress: "{answered}/{total} javob berildi",
+      wsQuizCorrect: "To‘g‘ri",
+      wsQuizIncorrect: "Noto‘g‘ri",
+      wsQuizCorrectAnswer: "To‘g‘ri javob",
+      wsQuizResult: "Natijangiz",
+      wsQuizPassed: "O‘tdingiz!",
+      wsQuizFailed: "O‘tmadingiz — 70% kerak.",
+      wsQuizRetry: "Qayta urinish",
+      quizPassedBadge: "O‘tdingiz · {n}%",
+      quizFailedBadge: "O‘tmadingiz · {n}%",
       empty: "Reja olish uchun profilingizda maqsad va sana kiriting.",
     },
     stats: {

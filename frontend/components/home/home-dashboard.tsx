@@ -127,8 +127,7 @@ function buildTodayItems(plans: LearningPlan[], today: string): TodayItem[] {
   // Fallback: the next undone step from each goal so the day is never empty.
   const fallback: TodayItem[] = []
   for (const plan of plans) {
-    const next =
-      plan.steps.find((s) => !s.done) ?? null
+    const next = plan.steps.find((s) => !s.done) ?? null
     if (next) {
       fallback.push({ planId: plan.id, goal: plan.goal, step: next })
     }
@@ -357,8 +356,9 @@ function TodayCard({
                       goalLabel={showGoalTag ? item.goal : null}
                       topicName={
                         item.step.materials[0]?.topicId
-                          ? (topicNameById.get(item.step.materials[0].topicId) ??
-                            "—")
+                          ? (topicNameById.get(
+                              item.step.materials[0].topicId
+                            ) ?? "—")
                           : "—"
                       }
                       onComplete={

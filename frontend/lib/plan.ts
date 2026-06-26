@@ -27,10 +27,14 @@ export type PlanStep = {
   completedAt: string | null
   hasLesson: boolean
   lessonGeneratedAt: string | null
+  quizSessionId: string | null
+  quizPassed: boolean | null
+  quizScore: number | null
 }
 
 export type CompleteTaskPayload = {
   reflectionNote?: string
+  quizSessionId?: string
 }
 
 export type LessonCitation = {

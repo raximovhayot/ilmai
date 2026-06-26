@@ -122,54 +122,54 @@ function GoalCard({
   return (
     <Link
       href={`/plan#plan-${plan.id}`}
-      className="rounded-4xl outline-none transition-shadow hover:ring-2 hover:ring-primary/40 focus-visible:ring-2 focus-visible:ring-primary/60"
+      className="rounded-4xl transition-shadow outline-none hover:ring-2 hover:ring-primary/40 focus-visible:ring-2 focus-visible:ring-primary/60"
     >
       <Card className="h-full">
-      <CardContent className="flex flex-col gap-2.5 p-4">
-        <div className="flex items-start gap-2.5">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-base">
-            {done ? "🏆" : "🎯"}
-          </span>
-          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <span className="truncate text-sm font-medium">
-              {plan.goal ?? t.plan.empty}
+        <CardContent className="flex flex-col gap-2.5 p-4">
+          <div className="flex items-start gap-2.5">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-base">
+              {done ? "🏆" : "🎯"}
             </span>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-              {plan.targetDate && (
-                <span className="flex items-center gap-1">
-                  <HugeiconsIcon
-                    icon={Flag03Icon}
-                    strokeWidth={2}
-                    className="size-3.5"
-                  />
-                  {plan.targetDate}
-                </span>
-              )}
-              {dailyMinutes != null && dailyMinutes > 0 && (
-                <span className="flex items-center gap-1">
-                  <HugeiconsIcon
-                    icon={Clock01Icon}
-                    strokeWidth={2}
-                    className="size-3.5"
-                  />
-                  {dailyMinutes} {t.onboarding.goal.minutesSuffix}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-        {plan.daysTotal > 0 && (
-          <div>
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span className="tabular-nums">
-                {plan.daysCompleted}/{plan.daysTotal}
+            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+              <span className="truncate text-sm font-medium">
+                {plan.goal ?? t.plan.empty}
               </span>
-              <span className="tabular-nums">{progress}%</span>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                {plan.targetDate && (
+                  <span className="flex items-center gap-1">
+                    <HugeiconsIcon
+                      icon={Flag03Icon}
+                      strokeWidth={2}
+                      className="size-3.5"
+                    />
+                    {plan.targetDate}
+                  </span>
+                )}
+                {dailyMinutes != null && dailyMinutes > 0 && (
+                  <span className="flex items-center gap-1">
+                    <HugeiconsIcon
+                      icon={Clock01Icon}
+                      strokeWidth={2}
+                      className="size-3.5"
+                    />
+                    {dailyMinutes} {t.onboarding.goal.minutesSuffix}
+                  </span>
+                )}
+              </div>
             </div>
-            <Progress value={progress} className="mt-1" />
           </div>
-        )}
-      </CardContent>
+          {plan.daysTotal > 0 && (
+            <div>
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span className="tabular-nums">
+                  {plan.daysCompleted}/{plan.daysTotal}
+                </span>
+                <span className="tabular-nums">{progress}%</span>
+              </div>
+              <Progress value={progress} className="mt-1" />
+            </div>
+          )}
+        </CardContent>
       </Card>
     </Link>
   )

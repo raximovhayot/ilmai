@@ -15,11 +15,7 @@ import {
 
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
-import {
-  type LearningPlan,
-  type PlanActivity,
-  type PlanStep,
-} from "@/lib/plan"
+import { type LearningPlan, type PlanActivity, type PlanStep } from "@/lib/plan"
 import { useT } from "@/lib/i18n/provider"
 import type { TopicResponse } from "@/lib/topics"
 import { cn } from "@/lib/utils"
@@ -283,8 +279,8 @@ function DayBlock({ day, ...rest }: DaySectionProps & { day: PlanDay }) {
             Boolean(step.note) ||
             Boolean(
               step.done &&
-                step.activity === "INDEPENDENT" &&
-                step.reflectionNote
+              step.activity === "INDEPENDENT" &&
+              step.reflectionNote
             )
           const href = `/task/${planId}/${step.dayIndex}/${step.orderInDay}`
           return (
@@ -371,7 +367,17 @@ function StepRow({
         </span>
         <span className="text-xs text-muted-foreground">{activityLabel}</span>
       </div>
-      {state === "current" ? (
+      {step.activity === "QUIZ" && step.quizScore != null ? (
+        <Badge
+          variant={step.quizPassed ? "default" : "secondary"}
+          className="shrink-0"
+        >
+          {(step.quizPassed
+            ? t.plan.quizPassedBadge
+            : t.plan.quizFailedBadge
+          ).replace("{n}", String(step.quizScore))}
+        </Badge>
+      ) : state === "current" ? (
         <Badge variant="default" className="shrink-0">
           {t.plan.youAreHere}
         </Badge>
@@ -499,7 +505,9 @@ export function StepCard({
         isToday && "border-primary/40 bg-primary/5"
       )}
     >
-      <p className="text-sm text-foreground">{descForAction(step.activity, t)}</p>
+      <p className="text-sm text-foreground">
+        {descForAction(step.activity, t)}
+      </p>
 
       {step.note ? (
         <p className="mt-2 text-xs text-muted-foreground">{step.note}</p>
