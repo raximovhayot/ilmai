@@ -339,6 +339,12 @@ export type Dictionary = {
     actionQuiz: string
     actionReview: string
     actionIndependent: string
+    descRead: string
+    descQuiz: string
+    descReview: string
+    descIndependent: string
+    completedOn: string
+    lessonReady: string
     reflectionLabel: string
     reflectionPlaceholder: string
     quizScoreLabel: string
@@ -1059,6 +1065,13 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       actionQuiz: "Quiz",
       actionReview: "Review",
       actionIndependent: "Independent",
+      descRead: "Read through this material and make sure you understand it.",
+      descQuiz: "Test yourself with a short quiz on this topic.",
+      descReview: "Revise what you've already learned to keep it fresh.",
+      descIndependent:
+        "Work on this yourself, then write a short reflection on how it went.",
+      completedOn: "Completed on {date}",
+      lessonReady: "Lesson ready",
       reflectionLabel: "Your reflection",
       reflectionPlaceholder:
         "Write a few sentences about what you did and learned…",
@@ -1820,6 +1833,13 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       actionQuiz: "Тест",
       actionReview: "Повторение",
       actionIndependent: "Самостоятельно",
+      descRead: "Прочитайте материал и убедитесь, что всё поняли.",
+      descQuiz: "Проверьте себя коротким тестом по этой теме.",
+      descReview: "Повторите изученное, чтобы освежить знания.",
+      descIndependent:
+        "Поработайте над этим самостоятельно, затем напишите короткую рефлексию.",
+      completedOn: "Выполнено {date}",
+      lessonReady: "Урок готов",
       reflectionLabel: "Ваша рефлексия",
       reflectionPlaceholder:
         "Напишите пару предложений о том, что вы сделали и поняли…",
@@ -2591,6 +2611,13 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       actionQuiz: "Test",
       actionReview: "Takrorlash",
       actionIndependent: "Mustaqil",
+      descRead: "Ushbu materialni o‘qib chiqing va tushunganingizga ishonch hosil qiling.",
+      descQuiz: "Ushbu mavzu bo‘yicha qisqa test bilan o‘zingizni sinab ko‘ring.",
+      descReview: "O‘rganganlaringizni yangilab turish uchun takrorlang.",
+      descIndependent:
+        "Buni mustaqil bajaring, so‘ng qanday o‘tgani haqida qisqacha mulohaza yozing.",
+      completedOn: "{date} da bajarildi",
+      lessonReady: "Dars tayyor",
       reflectionLabel: "Mulohazangiz",
       reflectionPlaceholder:
         "Nima qilganingiz va nimani o‘rganganingiz haqida bir necha gap yozing…",

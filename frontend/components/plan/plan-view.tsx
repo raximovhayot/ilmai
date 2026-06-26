@@ -10,6 +10,7 @@ import {
   Flag03Icon,
   PuzzleIcon,
   RoadIcon,
+  SparklesIcon,
 } from "@hugeicons/core-free-icons"
 
 import { Badge } from "@/components/ui/badge"
@@ -278,15 +279,25 @@ function DayBlock({ day, ...rest }: DaySectionProps & { day: PlanDay }) {
           const fkey = focusKey(step.dayIndex, step.orderInDay)
           const state = stateFor(step)
           const focused = focusedKey === fkey
+          const hasDetail =
+            Boolean(step.note) ||
+            Boolean(
+              step.done &&
+                step.activity === "INDEPENDENT" &&
+                step.reflectionNote
+            )
+          const href = `/task/${planId}/${step.dayIndex}/${step.orderInDay}`
           return (
             <li key={step.orderInDay} className="flex flex-col">
               <StepRow
                 step={step}
                 state={state}
-                expanded={focused}
+                expandable={hasDetail}
+                expanded={hasDetail && focused}
                 onToggle={() => onFocus(fkey)}
+                href={href}
               />
-              {focused ? (
+              {hasDetail && focused ? (
                 <div className="px-3 pb-3">
                   <StepCard
                     step={step}
@@ -306,26 +317,26 @@ function DayBlock({ day, ...rest }: DaySectionProps & { day: PlanDay }) {
 function StepRow({
   step,
   state,
+  expandable,
   expanded,
   onToggle,
+  href,
 }: {
   step: PlanStep
   state: StepState
+  expandable: boolean
   expanded: boolean
   onToggle: () => void
+  href: string
 }) {
   const t = useT()
   const activityLabel = labelForAction(step.activity, t)
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      aria-expanded={expanded}
-      className={cn(
-        "flex w-full items-center gap-3 px-3 py-3 text-start transition-colors hover:bg-accent/40",
-        state === "current" && !expanded && "bg-primary/5"
-      )}
-    >
+  const className = cn(
+    "flex w-full items-center gap-3 px-3 py-3 text-start transition-colors hover:bg-accent/40",
+    state === "current" && !expanded && "bg-primary/5"
+  )
+  const inner = (
+    <>
       <span
         className={cn(
           "flex size-7 shrink-0 items-center justify-center rounded-full",
@@ -370,10 +381,29 @@ function StepRow({
         strokeWidth={2}
         className={cn(
           "size-4 shrink-0 text-muted-foreground transition-transform",
-          expanded ? "rotate-90" : "rtl:rotate-180"
+          expandable && expanded ? "rotate-90" : "rtl:rotate-180"
         )}
       />
-    </button>
+    </>
+  )
+
+  if (expandable) {
+    return (
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={expanded}
+        className={className}
+      >
+        {inner}
+      </button>
+    )
+  }
+
+  return (
+    <Link href={href} className={className}>
+      {inner}
+    </Link>
   )
 }
 
@@ -459,6 +489,7 @@ export function StepCard({
 }) {
   const t = useT()
   const isIndependent = step.activity === "INDEPENDENT"
+  const completedOn = step.completedAt ? step.completedAt.slice(0, 10) : null
 
   return (
     <div
@@ -468,8 +499,21 @@ export function StepCard({
         isToday && "border-primary/40 bg-primary/5"
       )}
     >
+      <p className="text-sm text-foreground">{descForAction(step.activity, t)}</p>
+
       {step.note ? (
-        <p className="text-xs text-muted-foreground">{step.note}</p>
+        <p className="mt-2 text-xs text-muted-foreground">{step.note}</p>
+      ) : null}
+
+      {!step.done && step.hasLesson ? (
+        <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+          <HugeiconsIcon
+            icon={SparklesIcon}
+            strokeWidth={2}
+            className="size-3.5 shrink-0 text-primary"
+          />
+          {t.plan.lessonReady}
+        </p>
       ) : null}
 
       {step.done && isIndependent && step.reflectionNote ? (
@@ -478,7 +522,7 @@ export function StepCard({
         </p>
       ) : null}
 
-      <div className="mt-3 flex items-center justify-end">
+      <div className="mt-3 flex items-center justify-end gap-3">
         {step.done ? (
           <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
             <HugeiconsIcon
@@ -486,7 +530,9 @@ export function StepCard({
               strokeWidth={2}
               className="size-4"
             />
-            {t.plan.completed}
+            {completedOn
+              ? t.plan.completedOn.replace("{date}", completedOn)
+              : t.plan.completed}
           </span>
         ) : (
           <Link
@@ -519,4 +565,11 @@ function labelForAction(action: PlanActivity, t: ReturnType<typeof useT>) {
   if (action === "QUIZ") return t.plan.actionQuiz
   if (action === "INDEPENDENT") return t.plan.actionIndependent
   return t.plan.actionReview
+}
+
+function descForAction(action: PlanActivity, t: ReturnType<typeof useT>) {
+  if (action === "READ") return t.plan.descRead
+  if (action === "QUIZ") return t.plan.descQuiz
+  if (action === "INDEPENDENT") return t.plan.descIndependent
+  return t.plan.descReview
 }
