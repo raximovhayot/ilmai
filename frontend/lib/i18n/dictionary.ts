@@ -402,6 +402,7 @@ export type Dictionary = {
     wsBackToPlan: string
     wsShowChat: string
     wsHideChat: string
+    wsResize: string
     wsQuizPracticeHint: string
     wsQuizExamHint: string
     wsContentEmpty: string
@@ -1158,6 +1159,7 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       wsBackToPlan: "Back to plan",
       wsShowChat: "Show chat",
       wsHideChat: "Hide chat",
+      wsResize: "Drag to resize",
       wsQuizPracticeHint:
         "Practice mode: ask the chat and check sources freely.",
       wsQuizExamHint:
@@ -1954,6 +1956,7 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       wsBackToPlan: "К плану",
       wsShowChat: "Показать чат",
       wsHideChat: "Скрыть чат",
+      wsResize: "Потяните, чтобы изменить размер",
       wsQuizPracticeHint:
         "Режим практики: свободно спрашивайте чат и смотрите источники.",
       wsQuizExamHint:
@@ -2761,6 +2764,7 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       wsBackToPlan: "Rejaga qaytish",
       wsShowChat: "Chatni ko'rsatish",
       wsHideChat: "Chatni yashirish",
+      wsResize: "O'lchamini o'zgartirish",
       wsQuizPracticeHint:
         "Mashq rejimi: chatdan erkin so'rang va manbalarni ko'ring.",
       wsQuizExamHint:

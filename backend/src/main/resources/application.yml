@@ -69,7 +69,7 @@ uimessagestream:
 ai:
   retrieval:
     top-k: ${RETRIEVAL_TOP_K:8}
-    similarity-threshold: ${RETRIEVAL_SIMILARITY_THRESHOLD:0.6}
+    similarity-threshold: ${RETRIEVAL_SIMILARITY_THRESHOLD:0.45}
   embedding:
     api-key: ${GOOGLE_GENAI_API_KEY:}
     model: ${GOOGLE_GENAI_EMBEDDING_MODEL:gemini-embedding-2}

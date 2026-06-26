@@ -13,7 +13,6 @@ import {
   Flag03Icon,
   PuzzleIcon,
   RefreshIcon,
-  SparklesIcon,
 } from "@hugeicons/core-free-icons"
 
 import { Response } from "@/components/ai-elements/response"
@@ -41,6 +40,14 @@ import { useT } from "@/lib/i18n/provider"
 import { cn } from "@/lib/utils"
 
 type QuizMode = "practice" | "exam"
+
+const PANEL_MIN_WIDTH = 240
+const PANEL_MAX_WIDTH = 560
+const PANEL_DEFAULT_WIDTH = 320
+
+function clampPanelWidth(width: number): number {
+  return Math.min(PANEL_MAX_WIDTH, Math.max(PANEL_MIN_WIDTH, width))
+}
 
 function citationKey(citation: LessonCitation, index: number): string {
   return `${citation.materialId ?? "c"}-${citation.chunkIndex ?? index}-${index}`
@@ -72,8 +79,9 @@ export function TaskWorkspace({
   const [completing, setCompleting] = React.useState(false)
   const [reflection, setReflection] = React.useState("")
   const [quizMode, setQuizMode] = React.useState<QuizMode>("practice")
-  const [chatOpen, setChatOpen] = React.useState(false)
   const [sourceOpen, setSourceOpen] = React.useState(false)
+  const [chatWidth, setChatWidth] = React.useState(PANEL_DEFAULT_WIDTH)
+  const [sourceWidth, setSourceWidth] = React.useState(PANEL_DEFAULT_WIDTH)
   const [seededKey, setSeededKey] = React.useState<string | null>(null)
 
   const step = React.useMemo<PlanStep | null>(() => {
@@ -94,7 +102,7 @@ export function TaskWorkspace({
   const isLessonActivity =
     step?.activity === "READ" || step?.activity === "REVIEW"
   const examLocked = isQuiz && quizMode === "exam"
-  const chatVisible = chatOpen && !examLocked
+  const chatVisible = !examLocked
   const sourceVisible = sourceOpen && !examLocked
 
   React.useEffect(() => {
@@ -207,7 +215,10 @@ export function TaskWorkspace({
     : ""
 
   return (
-    <div className="flex h-dvh flex-col bg-background">
+    <div
+      className="flex flex-col overflow-hidden bg-background"
+      style={{ height: "100dvh" }}
+    >
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border px-3 sm:px-4">
         <Link
           href="/plan"
@@ -268,20 +279,6 @@ export function TaskWorkspace({
         ) : null}
 
         <Button
-          variant={chatVisible ? "secondary" : "ghost"}
-          size="sm"
-          onClick={() => setChatOpen((v) => !v)}
-          disabled={examLocked}
-          aria-label={chatVisible ? t.wsHideChat : t.wsShowChat}
-        >
-          <HugeiconsIcon
-            icon={SparklesIcon}
-            strokeWidth={2}
-            data-icon="inline-start"
-          />
-          <span className="hidden sm:inline">{t.wsChatTitle}</span>
-        </Button>
-        <Button
           variant={sourceVisible ? "secondary" : "ghost"}
           size="sm"
           onClick={() => setSourceOpen((v) => !v)}
@@ -299,17 +296,21 @@ export function TaskWorkspace({
 
       <div className="relative flex min-h-0 flex-1">
         {chatVisible && step ? (
-          <>
-            <button
-              type="button"
-              aria-label={t.wsHideChat}
-              onClick={() => setChatOpen(false)}
-              className="absolute inset-0 z-10 bg-foreground/40 md:hidden"
-            />
-            <aside className="absolute inset-y-0 start-0 z-20 flex w-full max-w-sm flex-col border-e border-border bg-background md:static md:z-auto md:w-80 md:max-w-none md:shrink-0">
-              <TaskChatPanel taskTitle={step.title} />
-            </aside>
-          </>
+          <aside
+            className="hidden shrink-0 flex-col border-e border-border bg-background md:flex"
+            style={{ width: chatWidth }}
+          >
+            <TaskChatPanel taskTitle={step.title} />
+          </aside>
+        ) : null}
+        {chatVisible && step ? (
+          <ResizeHandle
+            ariaLabel={t.wsResize}
+            className="hidden md:block"
+            onDelta={(delta) =>
+              setChatWidth((width) => clampPanelWidth(width + delta))
+            }
+          />
         ) : null}
 
         <main className="min-w-0 flex-1 overflow-y-auto">
@@ -379,6 +380,15 @@ export function TaskWorkspace({
         </main>
 
         {sourceVisible && step ? (
+          <ResizeHandle
+            ariaLabel={t.wsResize}
+            className="hidden lg:block"
+            onDelta={(delta) =>
+              setSourceWidth((width) => clampPanelWidth(width - delta))
+            }
+          />
+        ) : null}
+        {sourceVisible && step ? (
           <>
             <button
               type="button"
@@ -386,12 +396,74 @@ export function TaskWorkspace({
               onClick={() => setSourceOpen(false)}
               className="absolute inset-0 z-10 bg-foreground/40 lg:hidden"
             />
-            <aside className="absolute inset-y-0 end-0 z-20 flex w-full max-w-sm flex-col border-s border-border bg-background lg:static lg:z-auto lg:w-80 lg:max-w-none lg:shrink-0">
+            <aside
+              className="absolute inset-y-0 end-0 z-20 flex w-full max-w-sm flex-col border-s border-border bg-background lg:static lg:z-auto lg:w-[var(--src-w)] lg:max-w-none lg:shrink-0"
+              style={{ "--src-w": `${sourceWidth}px` } as React.CSSProperties}
+            >
               <SourcePanel lesson={lesson} step={step} />
             </aside>
           </>
         ) : null}
       </div>
+    </div>
+  )
+}
+
+function ResizeHandle({
+  ariaLabel,
+  className,
+  onDelta,
+}: {
+  ariaLabel: string
+  className?: string
+  onDelta: (inlineDelta: number) => void
+}) {
+  const cleanupRef = React.useRef<(() => void) | null>(null)
+
+  const start = React.useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      event.preventDefault()
+      cleanupRef.current?.()
+      let lastX = event.clientX
+      const dirSign =
+        getComputedStyle(document.documentElement).direction === "rtl" ? -1 : 1
+
+      const move = (moveEvent: PointerEvent) => {
+        const delta = (moveEvent.clientX - lastX) * dirSign
+        lastX = moveEvent.clientX
+        if (delta !== 0) onDelta(delta)
+      }
+      const stop = () => {
+        document.body.style.removeProperty("cursor")
+        document.body.style.removeProperty("user-select")
+        window.removeEventListener("pointermove", move)
+        window.removeEventListener("pointerup", stop)
+        cleanupRef.current = null
+      }
+
+      cleanupRef.current = stop
+      document.body.style.cursor = "col-resize"
+      document.body.style.userSelect = "none"
+      window.addEventListener("pointermove", move)
+      window.addEventListener("pointerup", stop)
+    },
+    [onDelta]
+  )
+
+  React.useEffect(() => () => cleanupRef.current?.(), [])
+
+  return (
+    <div
+      role="separator"
+      aria-orientation="vertical"
+      aria-label={ariaLabel}
+      onPointerDown={start}
+      className={cn(
+        "relative z-30 w-1 shrink-0 cursor-col-resize touch-none bg-border transition-colors hover:bg-primary/40",
+        className
+      )}
+    >
+      <span className="absolute inset-y-0 -start-1 -end-1" />
     </div>
   )
 }
