@@ -7,6 +7,9 @@ import org.aiincubator.ilmai.materials.payload.MaterialResponse;
 import org.aiincubator.ilmai.materials.payload.MoveMaterialRequest;
 import org.aiincubator.ilmai.materials.payload.SpaceContentsResponse;
 import org.aiincubator.ilmai.materials.service.MaterialService;
+import org.aiincubator.ilmai.materials.service.RawMaterial;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -67,6 +70,20 @@ public class MaterialController {
     public ApiResponse<MaterialResponse> get(@AuthenticationPrincipal CurrentUser currentUser,
                                              @PathVariable UUID materialId) {
         return ApiResponse.ok(materialService.get(currentUser, materialId));
+    }
+
+    @GetMapping("/{materialId}/raw")
+    public ResponseEntity<ByteArrayResource> raw(@AuthenticationPrincipal CurrentUser currentUser,
+                                                 @PathVariable UUID materialId) {
+        RawMaterial raw = materialService.openRaw(currentUser, materialId);
+        MediaType mediaType = raw.getContentType() == null
+                ? MediaType.APPLICATION_OCTET_STREAM
+                : MediaType.parseMediaType(raw.getContentType());
+        return ResponseEntity.ok()
+                .contentType(mediaType)
+                .contentLength(raw.getContent().length)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline")
+                .body(new ByteArrayResource(raw.getContent()));
     }
 
     @DeleteMapping("/{materialId}")

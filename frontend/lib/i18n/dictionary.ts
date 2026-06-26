@@ -388,6 +388,11 @@ export type Dictionary = {
     wsChatTitle: string
     wsSourceTitle: string
     wsSourceEmpty: string
+    wsSourcePage: string
+    wsSourcePages: string
+    wsSourceSegment: string
+    wsSourcePlay: string
+    wsSourceCited: string
     wsModePractice: string
     wsModeExam: string
     wsExamLocked: string
@@ -1136,6 +1141,11 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       wsChatTitle: "Chat",
       wsSourceTitle: "Sources",
       wsSourceEmpty: "No sources for this task yet.",
+      wsSourcePage: "Page {page}",
+      wsSourcePages: "Pages {start}–{end}",
+      wsSourceSegment: "{start}–{end}",
+      wsSourcePlay: "Play segment",
+      wsSourceCited: "Cited passages",
       wsModePractice: "Practice",
       wsModeExam: "Exam",
       wsExamLocked: "Chat and sources are turned off in exam mode.",
@@ -1924,6 +1934,11 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       wsChatTitle: "Чат",
       wsSourceTitle: "Источники",
       wsSourceEmpty: "Для этой задачи пока нет источников.",
+      wsSourcePage: "Страница {page}",
+      wsSourcePages: "Страницы {start}–{end}",
+      wsSourceSegment: "{start}–{end}",
+      wsSourcePlay: "Воспроизвести фрагмент",
+      wsSourceCited: "Цитируемые фрагменты",
       wsModePractice: "Практика",
       wsModeExam: "Экзамен",
       wsExamLocked: "В режиме экзамена чат и источники отключены.",
@@ -2723,6 +2738,11 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       wsChatTitle: "Chat",
       wsSourceTitle: "Manbalar",
       wsSourceEmpty: "Bu vazifa uchun hozircha manbalar yo'q.",
+      wsSourcePage: "{page}-sahifa",
+      wsSourcePages: "{start}–{end}-sahifalar",
+      wsSourceSegment: "{start}–{end}",
+      wsSourcePlay: "Parchani ijro etish",
+      wsSourceCited: "Iqtibos qilingan parchalar",
       wsModePractice: "Mashq",
       wsModeExam: "Imtihon",
       wsExamLocked: "Imtihon rejimida chat va manbalar o'chirilgan.",

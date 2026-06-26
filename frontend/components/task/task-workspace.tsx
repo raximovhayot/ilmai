@@ -25,9 +25,14 @@ import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
 import {
   completePlanTask,
+  formatAudioTimestamp,
   generateTaskLesson,
   getPlans,
+  isAudioCitation,
+  isPdfCitation,
+  rawMaterialUrl,
   type LearningPlan,
+  type LessonCitation,
   type PlanActivity,
   type PlanStep,
   type StepLesson,
@@ -36,6 +41,10 @@ import { useT } from "@/lib/i18n/provider"
 import { cn } from "@/lib/utils"
 
 type QuizMode = "practice" | "exam"
+
+function citationKey(citation: LessonCitation, index: number): string {
+  return `${citation.materialId ?? "c"}-${citation.chunkIndex ?? index}-${index}`
+}
 
 function activityIcon(activity: PlanActivity) {
   if (activity === "QUIZ") return PuzzleIcon
@@ -524,7 +533,126 @@ function SourcePanel({
 }) {
   const dict = useT()
   const t = dict.plan
-  const citations = lesson?.citations ?? []
+  const citations = React.useMemo(() => lesson?.citations ?? [], [lesson])
+  const pdfCitations = React.useMemo(
+    () => citations.filter(isPdfCitation),
+    [citations]
+  )
+  const audioCitations = React.useMemo(
+    () => citations.filter((c) => !isPdfCitation(c) && isAudioCitation(c)),
+    [citations]
+  )
+  const otherCitations = React.useMemo(
+    () => citations.filter((c) => !isPdfCitation(c) && !isAudioCitation(c)),
+    [citations]
+  )
+
+  const [activeKey, setActiveKey] = React.useState<string | null>(null)
+  const active = React.useMemo(() => {
+    if (pdfCitations.length === 0) return null
+    return (
+      pdfCitations.find((c, i) => citationKey(c, i) === activeKey) ??
+      pdfCitations[0]
+    )
+  }, [pdfCitations, activeKey])
+
+  const pageLabel = React.useCallback(
+    (citation: LessonCitation) => {
+      const start = citation.pageStart
+      if (typeof start !== "number") {
+        return citation.materialName ?? t.wsSourceTitle
+      }
+      const end = citation.pageEnd ?? start
+      if (end !== start) {
+        return t.wsSourcePages
+          .replace("{start}", String(start))
+          .replace("{end}", String(end))
+      }
+      return t.wsSourcePage.replace("{page}", String(start))
+    },
+    [t]
+  )
+
+  if (pdfCitations.length > 0 && active && active.materialId) {
+    const iframeSrc = `${rawMaterialUrl(active.materialId)}#page=${
+      active.pageStart ?? 1
+    }`
+    return (
+      <div className="flex min-h-0 flex-1 flex-col">
+        <header className="flex h-11 shrink-0 items-center gap-2 border-b border-border px-4 text-sm font-semibold">
+          <HugeiconsIcon icon={File01Icon} strokeWidth={2} className="size-4" />
+          <span className="truncate">
+            {active.materialName ?? t.wsSourceTitle}
+          </span>
+        </header>
+        {pdfCitations.length > 1 ? (
+          <div className="flex shrink-0 flex-wrap gap-1.5 border-b border-border px-3 py-2">
+            {pdfCitations.map((citation, index) => {
+              const key = citationKey(citation, index)
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setActiveKey(key)}
+                  className={cn(
+                    "rounded-full border px-2.5 py-1 text-xs transition-colors",
+                    key === citationKey(active, pdfCitations.indexOf(active))
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  {pageLabel(citation)}
+                </button>
+              )
+            })}
+          </div>
+        ) : null}
+        <div className="min-h-0 flex-1">
+          <iframe
+            key={iframeSrc}
+            src={iframeSrc}
+            title={active.materialName ?? t.wsSourceTitle}
+            className="h-full w-full border-0"
+          />
+        </div>
+        {otherCitations.length > 0 ? (
+          <div className="max-h-40 shrink-0 overflow-y-auto border-t border-border p-3">
+            <p className="mb-2 text-xs font-semibold text-muted-foreground">
+              {t.wsSourceCited}
+            </p>
+            <ul className="flex flex-col gap-2">
+              {otherCitations.map((citation, index) => (
+                <li
+                  key={`${citation.materialId ?? "c"}-${index}`}
+                  className="rounded-lg border border-border bg-muted/20 p-3"
+                >
+                  {citation.materialName ? (
+                    <p className="mb-1 truncate text-xs font-semibold">
+                      {citation.materialName}
+                    </p>
+                  ) : null}
+                  {citation.snippet ? (
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      {citation.snippet}
+                    </p>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </div>
+    )
+  }
+
+  if (audioCitations.length > 0) {
+    return (
+      <AudioSourceView
+        citations={audioCitations}
+        otherCitations={otherCitations}
+      />
+    )
+  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -576,6 +704,140 @@ function SourcePanel({
             {t.wsSourceEmpty}
           </p>
         )}
+      </div>
+    </div>
+  )
+}
+
+function AudioSourceView({
+  citations,
+  otherCitations,
+}: {
+  citations: LessonCitation[]
+  otherCitations: LessonCitation[]
+}) {
+  const dict = useT()
+  const t = dict.plan
+
+  const groups = React.useMemo(() => {
+    const map = new Map<
+      string,
+      { materialName: string | null; items: LessonCitation[] }
+    >()
+    for (const citation of citations) {
+      if (!citation.materialId) continue
+      const group = map.get(citation.materialId) ?? {
+        materialName: citation.materialName,
+        items: [],
+      }
+      group.items.push(citation)
+      map.set(citation.materialId, group)
+    }
+    return Array.from(map.entries())
+  }, [citations])
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <header className="flex h-11 shrink-0 items-center gap-2 border-b border-border px-4 text-sm font-semibold">
+        <HugeiconsIcon icon={File01Icon} strokeWidth={2} className="size-4" />
+        {t.wsSourceTitle}
+      </header>
+      <div className="min-h-0 flex-1 overflow-y-auto p-3">
+        <div className="flex flex-col gap-4">
+          {groups.map(([materialId, group]) => (
+            <AudioMaterialBlock
+              key={materialId}
+              materialId={materialId}
+              materialName={group.materialName}
+              segments={group.items}
+            />
+          ))}
+        </div>
+        {otherCitations.length > 0 ? (
+          <div className="mt-4 border-t border-border pt-3">
+            <p className="mb-2 text-xs font-semibold text-muted-foreground">
+              {t.wsSourceCited}
+            </p>
+            <ul className="flex flex-col gap-2">
+              {otherCitations.map((citation, index) => (
+                <li
+                  key={`${citation.materialId ?? "c"}-${index}`}
+                  className="rounded-lg border border-border bg-muted/20 p-3"
+                >
+                  {citation.materialName ? (
+                    <p className="mb-1 truncate text-xs font-semibold">
+                      {citation.materialName}
+                    </p>
+                  ) : null}
+                  {citation.snippet ? (
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      {citation.snippet}
+                    </p>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+function AudioMaterialBlock({
+  materialId,
+  materialName,
+  segments,
+}: {
+  materialId: string
+  materialName: string | null
+  segments: LessonCitation[]
+}) {
+  const dict = useT()
+  const t = dict.plan
+  const audioRef = React.useRef<HTMLAudioElement>(null)
+
+  const seek = React.useCallback((startMs: number | null | undefined) => {
+    const el = audioRef.current
+    if (!el || typeof startMs !== "number") return
+    el.currentTime = Math.max(0, startMs / 1000)
+    void el.play().catch(() => {})
+  }, [])
+
+  return (
+    <div className="rounded-lg border border-border bg-muted/20 p-3">
+      {materialName ? (
+        <p className="mb-2 truncate text-xs font-semibold">{materialName}</p>
+      ) : null}
+      <audio
+        ref={audioRef}
+        src={rawMaterialUrl(materialId)}
+        controls
+        preload="metadata"
+        className="w-full"
+      />
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {segments.map((segment, index) => {
+          if (typeof segment.audioStartMs !== "number") return null
+          const start = formatAudioTimestamp(segment.audioStartMs)
+          const end = formatAudioTimestamp(
+            segment.audioEndMs ?? segment.audioStartMs
+          )
+          const label = t.wsSourceSegment
+            .replace("{start}", start)
+            .replace("{end}", end)
+          return (
+            <button
+              key={`${segment.chunkIndex ?? index}-${index}`}
+              type="button"
+              title={t.wsSourcePlay}
+              onClick={() => seek(segment.audioStartMs)}
+              className="rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted"
+            >
+              {label}
+            </button>
+          )
+        })}
       </div>
     </div>
   )

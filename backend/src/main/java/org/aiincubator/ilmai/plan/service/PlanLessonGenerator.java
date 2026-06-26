@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.aiincubator.ilmai.ai.IlmaiChatClientFactory;
 import org.aiincubator.ilmai.ai.RetrievalApi;
 import org.aiincubator.ilmai.ai.RetrievedChunkDto;
+import org.aiincubator.ilmai.ai.SourceLocator;
 import org.aiincubator.ilmai.plan.domain.LessonCitation;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatResponse;
@@ -108,11 +109,20 @@ public class PlanLessonGenerator {
     private List<LessonCitation> toCitations(List<RetrievedChunkDto> chunks) {
         List<LessonCitation> citations = new ArrayList<>(chunks.size());
         for (RetrievedChunkDto chunk : chunks) {
-            citations.add(new LessonCitation(
+            LessonCitation citation = new LessonCitation(
                     chunk.getMaterialId(),
                     chunk.getMaterialName(),
                     chunk.getChunkIndex(),
-                    truncate(chunk.getContent())));
+                    truncate(chunk.getContent()));
+            SourceLocator locator = chunk.getLocator();
+            if (locator != null) {
+                citation.setSourceKind(locator.getKind());
+                citation.setPageStart(locator.getPageStart());
+                citation.setPageEnd(locator.getPageEnd());
+                citation.setAudioStartMs(locator.getAudioStartMs());
+                citation.setAudioEndMs(locator.getAudioEndMs());
+            }
+            citations.add(citation);
         }
         return citations;
     }

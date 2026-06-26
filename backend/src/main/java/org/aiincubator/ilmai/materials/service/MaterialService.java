@@ -218,6 +218,20 @@ public class MaterialService {
                 .orElseThrow(() -> new MaterialException(MaterialException.Reason.MATERIAL_NOT_FOUND));
     }
 
+    @Transactional(readOnly = true)
+    public RawMaterial openRaw(CurrentUser currentUser, UUID materialId) {
+        List<UUID> spaceIds = requireSpaceIds(currentUser);
+        Material material = materials.findByIdAndSpaceIdIn(materialId, spaceIds)
+                .orElseThrow(() -> new MaterialException(MaterialException.Reason.MATERIAL_NOT_FOUND));
+        String storageKey = MaterialStorageKeys.forCoordinates(material.getSpaceId(), material.getId());
+        try (InputStream in = storage.open(storageKey)) {
+            byte[] content = in.readAllBytes();
+            return new RawMaterial(content, material.getContentType(), material.getTitle());
+        } catch (IOException ex) {
+            throw new MaterialException(MaterialException.Reason.MATERIAL_STORAGE_FAILED);
+        }
+    }
+
     @Transactional
     public void delete(CurrentUser currentUser, UUID materialId) {
         List<UUID> spaceIds = requireSpaceIds(currentUser);

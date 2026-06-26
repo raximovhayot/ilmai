@@ -55,7 +55,8 @@ public class DefaultRetrievalApi implements RetrievalApi {
                 Integer chunkIndex = parseInt(md == null ? null : md.get("chunk_index"));
                 Double score = doc.getScore();
                 String text = doc.getText();
-                out.add(new RetrievedChunkDto(materialId, materialName, chunkIndex, text == null ? "" : text, score));
+                SourceLocator locator = locatorOf(md);
+                out.add(new RetrievedChunkDto(materialId, materialName, chunkIndex, text == null ? "" : text, score, locator));
             }
             return out;
         } catch (RuntimeException ex) {
@@ -77,6 +78,34 @@ public class DefaultRetrievalApi implements RetrievalApi {
 
     private static String stringOrNull(Object value) {
         return value == null ? null : value.toString();
+    }
+
+    private static SourceLocator locatorOf(Map<String, Object> md) {
+        if (md == null) {
+            return null;
+        }
+        Integer pageStart = parseInt(md.get("page_start"));
+        Integer pageEnd = parseInt(md.get("page_end"));
+        Long audioStartMs = parseLong(md.get("audio_start_ms"));
+        Long audioEndMs = parseLong(md.get("audio_end_ms"));
+        if (pageStart == null && pageEnd == null && audioStartMs == null && audioEndMs == null) {
+            return null;
+        }
+        return new SourceLocator(stringOrNull(md.get("chunk_kind")), pageStart, pageEnd, audioStartMs, audioEndMs);
+    }
+
+    private static Long parseLong(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number n) {
+            return n.longValue();
+        }
+        try {
+            return Long.parseLong(value.toString());
+        } catch (NumberFormatException ex) {
+            return null;
+        }
     }
 
     private static Integer parseInt(Object value) {

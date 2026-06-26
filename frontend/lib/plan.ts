@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/api"
+import { apiFetch, PROXY_PREFIX } from "@/lib/api"
 
 export type PlanActivity = "READ" | "QUIZ" | "REVIEW" | "INDEPENDENT"
 
@@ -42,6 +42,45 @@ export type LessonCitation = {
   materialName: string | null
   chunkIndex: number | null
   snippet: string | null
+  sourceKind?: string | null
+  pageStart?: number | null
+  pageEnd?: number | null
+  audioStartMs?: number | null
+  audioEndMs?: number | null
+}
+
+export function rawMaterialUrl(materialId: string): string {
+  return `${PROXY_PREFIX}/materials/${materialId}/raw`
+}
+
+export function isPdfCitation(citation: LessonCitation): boolean {
+  if (!citation.materialId) return false
+  return (
+    citation.sourceKind === "pdf_range" ||
+    typeof citation.pageStart === "number"
+  )
+}
+
+export function isAudioCitation(citation: LessonCitation): boolean {
+  if (!citation.materialId) return false
+  return (
+    citation.sourceKind === "audio_segment" ||
+    typeof citation.audioStartMs === "number"
+  )
+}
+
+export function formatAudioTimestamp(ms: number): string {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000))
+  const seconds = totalSeconds % 60
+  const totalMinutes = Math.floor(totalSeconds / 60)
+  const minutes = totalMinutes % 60
+  const hours = Math.floor(totalMinutes / 60)
+  const mm = String(minutes).padStart(2, "0")
+  const ss = String(seconds).padStart(2, "0")
+  if (hours > 0) {
+    return `${hours}:${mm}:${ss}`
+  }
+  return `${mm}:${ss}`
 }
 
 export type StepLesson = {

@@ -19,4 +19,9 @@ public class LessonCitationResponse {
     private String materialName;
     private Integer chunkIndex;
     private String snippet;
+    private String sourceKind;
+    private Integer pageStart;
+    private Integer pageEnd;
+    private Long audioStartMs;
+    private Long audioEndMs;
 }
