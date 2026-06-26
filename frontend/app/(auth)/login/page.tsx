@@ -6,6 +6,7 @@ import { SparklesIcon } from "@hugeicons/core-free-icons"
 
 import { AuthErrorToast } from "@/components/auth/auth-error-toast"
 import { DemoSignInButton } from "@/components/auth/demo-sign-in-button"
+import { DevSignInButton } from "@/components/auth/dev-sign-in-button"
 import { GoogleSignInButton } from "@/components/auth/google-sign-in-button"
 import {
   Card,
@@ -40,6 +41,7 @@ export default function LoginPage() {
       <CardContent className="flex flex-col gap-4">
         <GoogleSignInButton mode="signin" />
         <DemoSignInButton />
+        <DevSignInButton />
         <p className="text-center text-xs leading-relaxed text-muted-foreground">
           {t.login.moreOptions}
         </p>

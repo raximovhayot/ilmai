@@ -54,6 +54,25 @@ public class AuthService {
     }
 
     @Transactional
+    public TokenPairResponse loginAsDev(String email, String name) {
+        User user = users.findByUsername(email).orElseGet(() -> {
+            User created = new User();
+            created.setUsername(email);
+            created.setStatus(UserStatus.ACTIVE);
+            User persisted = users.save(created);
+            events.publishEvent(new UserRegisteredEvent(
+                    persisted.getId(),
+                    SupportedLocale.DEFAULT,
+                    name));
+            return persisted;
+        });
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new AuthException(AuthException.Reason.USER_DISABLED);
+        }
+        return issueTokens(user.getId(), UUID.randomUUID());
+    }
+
+    @Transactional
     public TokenPairResponse refresh(String refreshTokenString) {
         Jwt decoded = decodeRefresh(refreshTokenString);
         UUID userId = parseUserId(decoded.getSubject());

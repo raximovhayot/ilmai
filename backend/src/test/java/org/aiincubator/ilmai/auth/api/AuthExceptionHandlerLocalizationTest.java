@@ -2,6 +2,7 @@ package org.aiincubator.ilmai.auth.api;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.aiincubator.ilmai.auth.config.AuthProperties;
 import org.aiincubator.ilmai.auth.service.AuthException;
 import org.aiincubator.ilmai.auth.service.AuthService;
 import org.aiincubator.ilmai.common.config.LocalizationConfig;
@@ -36,7 +37,7 @@ class AuthExceptionHandlerLocalizationTest {
         AuthExceptionHandler handler = new AuthExceptionHandler(messageService);
 
         authService = mock(AuthService.class);
-        AuthController controller = new AuthController(authService);
+        AuthController controller = new AuthController(authService, new AuthProperties());
 
         HandlerInterceptor localeInterceptor = new HandlerInterceptor() {
             @Override
@@ -139,6 +140,16 @@ class AuthExceptionHandlerLocalizationTest {
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.errors[0].code").value("USER_DISABLED"))
                 .andExpect(jsonPath("$.errors[0].message").value("Учётная запись пользователя неактивна"));
+    }
+
+    @Test
+    void devLoginDisabledIsForbidden_localizedInEnglish() throws Exception {
+        mvc.perform(post("/auth/dev")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.errors[0].code").value("DEV_LOGIN_DISABLED"))
+                .andExpect(jsonPath("$.errors[0].message").value("Developer login is disabled"));
     }
 
     @Test

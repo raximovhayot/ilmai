@@ -378,6 +378,19 @@ export type Dictionary = {
     dayOf: string
     stepsToGo: string
     goalMilestone: string
+    openTask: string
+    wsChatTitle: string
+    wsSourceTitle: string
+    wsSourceEmpty: string
+    wsModePractice: string
+    wsModeExam: string
+    wsExamLocked: string
+    wsBackToPlan: string
+    wsShowChat: string
+    wsHideChat: string
+    wsQuizPracticeHint: string
+    wsQuizExamHint: string
+    wsContentEmpty: string
     moduleLabel: string
     empty: string
   }
@@ -1088,6 +1101,21 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       dayOf: "Day {n} of {total}",
       stepsToGo: "{n} to go",
       goalMilestone: "Goal reached",
+      openTask: "Open",
+      wsChatTitle: "Chat",
+      wsSourceTitle: "Sources",
+      wsSourceEmpty: "No sources for this task yet.",
+      wsModePractice: "Practice",
+      wsModeExam: "Exam",
+      wsExamLocked: "Chat and sources are turned off in exam mode.",
+      wsBackToPlan: "Back to plan",
+      wsShowChat: "Show chat",
+      wsHideChat: "Hide chat",
+      wsQuizPracticeHint:
+        "Practice mode: ask the chat and check sources freely.",
+      wsQuizExamHint:
+        "Exam mode: no chat, no sources — just you and the questions.",
+      wsContentEmpty: "Nothing to show for this task yet.",
       empty: "Set a goal and target date on your profile to generate a plan.",
     },
     stats: {
@@ -1835,6 +1863,21 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       dayOf: "День {n} из {total}",
       stepsToGo: "осталось {n}",
       goalMilestone: "Цель достигнута",
+      openTask: "Открыть",
+      wsChatTitle: "Чат",
+      wsSourceTitle: "Источники",
+      wsSourceEmpty: "Для этой задачи пока нет источников.",
+      wsModePractice: "Практика",
+      wsModeExam: "Экзамен",
+      wsExamLocked: "В режиме экзамена чат и источники отключены.",
+      wsBackToPlan: "К плану",
+      wsShowChat: "Показать чат",
+      wsHideChat: "Скрыть чат",
+      wsQuizPracticeHint:
+        "Режим практики: свободно спрашивайте чат и смотрите источники.",
+      wsQuizExamHint:
+        "Режим экзамена: без чата и источников — только вы и вопросы.",
+      wsContentEmpty: "Для этой задачи пока нечего показать.",
       empty: "Задайте цель и дату в профиле, чтобы создать план.",
     },
     stats: {
@@ -2591,6 +2634,21 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       dayOf: "{total} dan {n}-kun",
       stepsToGo: "{n} ta qoldi",
       goalMilestone: "Maqsadga erishildi",
+      openTask: "Ochish",
+      wsChatTitle: "Chat",
+      wsSourceTitle: "Manbalar",
+      wsSourceEmpty: "Bu vazifa uchun hozircha manbalar yo'q.",
+      wsModePractice: "Mashq",
+      wsModeExam: "Imtihon",
+      wsExamLocked: "Imtihon rejimida chat va manbalar o'chirilgan.",
+      wsBackToPlan: "Rejaga qaytish",
+      wsShowChat: "Chatni ko'rsatish",
+      wsHideChat: "Chatni yashirish",
+      wsQuizPracticeHint:
+        "Mashq rejimi: chatdan erkin so'rang va manbalarni ko'ring.",
+      wsQuizExamHint:
+        "Imtihon rejimi: chat va manbalar yo'q — faqat siz va savollar.",
+      wsContentEmpty: "Bu vazifa uchun hozircha ko'rsatadigan narsa yo'q.",
       empty: "Reja olish uchun profilingizda maqsad va sana kiriting.",
     },
     stats: {

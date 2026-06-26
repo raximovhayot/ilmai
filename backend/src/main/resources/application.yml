@@ -88,6 +88,10 @@ auth:
     client-id: ${GOOGLE_CLIENT_ID:}
   refresh-token:
     ttl: P7D
+  dev-login:
+    enabled: ${AUTH_DEV_LOGIN_ENABLED:false}
+    email: ${AUTH_DEV_LOGIN_EMAIL:dev@ilmai.dev}
+    name: ${AUTH_DEV_LOGIN_NAME:Dev User}
 
 storage:
   s3:

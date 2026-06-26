@@ -25,6 +25,9 @@ public class AuthProperties {
     @NotNull
     private RefreshToken refreshToken = new RefreshToken();
 
+    @NotNull
+    private DevLogin devLogin = new DevLogin();
+
     @Getter
     @Setter
     public static class Jwt {
@@ -51,5 +54,17 @@ public class AuthProperties {
         @NotNull
         @Positive
         private Duration ttl = Duration.ofDays(30);
+    }
+
+    @Getter
+    @Setter
+    public static class DevLogin {
+        private boolean enabled = false;
+
+        @NotBlank
+        private String email = "dev@ilmai.dev";
+
+        @NotBlank
+        private String name = "Dev User";
     }
 }

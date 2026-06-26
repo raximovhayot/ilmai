@@ -350,9 +350,9 @@ function TodayCard({
                 />
 
                 <ul className="flex flex-col gap-1.5">
-                  {visibleItems.map((item) => (
+                  {visibleItems.map((item, index) => (
                     <PlanItemRow
-                      key={`${item.planId}-${item.step.dayIndex}`}
+                      key={`${item.planId}-${item.step.dayIndex}-${index}`}
                       step={item.step}
                       goalLabel={showGoalTag ? item.goal : null}
                       topicName={

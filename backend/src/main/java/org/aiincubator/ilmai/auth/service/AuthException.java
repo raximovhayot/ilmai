@@ -12,7 +12,8 @@ public class AuthException extends RuntimeException {
         INVALID_REFRESH_TOKEN("auth.error.invalidRefreshToken"),
         REFRESH_TOKEN_REUSED("auth.error.refreshTokenReused"),
         USER_DISABLED("auth.error.userDisabled"),
-        USER_NOT_FOUND("auth.error.userNotFound");
+        USER_NOT_FOUND("auth.error.userNotFound"),
+        DEV_LOGIN_DISABLED("auth.error.devLoginDisabled");
 
         private final String messageKey;
 

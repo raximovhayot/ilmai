@@ -117,7 +117,7 @@ export function PlanStep({ onBack, onNext }: Props) {
           <ul className="flex flex-col gap-1.5">
             {plan.steps.slice(0, 5).map((step) => (
               <li
-                key={step.dayIndex}
+                key={`${step.dayIndex}-${step.orderInDay}`}
                 className="flex items-center gap-3 rounded-lg border border-border bg-card p-2.5 text-sm"
               >
                 <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted">

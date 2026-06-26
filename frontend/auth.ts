@@ -51,6 +51,13 @@ function exchangeGoogleIdToken(idToken: string) {
   return postBackend<BackendTokenPair>("/auth/google", { idToken })
 }
 
+function loginAsDev(email?: string | null, name?: string | null) {
+  return postBackend<BackendTokenPair>("/auth/dev", {
+    email: email ?? undefined,
+    name: name ?? undefined,
+  })
+}
+
 function refreshBackendTokens(refreshToken: string) {
   return postBackend<BackendTokenPair>("/auth/refresh", { refreshToken })
 }
@@ -63,7 +70,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   session: { strategy: "jwt" },
   callbacks: {
-    async jwt({ token, account }) {
+    async jwt({ token, account, user }) {
       if (
         account?.provider === "google" &&
         typeof account.id_token === "string"
@@ -71,6 +78,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const tokens = await exchangeGoogleIdToken(account.id_token)
         if (!tokens) {
           throw new Error("Backend rejected the Google sign-in")
+        }
+        token.accessToken = tokens.accessToken
+        token.refreshToken = tokens.refreshToken
+        token.accessExpiresAt = tokens.accessExpiresAt
+        token.refreshExpiresAt = tokens.refreshExpiresAt
+        delete token.error
+        return token
+      }
+
+      if (account?.provider === "dev") {
+        const tokens = await loginAsDev(user?.email, user?.name)
+        if (!tokens) {
+          throw new Error("Backend rejected the developer sign-in")
         }
         token.accessToken = tokens.accessToken
         token.refreshToken = tokens.refreshToken

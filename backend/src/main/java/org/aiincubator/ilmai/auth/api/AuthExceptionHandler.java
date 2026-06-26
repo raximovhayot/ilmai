@@ -22,7 +22,7 @@ public class AuthExceptionHandler {
     @ExceptionHandler(AuthException.class)
     public ResponseEntity<ApiResponse<Void>> handle(AuthException ex) {
         HttpStatus status = switch (ex.getReason()) {
-            case USER_DISABLED -> HttpStatus.FORBIDDEN;
+            case USER_DISABLED, DEV_LOGIN_DISABLED -> HttpStatus.FORBIDDEN;
             default -> HttpStatus.UNAUTHORIZED;
         };
         String localized = messages.get(ex.getReason().getMessageKey(), ex.getMessageArgs());

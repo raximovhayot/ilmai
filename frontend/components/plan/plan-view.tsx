@@ -15,7 +15,7 @@ import {
 
 import { Response } from "@/components/ai-elements/response"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import {
   type CompleteTaskPayload,
@@ -363,6 +363,7 @@ function DayBlock({ day, ...rest }: DaySectionProps & { day: PlanDay }) {
                 <div className="px-3 pb-3">
                   <StepCard
                     step={step}
+                    planId={planId}
                     isToday={state === "current"}
                     completing={completingKey === key}
                     topicNameById={topicNameById}
@@ -541,6 +542,7 @@ function JourneyHeader({ plan }: { plan: LearningPlan }) {
 
 export function StepCard({
   step,
+  planId,
   isToday,
   completing,
   topicNameById,
@@ -552,6 +554,7 @@ export function StepCard({
   onRegenerateLesson,
 }: {
   step: PlanStep
+  planId: string
   isToday: boolean
   completing: boolean
   topicNameById: Map<string, string>
@@ -600,6 +603,21 @@ export function StepCard({
         isToday && "border-primary/40 bg-primary/5"
       )}
     >
+      <div className="mb-2 flex justify-end">
+        <Link
+          href={`/task/${planId}/${step.dayIndex}/${step.orderInDay}`}
+          className={buttonVariants({ variant: "outline", size: "sm" })}
+        >
+          {t.plan.openTask}
+          <HugeiconsIcon
+            icon={ArrowRight01Icon}
+            strokeWidth={2}
+            data-icon="inline-end"
+            className="rtl:rotate-180"
+          />
+        </Link>
+      </div>
+
       {step.note ? (
         <p className="text-xs text-muted-foreground">{step.note}</p>
       ) : null}

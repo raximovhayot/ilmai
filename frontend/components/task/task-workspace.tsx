@@ -1,0 +1,554 @@
+"use client"
+
+import * as React from "react"
+import Link from "next/link"
+import { useSession } from "next-auth/react"
+import { toast } from "sonner"
+import { HugeiconsIcon } from "@hugeicons/react"
+import {
+  ArrowLeft01Icon,
+  BookOpen01Icon,
+  CheckmarkCircle02Icon,
+  File01Icon,
+  Flag03Icon,
+  PuzzleIcon,
+  RefreshIcon,
+  SparklesIcon,
+} from "@hugeicons/core-free-icons"
+
+import { Response } from "@/components/ai-elements/response"
+import { TaskChatPanel } from "@/components/task/task-chat-panel"
+import { Badge } from "@/components/ui/badge"
+import { Button, buttonVariants } from "@/components/ui/button"
+import { Spinner } from "@/components/ui/spinner"
+import { Textarea } from "@/components/ui/textarea"
+import {
+  completePlanTask,
+  generateTaskLesson,
+  getPlans,
+  type LearningPlan,
+  type PlanActivity,
+  type PlanStep,
+  type StepLesson,
+} from "@/lib/plan"
+import { useT } from "@/lib/i18n/provider"
+import { cn } from "@/lib/utils"
+
+type QuizMode = "practice" | "exam"
+
+function activityIcon(activity: PlanActivity) {
+  if (activity === "QUIZ") return PuzzleIcon
+  if (activity === "INDEPENDENT") return Flag03Icon
+  return BookOpen01Icon
+}
+
+export function TaskWorkspace({
+  planId,
+  dayIndex,
+  orderInDay,
+}: {
+  planId: string
+  dayIndex: number
+  orderInDay: number
+}) {
+  const dict = useT()
+  const t = dict.plan
+  const { status } = useSession()
+
+  const [plan, setPlan] = React.useState<LearningPlan | null>(null)
+  const [loaded, setLoaded] = React.useState(false)
+  const [lesson, setLesson] = React.useState<StepLesson | null>(null)
+  const [lessonLoading, setLessonLoading] = React.useState(false)
+  const [completing, setCompleting] = React.useState(false)
+  const [reflection, setReflection] = React.useState("")
+  const [quizMode, setQuizMode] = React.useState<QuizMode>("practice")
+  const [chatOpen, setChatOpen] = React.useState(true)
+  const [sourceOpen, setSourceOpen] = React.useState(false)
+  const [seededKey, setSeededKey] = React.useState<string | null>(null)
+
+  const step = React.useMemo<PlanStep | null>(() => {
+    if (!plan) return null
+    return (
+      plan.steps.find(
+        (s) => s.dayIndex === dayIndex && s.orderInDay === orderInDay
+      ) ?? null
+    )
+  }, [plan, dayIndex, orderInDay])
+
+  const isQuiz = step?.activity === "QUIZ"
+  const isIndependent = step?.activity === "INDEPENDENT"
+  const isLessonActivity =
+    step?.activity === "READ" || step?.activity === "REVIEW"
+  const examLocked = isQuiz && quizMode === "exam"
+  const chatVisible = chatOpen && !examLocked
+  const sourceVisible = sourceOpen && !examLocked
+
+  React.useEffect(() => {
+    if (status !== "authenticated") return
+    let cancelled = false
+    void (async () => {
+      try {
+        const plans = await getPlans()
+        if (cancelled) return
+        const found = plans.find((p) => p.id === planId) ?? null
+        setPlan(found)
+        setLoaded(true)
+        const target = found?.steps.find(
+          (s) => s.dayIndex === dayIndex && s.orderInDay === orderInDay
+        )
+        if (
+          target &&
+          (target.activity === "READ" || target.activity === "REVIEW")
+        ) {
+          setLessonLoading(true)
+          try {
+            const next = await generateTaskLesson(planId, dayIndex, orderInDay)
+            if (!cancelled && next) setLesson(next)
+          } catch {
+            if (!cancelled) toast.error(dict.errors.generic)
+          } finally {
+            if (!cancelled) setLessonLoading(false)
+          }
+        }
+      } catch {
+        if (!cancelled) setLoaded(true)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [status, planId, dayIndex, orderInDay, dict.errors.generic])
+
+  const stepKey = step ? `${step.dayIndex}:${step.orderInDay}` : null
+  if (step && stepKey !== seededKey) {
+    setSeededKey(stepKey)
+    setReflection(step.reflectionNote ?? "")
+  }
+
+  const loadLesson = React.useCallback(
+    async (regenerate: boolean) => {
+      if (status !== "authenticated") return
+      setLessonLoading(true)
+      try {
+        const next = await generateTaskLesson(
+          planId,
+          dayIndex,
+          orderInDay,
+          regenerate
+        )
+        if (next) setLesson(next)
+      } catch {
+        toast.error(dict.errors.generic)
+      } finally {
+        setLessonLoading(false)
+      }
+    },
+    [status, planId, dayIndex, orderInDay, dict.errors.generic]
+  )
+
+  const lessonReady = !!step?.hasLesson || !!lesson
+  const reflectionValid = reflection.trim().length > 0
+  const canComplete = isIndependent
+    ? reflectionValid
+    : isLessonActivity
+      ? lessonReady
+      : true
+
+  const handleComplete = React.useCallback(async () => {
+    if (status !== "authenticated" || !step || completing) return
+    setCompleting(true)
+    try {
+      const fresh = await completePlanTask(
+        planId,
+        dayIndex,
+        orderInDay,
+        isIndependent ? { reflectionNote: reflection.trim() } : undefined
+      )
+      if (fresh) setPlan(fresh)
+    } catch {
+      toast.error(dict.errors.generic)
+    } finally {
+      setCompleting(false)
+    }
+  }, [
+    status,
+    step,
+    completing,
+    planId,
+    dayIndex,
+    orderInDay,
+    isIndependent,
+    reflection,
+    dict.errors.generic,
+  ])
+
+  const activityLabel = step
+    ? step.activity === "QUIZ"
+      ? t.actionQuiz
+      : step.activity === "REVIEW"
+        ? t.actionReview
+        : step.activity === "INDEPENDENT"
+          ? t.actionIndependent
+          : t.actionRead
+    : ""
+
+  return (
+    <div className="flex h-dvh flex-col bg-background">
+      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border px-3 sm:px-4">
+        <Link
+          href="/plan"
+          className={buttonVariants({ variant: "ghost", size: "sm" })}
+        >
+          <HugeiconsIcon
+            icon={ArrowLeft01Icon}
+            strokeWidth={2}
+            data-icon="inline-start"
+            className="rtl:rotate-180"
+          />
+          {t.wsBackToPlan}
+        </Link>
+
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          {step ? (
+            <>
+              <HugeiconsIcon
+                icon={activityIcon(step.activity)}
+                strokeWidth={2}
+                className="size-4 shrink-0 text-muted-foreground"
+              />
+              <span
+                className="truncate text-sm font-semibold"
+                title={step.title}
+              >
+                {step.title}
+              </span>
+              <Badge
+                variant="secondary"
+                className="hidden shrink-0 sm:inline-flex"
+              >
+                {activityLabel}
+              </Badge>
+            </>
+          ) : null}
+        </div>
+
+        {isQuiz ? (
+          <div className="flex shrink-0 items-center gap-1 rounded-lg border border-border p-0.5">
+            {(["practice", "exam"] as QuizMode[]).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setQuizMode(mode)}
+                aria-pressed={quizMode === mode}
+                className={cn(
+                  "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+                  quizMode === mode
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {mode === "practice" ? t.wsModePractice : t.wsModeExam}
+              </button>
+            ))}
+          </div>
+        ) : null}
+
+        <Button
+          variant={chatVisible ? "secondary" : "ghost"}
+          size="sm"
+          onClick={() => setChatOpen((v) => !v)}
+          disabled={examLocked}
+          aria-label={chatVisible ? t.wsHideChat : t.wsShowChat}
+        >
+          <HugeiconsIcon
+            icon={SparklesIcon}
+            strokeWidth={2}
+            data-icon="inline-start"
+          />
+          <span className="hidden sm:inline">{t.wsChatTitle}</span>
+        </Button>
+        <Button
+          variant={sourceVisible ? "secondary" : "ghost"}
+          size="sm"
+          onClick={() => setSourceOpen((v) => !v)}
+          disabled={examLocked}
+          aria-label={t.wsSourceTitle}
+        >
+          <HugeiconsIcon
+            icon={File01Icon}
+            strokeWidth={2}
+            data-icon="inline-start"
+          />
+          <span className="hidden sm:inline">{t.wsSourceTitle}</span>
+        </Button>
+      </header>
+
+      <div className="flex min-h-0 flex-1">
+        {chatVisible && step ? (
+          <aside className="hidden w-80 shrink-0 flex-col border-r border-border md:flex">
+            <TaskChatPanel taskTitle={step.title} />
+          </aside>
+        ) : null}
+
+        <main className="min-w-0 flex-1 overflow-y-auto">
+          <div className="mx-auto flex max-w-3xl flex-col gap-4 p-4 sm:p-6">
+            {!loaded ? (
+              <div className="flex items-center justify-center py-20 text-muted-foreground">
+                <Spinner />
+              </div>
+            ) : !step ? (
+              <p className="py-20 text-center text-sm text-muted-foreground">
+                {t.wsContentEmpty}
+              </p>
+            ) : (
+              <TaskContent
+                step={step}
+                lesson={lesson}
+                lessonLoading={lessonLoading}
+                isLessonActivity={isLessonActivity}
+                isIndependent={!!isIndependent}
+                isQuiz={!!isQuiz}
+                examLocked={!!examLocked}
+                reflection={reflection}
+                onReflectionChange={setReflection}
+                onRegenerate={() => void loadLesson(true)}
+              />
+            )}
+
+            {step ? (
+              <div className="flex items-center justify-end gap-3 border-t border-border pt-4">
+                {step.done ? (
+                  <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                    <HugeiconsIcon
+                      icon={CheckmarkCircle02Icon}
+                      strokeWidth={2}
+                      className="size-4"
+                    />
+                    {t.completed}
+                  </span>
+                ) : (
+                  <Button
+                    onClick={() => void handleComplete()}
+                    disabled={completing || !canComplete}
+                  >
+                    {completing ? (
+                      <Spinner data-icon="inline-start" />
+                    ) : (
+                      <HugeiconsIcon
+                        icon={CheckmarkCircle02Icon}
+                        strokeWidth={2}
+                        data-icon="inline-start"
+                      />
+                    )}
+                    {t.markDone}
+                  </Button>
+                )}
+              </div>
+            ) : null}
+          </div>
+        </main>
+
+        {sourceVisible && step ? (
+          <aside className="hidden w-80 shrink-0 flex-col border-l border-border lg:flex">
+            <SourcePanel lesson={lesson} step={step} />
+          </aside>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+function TaskContent({
+  step,
+  lesson,
+  lessonLoading,
+  isLessonActivity,
+  isIndependent,
+  isQuiz,
+  examLocked,
+  reflection,
+  onReflectionChange,
+  onRegenerate,
+}: {
+  step: PlanStep
+  lesson: StepLesson | null
+  lessonLoading: boolean
+  isLessonActivity: boolean
+  isIndependent: boolean
+  isQuiz: boolean
+  examLocked: boolean
+  reflection: string
+  onReflectionChange: (value: string) => void
+  onRegenerate: () => void
+}) {
+  const dict = useT()
+  const t = dict.plan
+
+  if (isLessonActivity) {
+    if (lessonLoading && !lesson) {
+      return (
+        <div className="flex items-center gap-2 py-16 text-sm text-muted-foreground">
+          <Spinner />
+          {t.lessonGenerating}
+        </div>
+      )
+    }
+    if (!lesson) {
+      return (
+        <p className="py-16 text-center text-sm text-muted-foreground">
+          {t.wsContentEmpty}
+        </p>
+      )
+    }
+    return (
+      <article className="flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-2">
+          <h1 className="text-xl font-semibold tracking-tight">
+            {lesson.title}
+          </h1>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onRegenerate}
+            disabled={lessonLoading}
+          >
+            {lessonLoading ? (
+              <Spinner data-icon="inline-start" />
+            ) : (
+              <HugeiconsIcon
+                icon={RefreshIcon}
+                strokeWidth={2}
+                data-icon="inline-start"
+              />
+            )}
+            {t.regenerateLesson}
+          </Button>
+        </div>
+        <Response>{lesson.content}</Response>
+      </article>
+    )
+  }
+
+  if (isIndependent) {
+    return (
+      <div className="flex flex-col gap-4">
+        <article className="flex flex-col gap-2">
+          <h1 className="text-xl font-semibold tracking-tight">{step.title}</h1>
+          {step.note ? (
+            <p className="text-sm text-muted-foreground">{step.note}</p>
+          ) : null}
+        </article>
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium">{t.reflectionLabel}</label>
+          <Textarea
+            value={reflection}
+            onChange={(event) => onReflectionChange(event.target.value)}
+            placeholder={t.reflectionPlaceholder}
+            rows={5}
+          />
+          {!step.done && reflection.trim().length === 0 ? (
+            <p className="text-xs text-muted-foreground">
+              {t.lockIndependentHint}
+            </p>
+          ) : null}
+        </div>
+      </div>
+    )
+  }
+
+  if (isQuiz) {
+    return (
+      <div className="flex flex-col gap-3">
+        <h1 className="text-xl font-semibold tracking-tight">{step.title}</h1>
+        {step.note ? (
+          <p className="text-sm text-muted-foreground">{step.note}</p>
+        ) : null}
+        <div
+          className={cn(
+            "rounded-xl border p-4 text-sm",
+            examLocked
+              ? "border-amber-500/30 bg-amber-500/5 text-amber-700 dark:text-amber-400"
+              : "border-border bg-muted/30 text-muted-foreground"
+          )}
+        >
+          <p className="flex items-center gap-2 font-medium">
+            <HugeiconsIcon
+              icon={PuzzleIcon}
+              strokeWidth={2}
+              className="size-4 shrink-0"
+            />
+            {examLocked ? t.wsQuizExamHint : t.wsQuizPracticeHint}
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  return null
+}
+
+function SourcePanel({
+  lesson,
+  step,
+}: {
+  lesson: StepLesson | null
+  step: PlanStep
+}) {
+  const dict = useT()
+  const t = dict.plan
+  const citations = lesson?.citations ?? []
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <header className="flex h-11 shrink-0 items-center gap-2 border-b border-border px-4 text-sm font-semibold">
+        <HugeiconsIcon icon={File01Icon} strokeWidth={2} className="size-4" />
+        {t.wsSourceTitle}
+      </header>
+      <div className="min-h-0 flex-1 overflow-y-auto p-3">
+        {citations.length > 0 ? (
+          <ul className="flex flex-col gap-2">
+            {citations.map((citation, index) => (
+              <li
+                key={`${citation.materialId ?? "c"}-${index}`}
+                className="rounded-lg border border-border bg-muted/20 p-3"
+              >
+                {citation.materialName ? (
+                  <p className="mb-1 truncate text-xs font-semibold">
+                    {citation.materialName}
+                  </p>
+                ) : null}
+                {citation.snippet ? (
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    {citation.snippet}
+                  </p>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        ) : step.materials.length > 0 ? (
+          <ul className="flex flex-col gap-2">
+            {step.materials.map((material) => (
+              <li
+                key={material.id}
+                className="flex items-center gap-2 rounded-lg border border-border bg-muted/20 p-3 text-xs"
+              >
+                <HugeiconsIcon
+                  icon={BookOpen01Icon}
+                  strokeWidth={2}
+                  className="size-3.5 shrink-0 text-muted-foreground"
+                />
+                <span className="truncate">
+                  {material.title ?? t.lessonSources}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="px-1 py-6 text-center text-xs text-muted-foreground">
+            {t.wsSourceEmpty}
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}

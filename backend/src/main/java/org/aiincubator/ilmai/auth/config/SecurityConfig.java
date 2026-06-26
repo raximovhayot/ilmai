@@ -28,7 +28,7 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.POST, "/auth/google", "/auth/refresh", "/auth/logout").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/auth/google", "/auth/dev", "/auth/refresh", "/auth/logout").permitAll()
                         .requestMatchers(HttpMethod.POST, "/telegram/webhook/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/billing/webhooks/**").permitAll()
                         .requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/info").permitAll()
