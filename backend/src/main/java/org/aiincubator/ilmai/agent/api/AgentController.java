@@ -32,6 +32,6 @@ public class AgentController {
             HttpServletResponse response) {
         UiMessageStreamHttp.applyHeaders(response);
         ChatChannel channel = request.getChannel() == null ? ChatChannel.WEB : request.getChannel();
-        return coachStreamService.stream(currentUser, sessionId, request.getPrompt(), channel);
+        return coachStreamService.stream(currentUser, sessionId, request.getPrompt(), request.getContext(), channel);
     }
 }

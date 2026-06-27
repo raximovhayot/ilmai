@@ -2,14 +2,19 @@
 
 import * as React from "react"
 import { Streamdown } from "streamdown"
+import { createMathPlugin } from "@streamdown/math"
+import "katex/dist/katex.min.css"
 
 import { cn } from "@/lib/utils"
 
+const mathPlugin = createMathPlugin({ singleDollarTextMath: true })
+
 export type ResponseProps = React.ComponentProps<typeof Streamdown>
 
-export function Response({ className, ...props }: ResponseProps) {
+export function Response({ className, plugins, ...props }: ResponseProps) {
   return (
     <Streamdown
+      plugins={{ math: mathPlugin, ...plugins }}
       className={cn(
         "space-y-3 font-serif text-[16px] leading-7 text-foreground/90",
         "[&_pre]:my-2 [&_pre]:rounded-xl [&_pre]:font-sans [&_pre]:text-sm",

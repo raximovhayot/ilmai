@@ -61,6 +61,10 @@ public class CoachStreamService {
     }
 
     public SseEmitter stream(CurrentUser currentUser, UUID sessionId, String prompt, ChatChannel channel) {
+        return stream(currentUser, sessionId, prompt, null, channel);
+    }
+
+    public SseEmitter stream(CurrentUser currentUser, UUID sessionId, String prompt, String context, ChatChannel channel) {
         if (currentUser == null) {
             throw new IllegalArgumentException("currentUser is required");
         }
@@ -88,12 +92,14 @@ public class CoachStreamService {
                 writer.text("Coach is not configured.");
             });
         }
-        return streamTurn(client, currentUser, sessionId, prompt == null ? "" : prompt);
+        return streamTurn(client, currentUser, sessionId, prompt == null ? "" : prompt, context);
     }
 
-    private SseEmitter streamTurn(ChatClient client, CurrentUser currentUser, UUID sessionId, String userMessage) {
+    private SseEmitter streamTurn(ChatClient client, CurrentUser currentUser, UUID sessionId, String userMessage,
+                                  String context) {
         IlmTokenReservation reservation = turnSupport.reserve(currentUser);
         recordUserTurnQuietly(currentUser, sessionId, userMessage);
+        String modelMessage = withContext(userMessage, context);
         SerializedPartSink sink = new SerializedPartSink();
         AgentRetrievalContext retrievalCtx = AgentRetrievalContext.create();
         ChatClientResponse turnCompleted = ChatClientResponse.builder().context(Map.of()).build();
@@ -102,7 +108,7 @@ public class CoachStreamService {
         AtomicBoolean committed = new AtomicBoolean(false);
 
         Flux<ChatClientResponse> upstream = client.prompt()
-                .user(userMessage)
+                .user(modelMessage)
                 .advisors(advisor -> advisor
                         .param(ChatMemory.CONVERSATION_ID, sessionId.toString())
                         .param(UserMemoryAdvisor.CURRENT_USER_PARAM, currentUser)
@@ -167,6 +173,22 @@ public class CoachStreamService {
                 currentUser.getUserId(), sessionId, actualIlmTokens);
         turnSupport.completeTurnQuietly(currentUser, sessionId);
         recordAssistantTurnQuietly(currentUser, sessionId, aggregatedText, retrievalCtx, !grounded || !cited);
+    }
+
+    private String withContext(String userMessage, String context) {
+        if (context == null || context.isBlank()) {
+            return userMessage;
+        }
+        return """
+                The learner is currently studying the material below. Use it as the primary context for this turn, \
+                but still ground factual claims in retrieved sources and cite them.
+
+                <lesson_context>
+                %s
+                </lesson_context>
+
+                Learner message:
+                %s""".formatted(context.strip(), userMessage);
     }
 
     private void recordUserTurnQuietly(CurrentUser currentUser, UUID sessionId, String userMessage) {

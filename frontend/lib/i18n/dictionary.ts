@@ -281,6 +281,8 @@ export type Dictionary = {
     disclaimer: string
     copy: string
     copied: string
+    selectionLabel: string
+    selectionRemove: string
   }
   quiz: {
     title: string
@@ -393,6 +395,10 @@ export type Dictionary = {
     wsSourceSegment: string
     wsSourcePlay: string
     wsSourceCited: string
+    wsSourceMaterials: string
+    wsSourceMaterialsHint: string
+    wsSourceBack: string
+    wsSourceCitationCount: string
     wsModePractice: string
     wsModeExam: string
     wsExamLocked: string
@@ -1008,6 +1014,8 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       disclaimer: "Ilm AI can make mistakes. Please double-check responses.",
       copy: "Copy",
       copied: "Copied",
+      selectionLabel: "Selected passage",
+      selectionRemove: "Remove selection",
     },
     chat: {
       title: "Chat with your materials",
@@ -1150,6 +1158,10 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       wsSourceSegment: "{start}–{end}",
       wsSourcePlay: "Play segment",
       wsSourceCited: "Cited passages",
+      wsSourceMaterials: "Materials",
+      wsSourceMaterialsHint: "Materials used to build this lesson.",
+      wsSourceBack: "All materials",
+      wsSourceCitationCount: "{count} cited",
       wsModePractice: "Practice",
       wsModeExam: "Exam",
       wsExamLocked: "Chat and sources are turned off in exam mode.",
@@ -1805,6 +1817,8 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       disclaimer: "Ilm AI может ошибаться. Проверяйте важные ответы.",
       copy: "Копировать",
       copied: "Скопировано",
+      selectionLabel: "\u0412\u044B\u0434\u0435\u043B\u0435\u043D\u043D\u044B\u0439 \u0444\u0440\u0430\u0433\u043C\u0435\u043D\u0442",
+      selectionRemove: "\u0423\u0431\u0440\u0430\u0442\u044C \u0432\u044B\u0434\u0435\u043B\u0435\u043D\u0438\u0435",
     },
     chat: {
       title: "Чат по вашим материалам",
@@ -1947,6 +1961,10 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       wsSourceSegment: "{start}–{end}",
       wsSourcePlay: "Воспроизвести фрагмент",
       wsSourceCited: "Цитируемые фрагменты",
+      wsSourceMaterials: "\u041C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u044B",
+      wsSourceMaterialsHint: "\u041C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u044B, \u0438\u0441\u043F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u043D\u043D\u044B\u0435 \u0434\u043B\u044F \u044D\u0442\u043E\u0433\u043E \u0443\u0440\u043E\u043A\u0430.",
+      wsSourceBack: "\u0412\u0441\u0435 \u043C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u044B",
+      wsSourceCitationCount: "{count} \u0446\u0438\u0442\u0430\u0442",
       wsModePractice: "Практика",
       wsModeExam: "Экзамен",
       wsExamLocked: "В режиме экзамена чат и источники отключены.",
@@ -2610,6 +2628,8 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       disclaimer: "Ilm AI xato qilishi mumkin. Javoblarni tekshirib ko‘ring.",
       copy: "Nusxalash",
       copied: "Nusxalandi",
+      selectionLabel: "Tanlangan parcha",
+      selectionRemove: "Tanlovni olib tashlash",
     },
     chat: {
       title: "Materiallaringiz bo‘yicha suhbat",
@@ -2755,6 +2775,10 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       wsSourceSegment: "{start}–{end}",
       wsSourcePlay: "Parchani ijro etish",
       wsSourceCited: "Iqtibos qilingan parchalar",
+      wsSourceMaterials: "Materiallar",
+      wsSourceMaterialsHint: "Ushbu dars uchun ishlatilgan materiallar.",
+      wsSourceBack: "Barcha materiallar",
+      wsSourceCitationCount: "{count} ta iqtibos",
       wsModePractice: "Mashq",
       wsModeExam: "Imtihon",
       wsExamLocked: "Imtihon rejimida chat va manbalar o'chirilgan.",

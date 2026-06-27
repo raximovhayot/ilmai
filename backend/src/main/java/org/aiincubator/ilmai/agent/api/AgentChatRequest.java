@@ -18,5 +18,8 @@ public class AgentChatRequest {
     @Size(max = 8000)
     private String prompt;
 
+    @Size(max = 24000)
+    private String context;
+
     private ChatChannel channel;
 }

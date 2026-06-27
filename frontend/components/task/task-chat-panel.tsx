@@ -3,7 +3,12 @@
 import * as React from "react"
 import { useChat } from "@ai-sdk/react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { ArrowRight01Icon, SparklesIcon } from "@hugeicons/core-free-icons"
+import {
+  ArrowRight01Icon,
+  Cancel01Icon,
+  QuoteDownIcon,
+  SparklesIcon,
+} from "@hugeicons/core-free-icons"
 
 import {
   Conversation,
@@ -24,12 +29,34 @@ import {
   type CoachUIMessage,
 } from "@/lib/agent"
 
-export function TaskChatPanel({ taskTitle }: { taskTitle: string }) {
+export function TaskChatPanel({
+  taskTitle,
+  lessonContent,
+  selection,
+  onClearSelection,
+}: {
+  taskTitle: string
+  lessonContent?: string | null
+  selection?: string | null
+  onClearSelection?: () => void
+}) {
   const dict = useT()
   const t = dict.companion
   const { authenticated, run } = useApi()
   const [sessionId, setSessionId] = React.useState<string | null>(null)
   const [input, setInput] = React.useState("")
+
+  const buildContext = React.useCallback(() => {
+    const parts: string[] = []
+    if (taskTitle) parts.push(`Lesson title: ${taskTitle}`)
+    if (lessonContent && lessonContent.trim()) {
+      parts.push(`Lesson content:\n${lessonContent.trim().slice(0, 16000)}`)
+    }
+    if (selection && selection.trim()) {
+      parts.push(`Passage the learner highlighted:\n${selection.trim()}`)
+    }
+    return parts.join("\n\n")
+  }, [taskTitle, lessonContent, selection])
 
   React.useEffect(() => {
     if (!authenticated || sessionId) return
@@ -61,8 +88,12 @@ export function TaskChatPanel({ taskTitle }: { taskTitle: string }) {
     const text = input.trim()
     if (!text || !ready || isBusy) return
     setInput("")
-    void sendMessage({ text })
-  }, [input, ready, isBusy, sendMessage])
+    const context = buildContext()
+    void sendMessage(
+      { text },
+      context ? { body: { context } } : undefined
+    )
+  }, [input, ready, isBusy, sendMessage, buildContext])
 
   const isEmpty = messages.length === 0
 
@@ -126,6 +157,37 @@ export function TaskChatPanel({ taskTitle }: { taskTitle: string }) {
       )}
 
       <div className="shrink-0 border-t border-border p-3">
+        {selection && selection.trim() ? (
+          <div className="mb-2 flex items-start gap-2 rounded-lg border border-border bg-muted/40 px-2.5 py-2">
+            <HugeiconsIcon
+              icon={QuoteDownIcon}
+              strokeWidth={2}
+              className="mt-0.5 size-3.5 shrink-0 text-muted-foreground"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-medium text-muted-foreground">
+                {t.selectionLabel}
+              </p>
+              <p className="line-clamp-2 text-xs text-foreground/80">
+                {selection.trim()}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-6 shrink-0"
+              onClick={onClearSelection}
+              aria-label={t.selectionRemove}
+            >
+              <HugeiconsIcon
+                icon={Cancel01Icon}
+                strokeWidth={2}
+                className="size-3.5"
+              />
+            </Button>
+          </div>
+        ) : null}
         <div className="flex items-end gap-2">
           <Textarea
             value={input}

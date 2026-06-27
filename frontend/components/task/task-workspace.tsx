@@ -7,6 +7,7 @@ import { toast } from "sonner"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   ArrowLeft01Icon,
+  ArrowRight01Icon,
   BookOpen01Icon,
   CheckmarkCircle02Icon,
   File01Icon,
@@ -83,6 +84,7 @@ export function TaskWorkspace({
   const [chatWidth, setChatWidth] = React.useState(PANEL_DEFAULT_WIDTH)
   const [sourceWidth, setSourceWidth] = React.useState(PANEL_DEFAULT_WIDTH)
   const [seededKey, setSeededKey] = React.useState<string | null>(null)
+  const [selection, setSelection] = React.useState<string | null>(null)
 
   const step = React.useMemo<PlanStep | null>(() => {
     if (!plan) return null
@@ -300,7 +302,12 @@ export function TaskWorkspace({
             className="hidden shrink-0 flex-col border-e border-border bg-background md:flex"
             style={{ width: chatWidth }}
           >
-            <TaskChatPanel taskTitle={step.title} />
+            <TaskChatPanel
+              taskTitle={step.title}
+              lessonContent={lesson?.content}
+              selection={selection}
+              onClearSelection={() => setSelection(null)}
+            />
           </aside>
         ) : null}
         {chatVisible && step ? (
@@ -344,6 +351,7 @@ export function TaskWorkspace({
                   reflection={reflection}
                   onReflectionChange={setReflection}
                   onRegenerate={() => void loadLesson(true)}
+                  onSelectText={setSelection}
                 />
 
                 <div className="flex items-center justify-end gap-3 border-t border-border pt-4">
@@ -479,6 +487,7 @@ function TaskContent({
   reflection,
   onReflectionChange,
   onRegenerate,
+  onSelectText,
 }: {
   step: PlanStep
   lesson: StepLesson | null
@@ -490,9 +499,18 @@ function TaskContent({
   reflection: string
   onReflectionChange: (value: string) => void
   onRegenerate: () => void
+  onSelectText: (value: string | null) => void
 }) {
   const dict = useT()
   const t = dict.plan
+
+  const captureSelection = React.useCallback(() => {
+    const text = window.getSelection?.()?.toString() ?? ""
+    const trimmed = text.trim()
+    if (trimmed.length > 1) {
+      onSelectText(trimmed.slice(0, 2000))
+    }
+  }, [onSelectText])
 
   if (isLessonActivity) {
     if (lessonLoading && !lesson) {
@@ -511,7 +529,11 @@ function TaskContent({
       )
     }
     return (
-      <article className="flex flex-col gap-3">
+      <article
+        className="flex flex-col gap-3"
+        onMouseUp={captureSelection}
+        onTouchEnd={captureSelection}
+      >
         <div className="flex items-center justify-between gap-2">
           <h1 className="text-xl font-semibold tracking-tight">
             {lesson.title}
@@ -597,6 +619,21 @@ function TaskContent({
   return null
 }
 
+type MaterialKind = "pdf" | "audio" | "other"
+
+type MaterialEntry = {
+  id: string
+  name: string | null
+  kind: MaterialKind
+  citations: LessonCitation[]
+}
+
+function materialKind(citations: LessonCitation[]): MaterialKind {
+  if (citations.some(isPdfCitation)) return "pdf"
+  if (citations.some(isAudioCitation)) return "audio"
+  return "other"
+}
+
 function SourcePanel({
   lesson,
   step,
@@ -607,27 +644,175 @@ function SourcePanel({
   const dict = useT()
   const t = dict.plan
   const citations = React.useMemo(() => lesson?.citations ?? [], [lesson])
-  const pdfCitations = React.useMemo(
-    () => citations.filter(isPdfCitation),
-    [citations]
-  )
-  const audioCitations = React.useMemo(
-    () => citations.filter((c) => !isPdfCitation(c) && isAudioCitation(c)),
-    [citations]
-  )
-  const otherCitations = React.useMemo(
-    () => citations.filter((c) => !isPdfCitation(c) && !isAudioCitation(c)),
+
+  const materials = React.useMemo<MaterialEntry[]>(() => {
+    const map = new Map<string, MaterialEntry>()
+    for (const material of step.materials) {
+      map.set(material.id, {
+        id: material.id,
+        name: material.title,
+        kind: "other",
+        citations: [],
+      })
+    }
+    for (const citation of citations) {
+      if (!citation.materialId) continue
+      const existing = map.get(citation.materialId)
+      if (existing) {
+        existing.citations.push(citation)
+        if (!existing.name) existing.name = citation.materialName
+      } else {
+        map.set(citation.materialId, {
+          id: citation.materialId,
+          name: citation.materialName,
+          kind: "other",
+          citations: [citation],
+        })
+      }
+    }
+    const entries = Array.from(map.values())
+    for (const entry of entries) {
+      entry.kind = materialKind(entry.citations)
+    }
+    return entries
+  }, [citations, step.materials])
+
+  const looseCitations = React.useMemo(
+    () => citations.filter((c) => !c.materialId),
     [citations]
   )
 
-  const [activeKey, setActiveKey] = React.useState<string | null>(null)
-  const active = React.useMemo(() => {
-    if (pdfCitations.length === 0) return null
+  const [selectedId, setSelectedId] = React.useState<string | null>(null)
+  const selected = React.useMemo(
+    () => materials.find((m) => m.id === selectedId) ?? null,
+    [materials, selectedId]
+  )
+
+  if (selected) {
     return (
-      pdfCitations.find((c, i) => citationKey(c, i) === activeKey) ??
-      pdfCitations[0]
+      <div className="flex min-h-0 flex-1 flex-col">
+        <header className="flex h-11 shrink-0 items-center gap-2 border-b border-border px-2 text-sm font-semibold">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7 shrink-0"
+            onClick={() => setSelectedId(null)}
+            aria-label={t.wsSourceBack}
+          >
+            <HugeiconsIcon
+              icon={ArrowLeft01Icon}
+              strokeWidth={2}
+              className="size-4 rtl:rotate-180"
+            />
+          </Button>
+          <span className="truncate">{selected.name ?? t.wsSourceTitle}</span>
+        </header>
+        <MaterialView material={selected} />
+      </div>
     )
-  }, [pdfCitations, activeKey])
+  }
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <header className="flex h-11 shrink-0 items-center gap-2 border-b border-border px-4 text-sm font-semibold">
+        <HugeiconsIcon icon={File01Icon} strokeWidth={2} className="size-4" />
+        {t.wsSourceMaterials}
+      </header>
+      <div className="min-h-0 flex-1 overflow-y-auto p-3">
+        {materials.length > 0 ? (
+          <>
+            <p className="mb-2 px-1 text-xs text-muted-foreground">
+              {t.wsSourceMaterialsHint}
+            </p>
+            <ul className="flex flex-col gap-2">
+              {materials.map((material) => (
+                <li key={material.id}>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedId(material.id)}
+                    className="flex w-full items-center gap-2 rounded-lg border border-border bg-muted/20 p-3 text-start text-xs transition-colors hover:bg-muted"
+                  >
+                    <HugeiconsIcon
+                      icon={BookOpen01Icon}
+                      strokeWidth={2}
+                      className="size-3.5 shrink-0 text-muted-foreground"
+                    />
+                    <span className="min-w-0 flex-1 truncate font-medium">
+                      {material.name ?? t.lessonSources}
+                    </span>
+                    {material.citations.length > 0 ? (
+                      <Badge variant="secondary" className="shrink-0">
+                        {t.wsSourceCitationCount.replace(
+                          "{count}",
+                          String(material.citations.length)
+                        )}
+                      </Badge>
+                    ) : null}
+                    <HugeiconsIcon
+                      icon={ArrowRight01Icon}
+                      strokeWidth={2}
+                      className="size-3.5 shrink-0 text-muted-foreground rtl:rotate-180"
+                    />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : (
+          <p className="px-1 py-6 text-center text-xs text-muted-foreground">
+            {t.wsSourceEmpty}
+          </p>
+        )}
+        {looseCitations.length > 0 ? (
+          <div className="mt-4 border-t border-border pt-3">
+            <p className="mb-2 px-1 text-xs font-semibold text-muted-foreground">
+              {t.wsSourceCited}
+            </p>
+            <CitationSnippetList citations={looseCitations} />
+          </div>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+function MaterialView({ material }: { material: MaterialEntry }) {
+  if (material.kind === "pdf") {
+    return <PdfMaterialView material={material} />
+  }
+  if (material.kind === "audio") {
+    return (
+      <div className="min-h-0 flex-1 overflow-y-auto p-3">
+        <AudioMaterialBlock
+          materialId={material.id}
+          materialName={null}
+          segments={material.citations}
+        />
+      </div>
+    )
+  }
+  return <GenericMaterialView material={material} />
+}
+
+function PdfMaterialView({ material }: { material: MaterialEntry }) {
+  const dict = useT()
+  const t = dict.plan
+  const pdfCitations = React.useMemo(
+    () => material.citations.filter(isPdfCitation),
+    [material.citations]
+  )
+  const otherCitations = React.useMemo(
+    () => material.citations.filter((c) => !isPdfCitation(c)),
+    [material.citations]
+  )
+  const [activeKey, setActiveKey] = React.useState<string | null>(null)
+  const active = React.useMemo(
+    () =>
+      pdfCitations.find((c, i) => citationKey(c, i) === activeKey) ??
+      pdfCitations[0] ??
+      null,
+    [pdfCitations, activeKey]
+  )
 
   const pageLabel = React.useCallback(
     (citation: LessonCitation) => {
@@ -646,214 +831,100 @@ function SourcePanel({
     [t]
   )
 
-  if (pdfCitations.length > 0 && active && active.materialId) {
-    const iframeSrc = `${rawMaterialUrl(active.materialId)}#page=${
-      active.pageStart ?? 1
-    }`
-    return (
-      <div className="flex min-h-0 flex-1 flex-col">
-        <header className="flex h-11 shrink-0 items-center gap-2 border-b border-border px-4 text-sm font-semibold">
-          <HugeiconsIcon icon={File01Icon} strokeWidth={2} className="size-4" />
-          <span className="truncate">
-            {active.materialName ?? t.wsSourceTitle}
-          </span>
-        </header>
-        {pdfCitations.length > 1 ? (
-          <div className="flex shrink-0 flex-wrap gap-1.5 border-b border-border px-3 py-2">
-            {pdfCitations.map((citation, index) => {
-              const key = citationKey(citation, index)
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setActiveKey(key)}
-                  className={cn(
-                    "rounded-full border px-2.5 py-1 text-xs transition-colors",
-                    key === citationKey(active, pdfCitations.indexOf(active))
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border text-muted-foreground hover:bg-muted"
-                  )}
-                >
-                  {pageLabel(citation)}
-                </button>
-              )
-            })}
-          </div>
-        ) : null}
-        <div className="min-h-0 flex-1">
-          <iframe
-            key={iframeSrc}
-            src={iframeSrc}
-            title={active.materialName ?? t.wsSourceTitle}
-            className="h-full w-full border-0"
-          />
-        </div>
-        {otherCitations.length > 0 ? (
-          <div className="max-h-40 shrink-0 overflow-y-auto border-t border-border p-3">
-            <p className="mb-2 text-xs font-semibold text-muted-foreground">
-              {t.wsSourceCited}
-            </p>
-            <ul className="flex flex-col gap-2">
-              {otherCitations.map((citation, index) => (
-                <li
-                  key={`${citation.materialId ?? "c"}-${index}`}
-                  className="rounded-lg border border-border bg-muted/20 p-3"
-                >
-                  {citation.materialName ? (
-                    <p className="mb-1 truncate text-xs font-semibold">
-                      {citation.materialName}
-                    </p>
-                  ) : null}
-                  {citation.snippet ? (
-                    <p className="text-xs leading-relaxed text-muted-foreground">
-                      {citation.snippet}
-                    </p>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-      </div>
-    )
-  }
-
-  if (audioCitations.length > 0) {
-    return (
-      <AudioSourceView
-        citations={audioCitations}
-        otherCitations={otherCitations}
-      />
-    )
-  }
+  const iframeSrc = `${rawMaterialUrl(material.id)}#page=${
+    active?.pageStart ?? 1
+  }`
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <header className="flex h-11 shrink-0 items-center gap-2 border-b border-border px-4 text-sm font-semibold">
-        <HugeiconsIcon icon={File01Icon} strokeWidth={2} className="size-4" />
-        {t.wsSourceTitle}
-      </header>
-      <div className="min-h-0 flex-1 overflow-y-auto p-3">
-        {citations.length > 0 ? (
-          <ul className="flex flex-col gap-2">
-            {citations.map((citation, index) => (
-              <li
-                key={`${citation.materialId ?? "c"}-${index}`}
-                className="rounded-lg border border-border bg-muted/20 p-3"
+    <>
+      {pdfCitations.length > 0 ? (
+        <div className="flex shrink-0 flex-wrap gap-1.5 border-b border-border px-3 py-2">
+          {pdfCitations.map((citation, index) => {
+            const key = citationKey(citation, index)
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setActiveKey(key)}
+                className={cn(
+                  "rounded-full border px-2.5 py-1 text-xs transition-colors",
+                  active && key === citationKey(active, pdfCitations.indexOf(active))
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border text-muted-foreground hover:bg-muted"
+                )}
               >
-                {citation.materialName ? (
-                  <p className="mb-1 truncate text-xs font-semibold">
-                    {citation.materialName}
-                  </p>
-                ) : null}
-                {citation.snippet ? (
-                  <p className="text-xs leading-relaxed text-muted-foreground">
-                    {citation.snippet}
-                  </p>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        ) : step.materials.length > 0 ? (
-          <ul className="flex flex-col gap-2">
-            {step.materials.map((material) => (
-              <li
-                key={material.id}
-                className="flex items-center gap-2 rounded-lg border border-border bg-muted/20 p-3 text-xs"
-              >
-                <HugeiconsIcon
-                  icon={BookOpen01Icon}
-                  strokeWidth={2}
-                  className="size-3.5 shrink-0 text-muted-foreground"
-                />
-                <span className="truncate">
-                  {material.title ?? t.lessonSources}
-                </span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="px-1 py-6 text-center text-xs text-muted-foreground">
-            {t.wsSourceEmpty}
-          </p>
-        )}
+                {pageLabel(citation)}
+              </button>
+            )
+          })}
+        </div>
+      ) : null}
+      <div className="min-h-0 flex-1">
+        <iframe
+          key={iframeSrc}
+          src={iframeSrc}
+          title={material.name ?? t.wsSourceTitle}
+          className="h-full w-full border-0"
+        />
       </div>
-    </div>
+      {otherCitations.length > 0 ? (
+        <div className="max-h-40 shrink-0 overflow-y-auto border-t border-border p-3">
+          <p className="mb-2 text-xs font-semibold text-muted-foreground">
+            {t.wsSourceCited}
+          </p>
+          <CitationSnippetList citations={otherCitations} />
+        </div>
+      ) : null}
+    </>
   )
 }
 
-function AudioSourceView({
-  citations,
-  otherCitations,
-}: {
-  citations: LessonCitation[]
-  otherCitations: LessonCitation[]
-}) {
+function GenericMaterialView({ material }: { material: MaterialEntry }) {
   const dict = useT()
   const t = dict.plan
-
-  const groups = React.useMemo(() => {
-    const map = new Map<
-      string,
-      { materialName: string | null; items: LessonCitation[] }
-    >()
-    for (const citation of citations) {
-      if (!citation.materialId) continue
-      const group = map.get(citation.materialId) ?? {
-        materialName: citation.materialName,
-        items: [],
-      }
-      group.items.push(citation)
-      map.set(citation.materialId, group)
-    }
-    return Array.from(map.entries())
-  }, [citations])
-
+  const iframeSrc = rawMaterialUrl(material.id)
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <header className="flex h-11 shrink-0 items-center gap-2 border-b border-border px-4 text-sm font-semibold">
-        <HugeiconsIcon icon={File01Icon} strokeWidth={2} className="size-4" />
-        {t.wsSourceTitle}
-      </header>
-      <div className="min-h-0 flex-1 overflow-y-auto p-3">
-        <div className="flex flex-col gap-4">
-          {groups.map(([materialId, group]) => (
-            <AudioMaterialBlock
-              key={materialId}
-              materialId={materialId}
-              materialName={group.materialName}
-              segments={group.items}
-            />
-          ))}
-        </div>
-        {otherCitations.length > 0 ? (
-          <div className="mt-4 border-t border-border pt-3">
-            <p className="mb-2 text-xs font-semibold text-muted-foreground">
-              {t.wsSourceCited}
-            </p>
-            <ul className="flex flex-col gap-2">
-              {otherCitations.map((citation, index) => (
-                <li
-                  key={`${citation.materialId ?? "c"}-${index}`}
-                  className="rounded-lg border border-border bg-muted/20 p-3"
-                >
-                  {citation.materialName ? (
-                    <p className="mb-1 truncate text-xs font-semibold">
-                      {citation.materialName}
-                    </p>
-                  ) : null}
-                  {citation.snippet ? (
-                    <p className="text-xs leading-relaxed text-muted-foreground">
-                      {citation.snippet}
-                    </p>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
+    <>
+      <div className="min-h-0 flex-1">
+        <iframe
+          src={iframeSrc}
+          title={material.name ?? t.wsSourceTitle}
+          className="h-full w-full border-0"
+        />
       </div>
-    </div>
+      {material.citations.length > 0 ? (
+        <div className="max-h-40 shrink-0 overflow-y-auto border-t border-border p-3">
+          <p className="mb-2 text-xs font-semibold text-muted-foreground">
+            {t.wsSourceCited}
+          </p>
+          <CitationSnippetList citations={material.citations} />
+        </div>
+      ) : null}
+    </>
+  )
+}
+
+function CitationSnippetList({ citations }: { citations: LessonCitation[] }) {
+  return (
+    <ul className="flex flex-col gap-2">
+      {citations.map((citation, index) => (
+        <li
+          key={`${citation.materialId ?? "c"}-${index}`}
+          className="rounded-lg border border-border bg-muted/20 p-3"
+        >
+          {citation.materialName ? (
+            <p className="mb-1 truncate text-xs font-semibold">
+              {citation.materialName}
+            </p>
+          ) : null}
+          {citation.snippet ? (
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              {citation.snippet}
+            </p>
+          ) : null}
+        </li>
+      ))}
+    </ul>
   )
 }
 

@@ -221,14 +221,19 @@ export function historyToCoachMessages(
 export function createCoachTransport(sessionId: string) {
   return new DefaultChatTransport<CoachUIMessage>({
     api: `${PROXY_PREFIX}/agent/chat/${sessionId}`,
-    prepareSendMessagesRequest: ({ messages }) => {
+    prepareSendMessagesRequest: ({ messages, body }) => {
       const lastUserMessage = [...messages]
         .reverse()
         .find((m) => m.role === "user")
       const prompt = lastUserMessage ? messageText(lastUserMessage) : ""
+      const context =
+        body && typeof (body as { context?: unknown }).context === "string"
+          ? ((body as { context?: string }).context ?? "")
+          : ""
       return {
         body: {
           prompt,
+          context: context.trim() ? context : undefined,
           channel: "WEB",
         },
       }
