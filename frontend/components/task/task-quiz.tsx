@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
+import { useActiveRoom } from "@/lib/active-room"
 import { useT } from "@/lib/i18n/provider"
 import { completePlanTask, type LearningPlan, type PlanStep } from "@/lib/plan"
 import {
@@ -59,6 +60,7 @@ export function TaskQuiz({
 }) {
   const t = useT().plan
   const errors = useT().errors
+  const { activeRoomId } = useActiveRoom()
   const isExam = mode === "exam"
 
   const [phase, setPhase] = React.useState<Phase>(
@@ -87,7 +89,7 @@ export function TaskQuiz({
     if (!topicId) return
     setStarting(true)
     try {
-      const next = await startQuizSession({ topicId })
+      const next = await startQuizSession({ topicId, roomId: activeRoomId })
       if (next && (next.questions?.length ?? 0) > 0) {
         finishedRef.current = false
         setSession(next)
@@ -107,7 +109,7 @@ export function TaskQuiz({
     } finally {
       setStarting(false)
     }
-  }, [topicId, errors.generic, isExam])
+  }, [topicId, errors.generic, isExam, activeRoomId])
 
   const submitAnswer = React.useCallback(
     async (q: QuizQuestion) => {

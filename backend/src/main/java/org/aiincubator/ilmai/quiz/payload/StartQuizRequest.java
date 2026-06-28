@@ -18,6 +18,8 @@ public class StartQuizRequest {
 
     private UUID topicId;
 
+    private UUID roomId;
+
     @Size(max = 20)
     private String difficulty;
 

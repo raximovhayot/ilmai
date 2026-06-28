@@ -84,10 +84,8 @@ public class QuizService {
             }
         }
 
-        UUID roomId = roomsApi.findPersonalForUser(currentUser.getUserId())
-                .map(RoomDto::getId)
-                .orElseThrow(() -> new QuizException(QuizException.Reason.QUIZ_MATERIALS_MISSING));
-        String goal = roomsApi.findPersonalGoalForUser(currentUser.getUserId())
+        UUID roomId = resolveRoomId(currentUser, request);
+        String goal = roomsApi.findGoal(roomId)
                 .map(RoomGoalDto::getGoal).orElse(null);
         String retrievalQuery = resolveRetrievalQuery(scopeQueryOverride, topic, goal);
         List<RetrievedChunkDto> chunks = retrievalApi.retrieve(currentUser.getUserId(), roomId, retrievalQuery);
@@ -230,6 +228,15 @@ public class QuizService {
             session.setCompletedAt(OffsetDateTime.now());
         }
         return quizMapper.toResponse(session);
+    }
+
+    private UUID resolveRoomId(CurrentUser currentUser, StartQuizRequest request) {
+        if (request != null && request.getRoomId() != null) {
+            return roomsApi.requireMember(currentUser, request.getRoomId()).getId();
+        }
+        return roomsApi.findPersonalForUser(currentUser.getUserId())
+                .map(RoomDto::getId)
+                .orElseThrow(() -> new QuizException(QuizException.Reason.QUIZ_MATERIALS_MISSING));
     }
 
     private QuizSession require(CurrentUser currentUser, UUID sessionId) {

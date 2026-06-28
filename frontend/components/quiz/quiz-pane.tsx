@@ -24,6 +24,7 @@ import { Label } from "@/components/ui/label"
 import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
 import { ApiClientError } from "@/lib/api"
+import { useActiveRoom } from "@/lib/active-room"
 import { useT } from "@/lib/i18n/provider"
 import {
   abandonQuizSession,
@@ -45,6 +46,7 @@ type Props = {
 export function QuizPane({ topicId, hasMaterials, focusMaterialId }: Props) {
   const t = useT()
   const { status } = useSession()
+  const { activeRoomId } = useActiveRoom()
 
   const [difficulty, setDifficulty] = React.useState<QuizDifficulty>("MEDIUM")
   const [questionCount, setQuestionCount] = React.useState(5)
@@ -70,6 +72,7 @@ export function QuizPane({ topicId, hasMaterials, focusMaterialId }: Props) {
     try {
       const res = await startQuizSession({
         topicId,
+        roomId: activeRoomId,
         difficulty,
         questionCount,
       })
@@ -89,7 +92,14 @@ export function QuizPane({ topicId, hasMaterials, focusMaterialId }: Props) {
     } finally {
       setStarting(false)
     }
-  }, [status, difficulty, questionCount, t.errors.generic, topicId])
+  }, [
+    status,
+    difficulty,
+    questionCount,
+    t.errors.generic,
+    topicId,
+    activeRoomId,
+  ])
 
   React.useEffect(() => {
     if (

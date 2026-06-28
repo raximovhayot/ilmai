@@ -36,6 +36,7 @@ export type QuizSession = {
 
 export type StartQuizBody = {
   topicId: string
+  roomId?: string | null
   difficulty?: string
   locale?: string
   questionCount?: number
