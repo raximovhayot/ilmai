@@ -54,7 +54,7 @@ import {
   moveMaterial,
   uploadMaterialFile,
 } from "@/lib/materials"
-import { listRooms } from "@/lib/rooms"
+import { useActiveRoom } from "@/lib/active-room"
 import {
   createTopic,
   deleteTopic,
@@ -123,6 +123,7 @@ export function DataView({ initialTopics, loadError }: DataViewProps) {
   const m = dict.materials
   const router = useRouter()
   const { status } = useSession()
+  const { activeRoomId } = useActiveRoom()
 
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
@@ -165,12 +166,9 @@ export function DataView({ initialTopics, loadError }: DataViewProps) {
     let cancelled = false
     void (async () => {
       try {
-        const [rooms, contents] = await Promise.all([
-          listRooms(),
-          getSpaceContents(0, PAGE_SIZE),
-        ])
+        const contents = await getSpaceContents(0, PAGE_SIZE, activeRoomId)
         if (cancelled) return
-        setSpaceId(rooms[0]?.id ?? null)
+        setSpaceId(activeRoomId)
         setTopics(contents.topics)
         setItems(contents.items)
         setPage(0)
@@ -185,14 +183,14 @@ export function DataView({ initialTopics, loadError }: DataViewProps) {
     return () => {
       cancelled = true
     }
-  }, [status, reloadKey])
+  }, [status, reloadKey, activeRoomId])
 
   async function loadMore() {
     if (!hasMore || loadingMore) return
     setLoadingMore(true)
     try {
       const next = page + 1
-      const contents = await getSpaceContents(next, PAGE_SIZE)
+      const contents = await getSpaceContents(next, PAGE_SIZE, activeRoomId)
       setItems((prev) => [...prev, ...contents.items])
       setPage(next)
       setHasMore(contents.hasMore)

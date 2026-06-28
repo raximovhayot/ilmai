@@ -22,12 +22,21 @@ import { useActiveRoom } from "@/lib/active-room"
 import { useT } from "@/lib/i18n/provider"
 import { cn } from "@/lib/utils"
 
-export function RoomSwitcher({ collapsed }: { collapsed: boolean }) {
+export function RoomSwitcher({
+  collapsed = false,
+  variant = "sidebar",
+}: {
+  collapsed?: boolean
+  variant?: "sidebar" | "compact"
+}) {
   const t = useT().roomSwitcher
   const { rooms, activeRoom, activeRoomId, setActiveRoomId, loading } =
     useActiveRoom()
 
+  const compact = variant === "compact"
+
   if (loading && rooms.length === 0) {
+    if (compact) return <Skeleton className="h-8 w-28 rounded-full" />
     return collapsed ? (
       <Skeleton className="mx-auto size-9 rounded-xl" />
     ) : (
@@ -45,12 +54,17 @@ export function RoomSwitcher({ collapsed }: { collapsed: boolean }) {
         aria-label={t.label}
         title={label}
         className={cn(
-          "flex w-full items-center gap-2.5 rounded-xl border border-sidebar-border bg-sidebar-accent/40 px-2.5 py-2 text-start text-sm transition-colors outline-none hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-ring",
-          collapsed && "lg:justify-center lg:px-0"
+          compact
+            ? "flex max-w-[12rem] items-center gap-1.5 rounded-full border border-border bg-muted/40 px-2.5 py-1.5 text-start text-sm transition-colors outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+            : "flex w-full items-center gap-2.5 rounded-xl border border-sidebar-border bg-sidebar-accent/40 px-2.5 py-2 text-start text-sm transition-colors outline-none hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-ring",
+          !compact && collapsed && "lg:justify-center lg:px-0"
         )}
       >
         <span
-          className="flex size-6 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"
+          className={cn(
+            "flex shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary",
+            compact ? "size-5" : "size-6"
+          )}
           aria-hidden
         >
           <HugeiconsIcon
@@ -59,15 +73,10 @@ export function RoomSwitcher({ collapsed }: { collapsed: boolean }) {
             className="size-3.5"
           />
         </span>
-        {!collapsed && (
+        {compact ? (
           <>
-            <span className="flex min-w-0 flex-1 flex-col">
-              <span className="truncate text-xs text-muted-foreground">
-                {t.label}
-              </span>
-              <span className="truncate text-sm font-medium text-foreground">
-                {label}
-              </span>
+            <span className="truncate text-sm font-medium text-foreground">
+              {label}
             </span>
             <HugeiconsIcon
               icon={UnfoldMoreIcon}
@@ -75,9 +84,30 @@ export function RoomSwitcher({ collapsed }: { collapsed: boolean }) {
               className="size-4 shrink-0 text-muted-foreground"
             />
           </>
+        ) : (
+          !collapsed && (
+            <>
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span className="truncate text-xs text-muted-foreground">
+                  {t.label}
+                </span>
+                <span className="truncate text-sm font-medium text-foreground">
+                  {label}
+                </span>
+              </span>
+              <HugeiconsIcon
+                icon={UnfoldMoreIcon}
+                strokeWidth={2}
+                className="size-4 shrink-0 text-muted-foreground"
+              />
+            </>
+          )
         )}
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="min-w-56">
+      <DropdownMenuContent
+        align={compact ? "end" : "start"}
+        className="min-w-56"
+      >
         <DropdownMenuLabel>{t.label}</DropdownMenuLabel>
         {rooms.map((room) => {
           const active = room.id === activeRoomId

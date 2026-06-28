@@ -154,8 +154,8 @@ public class MaterialService {
     }
 
     @Transactional(readOnly = true)
-    public List<MaterialResponse> list(CurrentUser currentUser, UUID topicId) {
-        List<UUID> spaceIds = requireSpaceIds(currentUser);
+    public List<MaterialResponse> list(CurrentUser currentUser, UUID roomId, UUID topicId) {
+        List<UUID> spaceIds = resolveScopeRoomIds(currentUser, roomId);
         List<Material> found;
         if (topicId != null) {
             topics.findByIdAndRoomIdIn(topicId, spaceIds)
@@ -170,8 +170,8 @@ public class MaterialService {
     }
 
     @Transactional(readOnly = true)
-    public SpaceContentsResponse contents(CurrentUser currentUser, int page, int size) {
-        List<UUID> spaceIds = requireSpaceIds(currentUser);
+    public SpaceContentsResponse contents(CurrentUser currentUser, UUID roomId, int page, int size) {
+        List<UUID> spaceIds = resolveScopeRoomIds(currentUser, roomId);
         int safePage = Math.max(page, 0);
         int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
         Slice<Material> slice = materials.findByTopicIsNullAndRoomIdInOrderByCreatedAtDesc(
@@ -256,6 +256,14 @@ public class MaterialService {
         } catch (IOException ignored) {
         }
         publisher.publishEvent(new MaterialDeletedEvent(deletedId, userId));
+    }
+
+    private List<UUID> resolveScopeRoomIds(CurrentUser currentUser, UUID roomId) {
+        if (roomId != null) {
+            roomsApi.requireMember(currentUser, roomId);
+            return List.of(roomId);
+        }
+        return requireSpaceIds(currentUser);
     }
 
     private List<UUID> requireSpaceIds(CurrentUser currentUser) {

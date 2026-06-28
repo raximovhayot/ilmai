@@ -162,9 +162,21 @@ export type Dictionary = {
       leave: string
       confirmLeave: string
       premiumRequired: string
+      goal: string
+      goalTitle: string
+      goalSubtitle: string
+      goalLabel: string
+      goalPlaceholder: string
+      goalDeadlineLabel: string
+      goalDeadlineHint: string
+      goalMinutesLabel: string
+      goalMinutesPlaceholder: string
+      goalSubmit: string
+      goalNone: string
       errors: {
         nameBlank: string
         invalidCode: string
+        invalidTargetDate: string
         generic: string
       }
     }
@@ -960,9 +972,22 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
         leave: "Leave room",
         confirmLeave: "Leave this room? You’ll lose access to its content.",
         premiumRequired: "Creating extra rooms requires Premium.",
+        goal: "Goal",
+        goalTitle: "Room goal",
+        goalSubtitle:
+          "Set what this room is learning toward. It guides the plan, quizzes, and reminders.",
+        goalLabel: "What do you want to learn?",
+        goalPlaceholder: "e.g. Pass the IELTS exam",
+        goalDeadlineLabel: "Target date",
+        goalDeadlineHint: "Optional — when you want to reach this goal.",
+        goalMinutesLabel: "Daily study minutes",
+        goalMinutesPlaceholder: "e.g. 30",
+        goalSubmit: "Save goal",
+        goalNone: "No goal set yet.",
         errors: {
           nameBlank: "Room name must not be blank.",
           invalidCode: "This invite code is invalid or has been revoked.",
+          invalidTargetDate: "The target date must be in the future.",
           generic: "Something went wrong. Please try again.",
         },
       },
@@ -1813,9 +1838,22 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
         leave: "Покинуть комнату",
         confirmLeave: "Покинуть комнату? Вы потеряете доступ к её содержимому.",
         premiumRequired: "Создание дополнительных комнат доступно в Премиум.",
+        goal: "Цель",
+        goalTitle: "Цель комнаты",
+        goalSubtitle:
+          "Укажите, чему учится эта комната. Это направляет план, тесты и напоминания.",
+        goalLabel: "Что вы хотите изучить?",
+        goalPlaceholder: "например: Сдать экзамен IELTS",
+        goalDeadlineLabel: "Целевая дата",
+        goalDeadlineHint: "Необязательно — когда вы хотите достичь цели.",
+        goalMinutesLabel: "Минут занятий в день",
+        goalMinutesPlaceholder: "например: 30",
+        goalSubmit: "Сохранить цель",
+        goalNone: "Цель ещё не задана.",
         errors: {
           nameBlank: "Название комнаты не должно быть пустым.",
           invalidCode: "Код приглашения недействителен или отозван.",
+          invalidTargetDate: "Целевая дата должна быть в будущем.",
           generic: "Что-то пошло не так. Попробуйте ещё раз.",
         },
       },
@@ -2678,9 +2716,22 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
         leave: "Xonadan chiqish",
         confirmLeave: "Xonadan chiqasizmi? Uning mazmuniga kirish yo‘qoladi.",
         premiumRequired: "Qo‘shimcha xonalar yaratish Premium talab qiladi.",
+        goal: "Maqsad",
+        goalTitle: "Xona maqsadi",
+        goalSubtitle:
+          "Bu xona nimani o‘rganishini belgilang. Bu reja, test va eslatmalarni yo‘naltiradi.",
+        goalLabel: "Nimani o‘rganmoqchisiz?",
+        goalPlaceholder: "masalan: IELTS imtihonidan o‘tish",
+        goalDeadlineLabel: "Maqsad sanasi",
+        goalDeadlineHint: "Ixtiyoriy — bu maqsadga qachon yetmoqchisiz.",
+        goalMinutesLabel: "Kunlik mashg‘ulot daqiqalari",
+        goalMinutesPlaceholder: "masalan: 30",
+        goalSubmit: "Maqsadni saqlash",
+        goalNone: "Hali maqsad belgilanmagan.",
         errors: {
           nameBlank: "Xona nomi bo‘sh bo‘lmasligi kerak.",
           invalidCode: "Taklif kodi yaroqsiz yoki bekor qilingan.",
+          invalidTargetDate: "Maqsad sanasi kelajakda bo‘lishi kerak.",
           generic: "Nimadir xato ketdi. Qayta urinib ko‘ring.",
         },
       },

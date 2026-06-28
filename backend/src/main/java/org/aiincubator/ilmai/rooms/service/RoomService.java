@@ -5,15 +5,18 @@ import org.aiincubator.ilmai.common.CurrentUser;
 import org.aiincubator.ilmai.common.i18n.MessageService;
 import org.aiincubator.ilmai.common.quota.PremiumFeature;
 import org.aiincubator.ilmai.common.quota.QuotaService;
+import org.aiincubator.ilmai.rooms.RoomGoalUpdatedEvent;
 import org.aiincubator.ilmai.rooms.domain.Room;
 import org.aiincubator.ilmai.rooms.domain.RoomMember;
 import org.aiincubator.ilmai.rooms.domain.RoomMemberRepository;
 import org.aiincubator.ilmai.rooms.domain.RoomRepository;
 import org.aiincubator.ilmai.rooms.domain.RoomRole;
 import org.aiincubator.ilmai.rooms.payload.RoomResponse;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -30,6 +33,7 @@ public class RoomService {
     private final MessageService messages;
     private final RoomMapper roomMapper;
     private final QuotaService quotaService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public Room create(UUID userId, String firstNameHint) {
@@ -88,6 +92,38 @@ public class RoomService {
             throw new RoomException(RoomException.Reason.ROOM_NOT_FOUND);
         }
         room.setName(trimmed);
+        return roomMapper.toResponse(room);
+    }
+
+    @Transactional
+    public RoomResponse updateGoal(CurrentUser currentUser, UUID roomId, String goal,
+                                  LocalDate targetDate, Integer dailyStudyMinutes) {
+        Room room = rooms.findById(roomId)
+                .orElseThrow(() -> new RoomException(RoomException.Reason.ROOM_NOT_FOUND));
+        RoomMember member = roomMembers.findByRoomIdAndUserId(roomId, currentUser.getUserId())
+                .orElseThrow(() -> new RoomException(RoomException.Reason.NOT_A_MEMBER));
+        if (member.getRole() != RoomRole.OWNER) {
+            throw new RoomException(RoomException.Reason.NOT_OWNER);
+        }
+        boolean goalChanged = false;
+        if (goal != null) {
+            String trimmed = goal.trim();
+            room.setGoal(trimmed.isEmpty() ? null : trimmed);
+            goalChanged = true;
+        }
+        if (targetDate != null) {
+            if (targetDate.isBefore(LocalDate.now())) {
+                throw new RoomException(RoomException.Reason.INVALID_TARGET_DATE);
+            }
+            room.setTargetDate(targetDate);
+            goalChanged = true;
+        }
+        if (dailyStudyMinutes != null) {
+            room.setDailyStudyMinutes(dailyStudyMinutes);
+        }
+        if (goalChanged) {
+            eventPublisher.publishEvent(new RoomGoalUpdatedEvent(room.getOwnerId(), room.getId()));
+        }
         return roomMapper.toResponse(room);
     }
 

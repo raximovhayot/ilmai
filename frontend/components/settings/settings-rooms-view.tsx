@@ -12,6 +12,7 @@ import {
   Logout03Icon,
   PencilEdit02Icon,
   PlusSignIcon,
+  Target02Icon,
   Unlink01Icon,
   UserAdd01Icon,
   UserGroup03Icon,
@@ -49,10 +50,12 @@ import {
   removeRoomMember,
   renameRoom,
   revokeRoomInvite,
+  updateRoomGoal,
   type RoomMemberResponse,
   type RoomResponse,
   type RoomRole,
 } from "@/lib/rooms"
+import { cn } from "@/lib/utils"
 
 import { SettingsPageShell } from "./settings-shared"
 
@@ -373,6 +376,31 @@ function RoomCard({
 
         <Separator />
 
+        <div className="flex items-start gap-2 text-sm">
+          <HugeiconsIcon
+            icon={Target02Icon}
+            strokeWidth={2}
+            className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+          />
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <span
+              className={cn(
+                "truncate",
+                meta.room.goal
+                  ? "text-foreground"
+                  : "text-muted-foreground italic"
+              )}
+            >
+              {meta.room.goal ?? t.goalNone}
+            </span>
+            {meta.room.targetDate ? (
+              <span className="text-xs text-muted-foreground">
+                {t.goalDeadlineLabel}: {meta.room.targetDate}
+              </span>
+            ) : null}
+          </div>
+        </div>
+
         <div className="flex flex-wrap items-center gap-2">
           {isOwner ? (
             <>
@@ -381,6 +409,7 @@ function RoomCard({
                 currentName={meta.room.name}
                 onRenamed={onChanged}
               />
+              <GoalButton room={meta.room} onSaved={onChanged} />
               <InviteButton roomId={meta.room.id} />
               <MembersButton
                 roomId={meta.room.id}
@@ -472,6 +501,139 @@ function RenameRoomButton({
             <Button type="submit" disabled={!trimmed || busy}>
               {busy ? <Spinner /> : null}
               {t.renameSubmit}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function GoalButton({
+  room,
+  onSaved,
+}: {
+  room: RoomResponse
+  onSaved: () => Promise<void> | void
+}) {
+  const t = useT().settings.rooms
+  const [open, setOpen] = React.useState(false)
+  const [goal, setGoal] = React.useState(room.goal ?? "")
+  const [targetDate, setTargetDate] = React.useState(room.targetDate ?? "")
+  const [dailyMinutes, setDailyMinutes] = React.useState(
+    room.dailyStudyMinutes != null ? String(room.dailyStudyMinutes) : ""
+  )
+  const [busy, setBusy] = React.useState(false)
+
+  const handleOpenChange = (next: boolean) => {
+    if (next) {
+      setGoal(room.goal ?? "")
+      setTargetDate(room.targetDate ?? "")
+      setDailyMinutes(
+        room.dailyStudyMinutes != null ? String(room.dailyStudyMinutes) : ""
+      )
+    }
+    setOpen(next)
+  }
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (busy) return
+    const parsedMinutes = dailyMinutes.trim()
+      ? Number.parseInt(dailyMinutes, 10)
+      : null
+    setBusy(true)
+    try {
+      await updateRoomGoal(room.id, {
+        goal: goal.trim() ? goal.trim() : null,
+        targetDate: targetDate ? targetDate : null,
+        dailyStudyMinutes:
+          parsedMinutes != null && Number.isFinite(parsedMinutes)
+            ? parsedMinutes
+            : null,
+      })
+      setOpen(false)
+      await onSaved()
+    } catch (error) {
+      if (
+        error instanceof ApiClientError &&
+        error.errors[0]?.message?.toLowerCase().includes("date")
+      ) {
+        toast.error(t.errors.invalidTargetDate)
+      } else {
+        toast.error(errorMessage(error, t.errors.generic))
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogTrigger render={<Button size="sm" variant="outline" />}>
+        <HugeiconsIcon
+          icon={Target02Icon}
+          strokeWidth={2}
+          data-icon="inline-start"
+        />
+        {t.goal}
+      </DialogTrigger>
+      <DialogContent>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+          <DialogHeader>
+            <DialogTitle>{t.goalTitle}</DialogTitle>
+            <DialogDescription>{t.goalSubtitle}</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor={`room-goal-${room.id}`}>{t.goalLabel}</Label>
+              <Input
+                id={`room-goal-${room.id}`}
+                value={goal}
+                onChange={(e) => setGoal(e.target.value)}
+                placeholder={t.goalPlaceholder}
+                autoFocus
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor={`room-goal-date-${room.id}`}>
+                {t.goalDeadlineLabel}
+              </Label>
+              <Input
+                id={`room-goal-date-${room.id}`}
+                type="date"
+                value={targetDate}
+                onChange={(e) => setTargetDate(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                {t.goalDeadlineHint}
+              </p>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor={`room-goal-minutes-${room.id}`}>
+                {t.goalMinutesLabel}
+              </Label>
+              <Input
+                id={`room-goal-minutes-${room.id}`}
+                type="number"
+                min={1}
+                value={dailyMinutes}
+                onChange={(e) => setDailyMinutes(e.target.value)}
+                placeholder={t.goalMinutesPlaceholder}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+            >
+              {t.cancel}
+            </Button>
+            <Button type="submit" disabled={busy}>
+              {busy ? <Spinner /> : null}
+              {t.goalSubmit}
             </Button>
           </DialogFooter>
         </form>

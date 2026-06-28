@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { listMaterials, type MaterialResponse } from "@/lib/materials"
 import { listTopics, type TopicResponse } from "@/lib/topics"
+import { useActiveRoom } from "@/lib/active-room"
 import { useT } from "@/lib/i18n/provider"
 
 type Props = {
@@ -16,6 +17,7 @@ type Props = {
 
 export function DataDetailClient({ topicId }: Props) {
   const { status } = useSession()
+  const { activeRoomId } = useActiveRoom()
   const t = useT()
 
   const [topic, setTopic] = React.useState<TopicResponse | null>(null)
@@ -36,7 +38,7 @@ export function DataDetailClient({ topicId }: Props) {
         setMissing(!found)
         if (found) {
           try {
-            const ms = await listMaterials(topicId)
+            const ms = await listMaterials(topicId, activeRoomId)
             if (!cancelled) setMaterials(ms)
           } catch {
             if (!cancelled) setLoadError(true)
@@ -51,7 +53,7 @@ export function DataDetailClient({ topicId }: Props) {
     return () => {
       cancelled = true
     }
-  }, [status, topicId])
+  }, [status, topicId, activeRoomId])
 
   if (loading) {
     return <DataDetailSkeleton />

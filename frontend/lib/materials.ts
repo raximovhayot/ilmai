@@ -24,11 +24,18 @@ export type MaterialResponse = {
 }
 
 export async function listMaterials(
-  topicId?: string | null
+  topicId?: string | null,
+  roomId?: string | null
 ): Promise<MaterialResponse[]> {
-  const path = topicId
-    ? `/materials?topicId=${encodeURIComponent(topicId)}`
-    : "/materials"
+  const params = new URLSearchParams()
+  if (roomId) {
+    params.set("roomId", roomId)
+  }
+  if (topicId) {
+    params.set("topicId", topicId)
+  }
+  const query = params.toString()
+  const path = query ? `/materials?${query}` : "/materials"
   const data = await apiFetch<MaterialResponse[]>(path, {
     cache: "no-store",
   })
@@ -37,10 +44,17 @@ export async function listMaterials(
 
 export async function getSpaceContents(
   page = 0,
-  size = 24
+  size = 24,
+  roomId?: string | null
 ): Promise<SpaceContentsResponse> {
+  const params = new URLSearchParams()
+  if (roomId) {
+    params.set("roomId", roomId)
+  }
+  params.set("page", String(page))
+  params.set("size", String(size))
   const data = await apiFetch<SpaceContentsResponse>(
-    `/materials/contents?page=${page}&size=${size}`,
+    `/materials/contents?${params.toString()}`,
     { cache: "no-store" }
   )
   return data ?? { topics: [], items: [], page, size, hasMore: false }

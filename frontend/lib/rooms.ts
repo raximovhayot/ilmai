@@ -5,6 +5,15 @@ export type RoomRole = "OWNER" | "MEMBER"
 export type RoomResponse = {
   id: string
   name: string
+  goal?: string | null
+  targetDate?: string | null
+  dailyStudyMinutes?: number | null
+}
+
+export type UpdateRoomGoalInput = {
+  goal?: string | null
+  targetDate?: string | null
+  dailyStudyMinutes?: number | null
 }
 
 export type RoomMemberResponse = {
@@ -40,6 +49,16 @@ export async function renameRoom(
   return await apiFetch<RoomResponse>(`/rooms/${roomId}`, {
     method: "PATCH",
     body: { name },
+  })
+}
+
+export async function updateRoomGoal(
+  roomId: string,
+  body: UpdateRoomGoalInput
+): Promise<RoomResponse> {
+  return await apiFetch<RoomResponse>(`/rooms/${roomId}/goal`, {
+    method: "PATCH",
+    body,
   })
 }
 

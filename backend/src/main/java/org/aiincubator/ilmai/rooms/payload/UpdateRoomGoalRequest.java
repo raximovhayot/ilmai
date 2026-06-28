@@ -1,24 +1,25 @@
 package org.aiincubator.ilmai.rooms.payload;
 
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDate;
-import java.util.UUID;
 
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class RoomResponse {
+public class UpdateRoomGoalRequest {
 
-    private UUID id;
-    private String name;
+    @Size(max = 500)
     private String goal;
+
     private LocalDate targetDate;
+
+    @Positive
     private Integer dailyStudyMinutes;
 }

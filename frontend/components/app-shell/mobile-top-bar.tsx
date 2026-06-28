@@ -5,6 +5,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { SparklesIcon } from "@hugeicons/core-free-icons"
 
 import { Button } from "@/components/ui/button"
+import { RoomSwitcher } from "./room-switcher"
 import { UserAvatar, UserMenu, type UserSummary } from "./user-menu"
 import { useT } from "@/lib/i18n/provider"
 
@@ -31,27 +32,31 @@ export function MobileTopBar({ user }: { user: UserSummary }) {
         <span className="truncate">{t.brand.name}</span>
       </Link>
 
-      <UserMenu
-        user={user}
-        side="bottom"
-        align="end"
-        trigger={
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="rounded-full"
-            aria-label={t.nav.userMenu}
-          >
-            <UserAvatar
-              name={user.name}
-              email={user.email}
-              image={user.image}
-              size="sm"
-            />
-            <span className="sr-only">{displayName}</span>
-          </Button>
-        }
-      />
+      <div className="flex min-w-0 items-center gap-2">
+        <RoomSwitcher variant="compact" />
+
+        <UserMenu
+          user={user}
+          side="bottom"
+          align="end"
+          trigger={
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="rounded-full"
+              aria-label={t.nav.userMenu}
+            >
+              <UserAvatar
+                name={user.name}
+                email={user.email}
+                image={user.image}
+                size="sm"
+              />
+              <span className="sr-only">{displayName}</span>
+            </Button>
+          }
+        />
+      </div>
     </header>
   )
 }

@@ -7,9 +7,12 @@ import org.aiincubator.ilmai.common.config.LocalizationConfig;
 import org.aiincubator.ilmai.common.i18n.MessageService;
 import org.aiincubator.ilmai.common.quota.PremiumFeature;
 import org.aiincubator.ilmai.common.quota.QuotaService;
+import org.aiincubator.ilmai.rooms.RoomGoalUpdatedEvent;
 import org.aiincubator.ilmai.rooms.domain.Room;
+import org.aiincubator.ilmai.rooms.domain.RoomMember;
 import org.aiincubator.ilmai.rooms.domain.RoomMemberRepository;
 import org.aiincubator.ilmai.rooms.domain.RoomRepository;
+import org.aiincubator.ilmai.rooms.domain.RoomRole;
 import org.aiincubator.ilmai.rooms.payload.RoomResponse;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,8 +22,10 @@ import org.mapstruct.factory.Mappers;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.i18n.LocaleContextHolder;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -40,6 +45,7 @@ class RoomServiceTest {
     @Mock RoomRepository rooms;
     @Mock RoomMemberRepository roomMembers;
     @Mock QuotaService quotaService;
+    @Mock ApplicationEventPublisher eventPublisher;
 
     private MessageService messages;
     private RoomService roomService;
@@ -47,7 +53,7 @@ class RoomServiceTest {
     @BeforeEach
     void setUp() {
         messages = new MessageService(new LocalizationConfig().messageSource());
-        roomService = new RoomService(rooms, roomMembers, messages, Mappers.getMapper(RoomMapper.class), quotaService);
+        roomService = new RoomService(rooms, roomMembers, messages, Mappers.getMapper(RoomMapper.class), quotaService, eventPublisher);
     }
 
     @AfterEach
@@ -290,6 +296,105 @@ class RoomServiceTest {
                 .extracting(e -> ((RoomException) e).getReason())
                 .isEqualTo(RoomException.Reason.ROOM_NOT_FOUND);
         assertThat(room.getName()).isEqualTo("Original");
+    }
+
+    @Test
+    void updateGoal_updatesFieldsAndPublishesEventWhenOwner() {
+        UUID userId = UUID.randomUUID();
+        Room room = existingRoom(userId);
+        when(rooms.findById(room.getId())).thenReturn(Optional.of(room));
+        when(roomMembers.findByRoomIdAndUserId(room.getId(), userId))
+                .thenReturn(Optional.of(ownerMember(room.getId(), userId)));
+        LocalDate target = LocalDate.now().plusDays(30);
+
+        RoomResponse response = roomService.updateGoal(new CurrentUser(userId), room.getId(),
+                "  Pass IELTS  ", target, 45);
+
+        assertThat(room.getGoal()).isEqualTo("Pass IELTS");
+        assertThat(room.getTargetDate()).isEqualTo(target);
+        assertThat(room.getDailyStudyMinutes()).isEqualTo(45);
+        assertThat(response.getGoal()).isEqualTo("Pass IELTS");
+        assertThat(response.getTargetDate()).isEqualTo(target);
+        assertThat(response.getDailyStudyMinutes()).isEqualTo(45);
+        verify(eventPublisher).publishEvent(any(RoomGoalUpdatedEvent.class));
+    }
+
+    @Test
+    void updateGoal_clearsGoalOnBlankAndSkipsEventWhenOnlyMinutesChange() {
+        UUID userId = UUID.randomUUID();
+        Room room = existingRoom(userId);
+        room.setGoal("Old goal");
+        when(rooms.findById(room.getId())).thenReturn(Optional.of(room));
+        when(roomMembers.findByRoomIdAndUserId(room.getId(), userId))
+                .thenReturn(Optional.of(ownerMember(room.getId(), userId)));
+
+        roomService.updateGoal(new CurrentUser(userId), room.getId(), null, null, 20);
+
+        assertThat(room.getGoal()).isEqualTo("Old goal");
+        assertThat(room.getDailyStudyMinutes()).isEqualTo(20);
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void updateGoal_rejectsPastTargetDate() {
+        UUID userId = UUID.randomUUID();
+        Room room = existingRoom(userId);
+        when(rooms.findById(room.getId())).thenReturn(Optional.of(room));
+        when(roomMembers.findByRoomIdAndUserId(room.getId(), userId))
+                .thenReturn(Optional.of(ownerMember(room.getId(), userId)));
+        CurrentUser currentUser = new CurrentUser(userId);
+        UUID roomId = room.getId();
+        LocalDate past = LocalDate.now().minusDays(1);
+
+        assertThatThrownBy(() -> roomService.updateGoal(currentUser, roomId, "Goal", past, null))
+                .isInstanceOf(RoomException.class)
+                .extracting(e -> ((RoomException) e).getReason())
+                .isEqualTo(RoomException.Reason.INVALID_TARGET_DATE);
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void updateGoal_rejectsNonOwnerMember() {
+        UUID ownerId = UUID.randomUUID();
+        UUID memberId = UUID.randomUUID();
+        Room room = existingRoom(ownerId);
+        when(rooms.findById(room.getId())).thenReturn(Optional.of(room));
+        RoomMember member = new RoomMember();
+        member.setRoomId(room.getId());
+        member.setUserId(memberId);
+        member.setRole(RoomRole.MEMBER);
+        when(roomMembers.findByRoomIdAndUserId(room.getId(), memberId)).thenReturn(Optional.of(member));
+        CurrentUser currentUser = new CurrentUser(memberId);
+        UUID roomId = room.getId();
+
+        assertThatThrownBy(() -> roomService.updateGoal(currentUser, roomId, "Goal", null, null))
+                .isInstanceOf(RoomException.class)
+                .extracting(e -> ((RoomException) e).getReason())
+                .isEqualTo(RoomException.Reason.NOT_OWNER);
+    }
+
+    @Test
+    void updateGoal_rejectsNonMember() {
+        UUID ownerId = UUID.randomUUID();
+        UUID strangerId = UUID.randomUUID();
+        Room room = existingRoom(ownerId);
+        when(rooms.findById(room.getId())).thenReturn(Optional.of(room));
+        when(roomMembers.findByRoomIdAndUserId(room.getId(), strangerId)).thenReturn(Optional.empty());
+        CurrentUser currentUser = new CurrentUser(strangerId);
+        UUID roomId = room.getId();
+
+        assertThatThrownBy(() -> roomService.updateGoal(currentUser, roomId, "Goal", null, null))
+                .isInstanceOf(RoomException.class)
+                .extracting(e -> ((RoomException) e).getReason())
+                .isEqualTo(RoomException.Reason.NOT_A_MEMBER);
+    }
+
+    private RoomMember ownerMember(UUID roomId, UUID userId) {
+        RoomMember member = new RoomMember();
+        member.setRoomId(roomId);
+        member.setUserId(userId);
+        member.setRole(RoomRole.OWNER);
+        return member;
     }
 
     private User newActiveUser() {

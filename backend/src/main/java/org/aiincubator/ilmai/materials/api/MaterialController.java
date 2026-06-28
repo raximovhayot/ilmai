@@ -48,15 +48,17 @@ public class MaterialController {
 
     @GetMapping
     public ApiResponse<List<MaterialResponse>> list(@AuthenticationPrincipal CurrentUser currentUser,
+                                                    @RequestParam(value = "roomId", required = false) UUID roomId,
                                                     @RequestParam(value = "topicId", required = false) UUID topicId) {
-        return ApiResponse.ok(materialService.list(currentUser, topicId));
+        return ApiResponse.ok(materialService.list(currentUser, roomId, topicId));
     }
 
     @GetMapping("/contents")
     public ApiResponse<SpaceContentsResponse> contents(@AuthenticationPrincipal CurrentUser currentUser,
+                                                       @RequestParam(value = "roomId", required = false) UUID roomId,
                                                        @RequestParam(value = "page", defaultValue = "0") int page,
                                                        @RequestParam(value = "size", defaultValue = "24") int size) {
-        return ApiResponse.ok(materialService.contents(currentUser, page, size));
+        return ApiResponse.ok(materialService.contents(currentUser, roomId, page, size));
     }
 
     @PatchMapping("/{materialId}")

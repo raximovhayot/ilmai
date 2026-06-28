@@ -10,6 +10,7 @@ import org.aiincubator.ilmai.rooms.payload.RenameRoomRequest;
 import org.aiincubator.ilmai.rooms.payload.RoomInviteResponse;
 import org.aiincubator.ilmai.rooms.payload.RoomMemberResponse;
 import org.aiincubator.ilmai.rooms.payload.RoomResponse;
+import org.aiincubator.ilmai.rooms.payload.UpdateRoomGoalRequest;
 import org.aiincubator.ilmai.rooms.service.RoomMembershipService;
 import org.aiincubator.ilmai.rooms.service.RoomService;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -49,6 +50,14 @@ public class RoomController {
                                             @PathVariable UUID roomId,
                                             @Valid @RequestBody RenameRoomRequest request) {
         return ApiResponse.ok(roomService.rename(currentUser, roomId, request.getName()));
+    }
+
+    @PatchMapping("/{roomId}/goal")
+    public ApiResponse<RoomResponse> updateGoal(@AuthenticationPrincipal CurrentUser currentUser,
+                                                @PathVariable UUID roomId,
+                                                @Valid @RequestBody UpdateRoomGoalRequest request) {
+        return ApiResponse.ok(roomService.updateGoal(currentUser, roomId, request.getGoal(),
+                request.getTargetDate(), request.getDailyStudyMinutes()));
     }
 
     @PostMapping("/join")

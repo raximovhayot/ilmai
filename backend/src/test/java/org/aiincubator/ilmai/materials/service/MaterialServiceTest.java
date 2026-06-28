@@ -320,7 +320,7 @@ class MaterialServiceTest {
         when(materials.findAllByTopicIdAndRoomIdInOrderByCreatedAtDesc(topic.getId(), List.of(spaceId)))
                 .thenReturn(List.of(a, b));
 
-        assertThat(materialService.list(new CurrentUser(userId), topic.getId()))
+        assertThat(materialService.list(new CurrentUser(userId), null, topic.getId()))
                 .extracting(MaterialResponse::getTitle)
                 .containsExactly("A", "B");
     }
@@ -336,10 +336,41 @@ class MaterialServiceTest {
         when(materials.findAllByRoomIdInOrderByCreatedAtDesc(List.of(spaceId)))
                 .thenReturn(List.of(a, b));
 
-        assertThat(materialService.list(new CurrentUser(userId), null))
+        assertThat(materialService.list(new CurrentUser(userId), null, null))
                 .extracting(MaterialResponse::getTitle)
                 .containsExactly("A", "B");
         verify(topics, never()).findByIdAndRoomIdIn(any(), any());
+    }
+
+    @Test
+    void list_scopesToRequestedRoomForMember() {
+        UUID userId = UUID.randomUUID();
+        UUID roomId = UUID.randomUUID();
+        CurrentUser caller = new CurrentUser(userId);
+        Material a = newMaterial(roomId, null, "A");
+        when(roomsApi.requireMember(caller, roomId)).thenReturn(null);
+        when(materials.findAllByRoomIdInOrderByCreatedAtDesc(List.of(roomId)))
+                .thenReturn(List.of(a));
+
+        assertThat(materialService.list(caller, roomId, null))
+                .extracting(MaterialResponse::getTitle)
+                .containsExactly("A");
+        verify(roomsApi, never()).findRoomIdsForUser(any());
+    }
+
+    @Test
+    void list_rejectsNonMemberRoom() {
+        UUID userId = UUID.randomUUID();
+        UUID roomId = UUID.randomUUID();
+        CurrentUser caller = new CurrentUser(userId);
+        when(roomsApi.requireMember(caller, roomId))
+                .thenThrow(new RoomException(RoomException.Reason.NOT_A_MEMBER));
+
+        assertThatThrownBy(() -> materialService.list(caller, roomId, null))
+                .isInstanceOf(RoomException.class)
+                .extracting(e -> ((RoomException) e).getReason())
+                .isEqualTo(RoomException.Reason.NOT_A_MEMBER);
+        verify(materials, never()).findAllByRoomIdInOrderByCreatedAtDesc(any());
     }
 
     @Test
@@ -350,7 +381,7 @@ class MaterialServiceTest {
         stubSpaceIds(userId, spaceId);
         when(topics.findByIdAndRoomIdIn(topicId, List.of(spaceId))).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> materialService.list(new CurrentUser(userId), topicId))
+        assertThatThrownBy(() -> materialService.list(new CurrentUser(userId), null, topicId))
                 .isInstanceOf(MaterialException.class)
                 .extracting(e -> ((MaterialException) e).getReason())
                 .isEqualTo(MaterialException.Reason.MATERIAL_TOPIC_NOT_FOUND);
