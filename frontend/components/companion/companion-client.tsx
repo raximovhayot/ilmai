@@ -43,7 +43,7 @@ import {
   PromptInputTools,
 } from "@/components/ai-elements/prompt-input"
 import { useApi } from "@/hooks/use-api"
-import { listSpaces } from "@/lib/spaces"
+import { listRooms } from "@/lib/rooms"
 import {
   uploadMaterialFile,
   getMaterial,
@@ -237,9 +237,9 @@ export function CompanionClient({
   React.useEffect(() => {
     if (!authenticated) return
     let cancelled = false
-    void run(() => listSpaces())
-      .then((spaces) => {
-        if (!cancelled && spaces.length > 0) setSpaceId(spaces[0].id)
+    void run(() => listRooms())
+      .then((rooms) => {
+        if (!cancelled && rooms.length > 0) setSpaceId(rooms[0].id)
       })
       .catch(() => {})
     return () => {

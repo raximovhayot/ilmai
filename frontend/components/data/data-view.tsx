@@ -54,7 +54,7 @@ import {
   moveMaterial,
   uploadMaterialFile,
 } from "@/lib/materials"
-import { listSpaces } from "@/lib/spaces"
+import { listRooms } from "@/lib/rooms"
 import {
   createTopic,
   deleteTopic,
@@ -165,12 +165,12 @@ export function DataView({ initialTopics, loadError }: DataViewProps) {
     let cancelled = false
     void (async () => {
       try {
-        const [spaces, contents] = await Promise.all([
-          listSpaces(),
+        const [rooms, contents] = await Promise.all([
+          listRooms(),
           getSpaceContents(0, PAGE_SIZE),
         ])
         if (cancelled) return
-        setSpaceId(spaces[0]?.id ?? null)
+        setSpaceId(rooms[0]?.id ?? null)
         setTopics(contents.topics)
         setItems(contents.items)
         setPage(0)

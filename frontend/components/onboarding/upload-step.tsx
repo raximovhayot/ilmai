@@ -25,7 +25,7 @@ import {
   uploadMaterialPaste,
   type MaterialStatus,
 } from "@/lib/materials"
-import { listSpaces } from "@/lib/spaces"
+import { listRooms } from "@/lib/rooms"
 import { cn } from "@/lib/utils"
 
 type UploadPhase = "uploading" | "processing" | "ready" | "failed"
@@ -68,8 +68,8 @@ export function UploadStep({ onReady, onBack, onUpgrade }: Props) {
     cancelledRef.current = false
     void (async () => {
       try {
-        const spaces = await listSpaces()
-        if (!cancelledRef.current) setSpaceId(spaces[0]?.id ?? null)
+        const rooms = await listRooms()
+        if (!cancelledRef.current) setSpaceId(rooms[0]?.id ?? null)
       } catch {
         // ignore — handled when uploading
       }
