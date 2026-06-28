@@ -12,6 +12,7 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -108,25 +109,27 @@ export function RoomSwitcher({
         align={compact ? "end" : "start"}
         className="min-w-56"
       >
-        <DropdownMenuLabel>{t.label}</DropdownMenuLabel>
-        {rooms.map((room) => {
-          const active = room.id === activeRoomId
-          return (
-            <DropdownMenuItem
-              key={room.id}
-              onClick={() => setActiveRoomId(room.id)}
-            >
-              <span className="truncate">{room.name}</span>
-              {active && (
-                <HugeiconsIcon
-                  icon={Tick02Icon}
-                  strokeWidth={2}
-                  className="ms-auto size-4 text-primary"
-                />
-              )}
-            </DropdownMenuItem>
-          )
-        })}
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>{t.label}</DropdownMenuLabel>
+          {rooms.map((room) => {
+            const active = room.id === activeRoomId
+            return (
+              <DropdownMenuItem
+                key={room.id}
+                onClick={() => setActiveRoomId(room.id)}
+              >
+                <span className="truncate">{room.name}</span>
+                {active && (
+                  <HugeiconsIcon
+                    icon={Tick02Icon}
+                    strokeWidth={2}
+                    className="ms-auto size-4 text-primary"
+                  />
+                )}
+              </DropdownMenuItem>
+            )
+          })}
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           render={
