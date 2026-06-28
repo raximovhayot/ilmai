@@ -1181,12 +1181,6 @@ export const handlers = [
   http.put(`${BASE}/profile`, async ({ request }) => {
     const guard = requireAuth(request)
     if (guard instanceof HttpResponse) return guard
-    const body = (await request.json().catch(() => ({}))) as {
-      goal?: string | null
-      targetDate?: string | null
-    }
-    if (body.goal !== undefined) db.plan.goal = body.goal
-    if (body.targetDate !== undefined) db.plan.targetDate = body.targetDate
     return envelope(buildProfile())
   }),
 

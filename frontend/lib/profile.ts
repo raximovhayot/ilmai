@@ -17,10 +17,7 @@ export type ProfileResponse = {
 export type UpdateProfileInput = {
   locale?: string | null
   timezone?: string | null
-  goal?: string | null
-  targetDate?: string | null
   dailyReminder?: string | null
-  dailyStudyMinutes?: number | null
 }
 
 export async function getProfile(): Promise<ProfileResponse | null> {

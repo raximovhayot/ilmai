@@ -12,7 +12,6 @@ import org.aiincubator.ilmai.rooms.RoomsApi;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.UUID;
 
@@ -58,16 +57,11 @@ public class ProfileService {
             }
             profile.setTimezone(req.getTimezone());
         }
-        if (req.getTargetDate() != null && req.getTargetDate().isBefore(LocalDate.now())) {
-            throw new ProfileException(ProfileException.Reason.PROFILE_INVALID_TARGET_DATE);
-        }
         if (req.getDailyReminder() != null) {
             profile.setDailyReminder(req.getDailyReminder());
         }
-        RoomGoalDto goal = roomsApi.applyGoalPatch(userId, req.getGoal(), req.getTargetDate(),
-                req.getDailyStudyMinutes()).orElse(null);
         ProfileResponse response = profileMapper.toResponse(profile);
-        applyRoomGoal(response, goal != null ? goal : roomsApi.findPersonalGoalForUser(userId).orElse(null));
+        applyRoomGoal(response, roomsApi.findPersonalGoalForUser(userId).orElse(null));
         return response;
     }
 
