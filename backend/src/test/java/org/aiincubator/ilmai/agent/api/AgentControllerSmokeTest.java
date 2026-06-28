@@ -27,6 +27,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
@@ -56,7 +57,7 @@ class AgentControllerSmokeTest {
         SecurityContextHolder.getContext().setAuthentication(
                 new TestingAuthenticationToken(currentUser, null));
 
-        given(coachStreamService.stream(any(CurrentUser.class), eq(sessionId), eq("hello"), eq(ChatChannel.WEB)))
+        given(coachStreamService.stream(any(CurrentUser.class), eq(sessionId), eq("hello"), isNull(), eq(ChatChannel.WEB)))
                 .willAnswer(invocation -> new UiMessageStreamEmitter().from(
                         Flux.just(chunk("hi "), chunk("there")),
                         ChatClientResponseMapper.TEXT_ONLY,
