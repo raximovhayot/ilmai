@@ -133,6 +133,18 @@ class CoachStreamServiceIntegrationTest {
     }
 
     @Test
+    void topicScopedTurnIsNotFlaggedLowConfidenceWhenUngrounded() throws Exception {
+        String body = performWithContext(plainTextClient("Studying the topic, no sources. "),
+                "what is this about", "Lesson title: Photosynthesis\n\nLesson content: Plants use light.");
+
+        assertThat(body).doesNotContain("\"type\":\"data-confidence\"");
+        assertThat(body).doesNotContain("\"level\":\"low\"");
+        assertThat(body).contains("[DONE]");
+
+        verify(quotaService).commit(eq(reservation), anyInt());
+    }
+
+    @Test
     void quotaExceededYieldsLocalizedErrorFrameWithoutModelCall() throws Exception {
         when(messageService.get(CoachTurnSupport.QUOTA_EXCEEDED_MESSAGE_KEY))
                 .thenReturn("bugungi limit tugadi");
@@ -201,11 +213,19 @@ class CoachStreamServiceIntegrationTest {
     }
 
     private String perform(ChatClient client, String prompt) throws Exception {
-        return perform(client, prompt, true);
+        return perform(client, prompt, true, null);
+    }
+
+    private String performWithContext(ChatClient client, String prompt, String context) throws Exception {
+        return perform(client, prompt, true, context);
+    }
+
+    private String perform(ChatClient client, String prompt, boolean quotaAllowed) throws Exception {
+        return perform(client, prompt, quotaAllowed, null);
     }
 
     @SuppressWarnings("unchecked")
-    private String perform(ChatClient client, String prompt, boolean quotaAllowed) throws Exception {
+    private String perform(ChatClient client, String prompt, boolean quotaAllowed, String context) throws Exception {
         if (quotaAllowed) {
             when(quotaService.canSpend(userId, CoachTurnSupport.PER_TURN_ESTIMATE_ILM_TOKENS)).thenReturn(true);
             when(quotaService.reserve(userId, CoachTurnSupport.PER_TURN_ESTIMATE_ILM_TOKENS)).thenReturn(reservation);
@@ -237,11 +257,13 @@ class CoachStreamServiceIntegrationTest {
         SecurityContextHolder.getContext().setAuthentication(
                 new TestingAuthenticationToken(currentUser, null));
 
+        String contextJson = context == null ? ""
+                : ",\"context\":" + new ObjectMapper().writeValueAsString(context);
         MvcResult asyncStart = mvc.perform(post("/agent/chat/{sessionId}", sessionId)
                         .principal(new TestingAuthenticationToken(currentUser, null))
                         .contentType(MediaType.APPLICATION_JSON)
                         .accept(MediaType.TEXT_EVENT_STREAM)
-                        .content("{\"prompt\":\"" + prompt + "\",\"channel\":\"WEB\"}"))
+                        .content("{\"prompt\":\"" + prompt + "\"" + contextJson + ",\"channel\":\"WEB\"}"))
                 .andExpect(request().asyncStarted())
                 .andReturn();
 

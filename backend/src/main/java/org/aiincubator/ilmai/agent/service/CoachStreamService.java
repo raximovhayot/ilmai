@@ -97,6 +97,7 @@ public class CoachStreamService {
 
     private SseEmitter streamTurn(ChatClient client, CurrentUser currentUser, UUID sessionId, String userMessage,
                                   String context) {
+        boolean topicScoped = context != null && !context.isBlank();
         IlmTokenReservation reservation = turnSupport.reserve(currentUser);
         recordUserTurnQuietly(currentUser, sessionId, userMessage);
         String modelMessage = withContext(userMessage, context);
@@ -127,7 +128,8 @@ public class CoachStreamService {
                         response -> {
                             if (response == turnCompleted) {
                                 finishTurn(currentUser, sessionId, sink, retrievalCtx,
-                                        aggregatedText.toString(), lastChatResponse.get(), reservation);
+                                        aggregatedText.toString(), lastChatResponse.get(), reservation,
+                                        topicScoped);
                                 committed.set(true);
                             } else {
                                 accumulate(response, aggregatedText, lastChatResponse);
@@ -160,10 +162,12 @@ public class CoachStreamService {
 
     private void finishTurn(CurrentUser currentUser, UUID sessionId, SerializedPartSink sink,
                             AgentRetrievalContext retrievalCtx, String aggregatedText,
-                            ChatResponse lastChatResponse, IlmTokenReservation reservation) {
+                            ChatResponse lastChatResponse, IlmTokenReservation reservation,
+                            boolean topicScoped) {
         boolean grounded = retrievalCtx.hasGrounding();
         boolean cited = CitationGuardAdvisor.containsCitation(aggregatedText);
-        if (!grounded || !cited) {
+        boolean lowConfidence = !topicScoped && (!grounded || !cited);
+        if (lowConfidence) {
             log.debug("agent.stream low-confidence user={} session={} grounded={} cited={}",
                     currentUser.getUserId(), sessionId, grounded, cited);
             sink.data("confidence", Map.of("level", "low"));
@@ -172,7 +176,7 @@ public class CoachStreamService {
         log.debug("agent.stream committed user={} session={} actualIlmTokens={}",
                 currentUser.getUserId(), sessionId, actualIlmTokens);
         turnSupport.completeTurnQuietly(currentUser, sessionId);
-        recordAssistantTurnQuietly(currentUser, sessionId, aggregatedText, retrievalCtx, !grounded || !cited);
+        recordAssistantTurnQuietly(currentUser, sessionId, aggregatedText, retrievalCtx, lowConfidence);
     }
 
     private String withContext(String userMessage, String context) {
@@ -180,8 +184,12 @@ public class CoachStreamService {
             return userMessage;
         }
         return """
-                The learner is currently studying the material below. Use it as the primary context for this turn, \
-                but still ground factual claims in retrieved sources and cite them.
+                You are tutoring the learner on the specific topic below. Treat this lesson context as your \
+                primary, authoritative source for this turn and answer the learner's question about it directly. \
+                You may also explain concepts, terms, or references that this topic names even when they are not \
+                in the learner's uploaded materials — answer those from your own general knowledge, but clearly \
+                label such parts as general knowledge that is not drawn from their uploaded sources. When you do \
+                draw on the learner's uploaded materials, still prefer the retrieve tool and cite it inline.
 
                 <lesson_context>
                 %s
