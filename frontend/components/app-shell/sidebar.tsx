@@ -24,6 +24,7 @@ import type { TopicResponse } from "@/lib/topics"
 import type { PremiumStatus } from "@/lib/premium"
 import type { ChatSession } from "@/lib/agent"
 import { cn } from "@/lib/utils"
+import { RoomSwitcher } from "./room-switcher"
 import { UserAvatar, UserMenu, type UserSummary } from "./user-menu"
 
 type NavItem = {
@@ -95,6 +96,10 @@ export function AppSidebar({
             strokeWidth={2}
           />
         </Button>
+      </div>
+
+      <div className="border-b border-sidebar-border p-2">
+        <RoomSwitcher collapsed={collapsed} />
       </div>
 
       <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-2">

@@ -21,6 +21,7 @@ import { Loader } from "@/components/ai-elements/loader"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { useApi } from "@/hooks/use-api"
+import { useActiveRoom } from "@/lib/active-room"
 import { useT } from "@/lib/i18n/provider"
 import {
   createCoachTransport,
@@ -43,6 +44,7 @@ export function TaskChatPanel({
   const dict = useT()
   const t = dict.companion
   const { authenticated, run } = useApi()
+  const { activeRoomId } = useActiveRoom()
   const [sessionId, setSessionId] = React.useState<string | null>(null)
   const [input, setInput] = React.useState("")
 
@@ -61,7 +63,7 @@ export function TaskChatPanel({
   React.useEffect(() => {
     if (!authenticated || sessionId) return
     let cancelled = false
-    void run(() => createSession(taskTitle.slice(0, 60)))
+    void run(() => createSession(taskTitle.slice(0, 60), "WEB", activeRoomId))
       .then((session) => {
         if (!cancelled && session) setSessionId(session.id)
       })
@@ -69,7 +71,7 @@ export function TaskChatPanel({
     return () => {
       cancelled = true
     }
-  }, [authenticated, sessionId, taskTitle, run])
+  }, [authenticated, sessionId, taskTitle, activeRoomId, run])
 
   const transport = React.useMemo(
     () => (sessionId ? createCoachTransport(sessionId) : undefined),
@@ -89,10 +91,7 @@ export function TaskChatPanel({
     if (!text || !ready || isBusy) return
     setInput("")
     const context = buildContext()
-    void sendMessage(
-      { text },
-      context ? { body: { context } } : undefined
-    )
+    void sendMessage({ text }, context ? { body: { context } } : undefined)
   }, [input, ready, isBusy, sendMessage, buildContext])
 
   const isEmpty = messages.length === 0

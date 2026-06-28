@@ -848,7 +848,8 @@ function PdfMaterialView({ material }: { material: MaterialEntry }) {
                 onClick={() => setActiveKey(key)}
                 className={cn(
                   "rounded-full border px-2.5 py-1 text-xs transition-colors",
-                  active && key === citationKey(active, pdfCitations.indexOf(active))
+                  active &&
+                    key === citationKey(active, pdfCitations.indexOf(active))
                     ? "border-primary bg-primary/10 text-primary"
                     : "border-border text-muted-foreground hover:bg-muted"
                 )}

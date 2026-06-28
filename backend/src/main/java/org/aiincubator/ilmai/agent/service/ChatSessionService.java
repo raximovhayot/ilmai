@@ -33,7 +33,7 @@ public class ChatSessionService {
     public ChatSessionResponse create(CurrentUser currentUser, CreateChatSessionRequest request) {
         ChatSession session = new ChatSession();
         session.setUserId(currentUser.getUserId());
-        session.setRoomId(personalRoomId(currentUser.getUserId()));
+        session.setRoomId(resolveRoomId(currentUser, request));
         session.setChannel(resolveChannel(request));
         session.setTitle(normalizeTitle(request));
         return chatSessionMapper.toResponse(sessions.save(session));
@@ -92,6 +92,13 @@ public class ChatSessionService {
         session.setChannel(channel);
         session.setActive(true);
         return sessions.save(session);
+    }
+
+    private UUID resolveRoomId(CurrentUser currentUser, CreateChatSessionRequest request) {
+        if (request != null && request.getRoomId() != null) {
+            return roomsApi.requireMember(currentUser, request.getRoomId()).getId();
+        }
+        return personalRoomId(currentUser.getUserId());
     }
 
     private UUID personalRoomId(UUID userId) {

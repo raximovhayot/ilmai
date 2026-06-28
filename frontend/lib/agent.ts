@@ -80,11 +80,12 @@ export async function listSessions(): Promise<ChatSession[]> {
 
 export async function createSession(
   title?: string,
-  channel: ChatChannel = "WEB"
+  channel: ChatChannel = "WEB",
+  roomId?: string | null
 ): Promise<ChatSession | null> {
   return await apiFetch<ChatSession>("/agent/sessions", {
     method: "POST",
-    body: { title: title ?? null, channel },
+    body: { title: title ?? null, channel, roomId: roomId ?? null },
   })
 }
 

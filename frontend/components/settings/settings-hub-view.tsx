@@ -11,6 +11,7 @@ import {
   Crown02Icon,
   TelegramIcon,
   UserCircleIcon,
+  UserGroup03Icon,
 } from "@hugeicons/core-free-icons"
 
 import { Badge } from "@/components/ui/badge"
@@ -78,6 +79,12 @@ export function SettingsHubView({ sessionUser }: SettingsHubViewProps) {
           {displayName}
         </Badge>
       ),
+    },
+    {
+      href: "/settings/rooms",
+      icon: UserGroup03Icon,
+      title: t.settings.rooms.title,
+      description: t.settings.hub.roomsDescription,
     },
     {
       href: "/settings/telegram",

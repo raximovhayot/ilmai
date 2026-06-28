@@ -68,6 +68,7 @@ export type Dictionary = {
       telegramDescription: string
       subscriptionDescription: string
       dataPrivacyDescription: string
+      roomsDescription: string
     }
     account: {
       title: string
@@ -122,6 +123,50 @@ export type Dictionary = {
       signOutDescription: string
       signOutButton: string
       warning: string
+    }
+    rooms: {
+      title: string
+      subtitle: string
+      personalBadge: string
+      ownerBadge: string
+      memberBadge: string
+      empty: string
+      failedToLoad: string
+      createCta: string
+      createTitle: string
+      createSubtitle: string
+      createPlaceholder: string
+      createSubmit: string
+      cancel: string
+      rename: string
+      renameTitle: string
+      renamePlaceholder: string
+      renameSubmit: string
+      join: string
+      joinTitle: string
+      joinSubtitle: string
+      joinPlaceholder: string
+      joinSubmit: string
+      invite: string
+      inviteTitle: string
+      inviteSubtitle: string
+      inviteCreate: string
+      inviteRevoke: string
+      inviteCopy: string
+      inviteCopied: string
+      members: string
+      membersTitle: string
+      you: string
+      removeMember: string
+      confirmRemoveMember: string
+      leave: string
+      confirmLeave: string
+      premiumRequired: string
+      errors: {
+        nameBlank: string
+        invalidCode: string
+        generic: string
+      }
     }
   }
   topics: {
@@ -214,6 +259,10 @@ export type Dictionary = {
     demoMode: string
     resetDemo: string
     userMenu: string
+  }
+  roomSwitcher: {
+    label: string
+    manage: string
   }
   chat: {
     title: string
@@ -812,6 +861,7 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
         telegramDescription: "Link your Telegram bot for daily quiz reminders.",
         subscriptionDescription: "Your plan, quotas, and renewal.",
         dataPrivacyDescription: "Reset demo data or sign out of this device.",
+        roomsDescription: "Your personal room and any shared rooms you joined.",
       },
       account: {
         title: "Account",
@@ -869,6 +919,52 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
         signOutButton: "Sign out",
         warning:
           "These actions are not destructive in real mode — they only sign you out.",
+      },
+      rooms: {
+        title: "Rooms",
+        subtitle:
+          "Your personal room and any shared rooms. Each room keeps its own goal, materials, chats, and quizzes.",
+        personalBadge: "Personal",
+        ownerBadge: "Owner",
+        memberBadge: "Member",
+        empty: "You don’t have any rooms yet.",
+        failedToLoad: "We couldn’t load your rooms. Please try again.",
+        createCta: "New room",
+        createTitle: "Create a room",
+        createSubtitle: "Give your room a short, descriptive name.",
+        createPlaceholder: "e.g. Biology study group",
+        createSubmit: "Create room",
+        cancel: "Cancel",
+        rename: "Rename",
+        renameTitle: "Rename room",
+        renamePlaceholder: "Room name",
+        renameSubmit: "Save",
+        join: "Join a room",
+        joinTitle: "Join a room",
+        joinSubtitle: "Enter the invite code a room owner shared with you.",
+        joinPlaceholder: "Invite code",
+        joinSubmit: "Join",
+        invite: "Invite",
+        inviteTitle: "Invite link",
+        inviteSubtitle:
+          "Share this code with people you want to add to the room.",
+        inviteCreate: "Create invite",
+        inviteRevoke: "Revoke",
+        inviteCopy: "Copy",
+        inviteCopied: "Copied",
+        members: "Members",
+        membersTitle: "Members",
+        you: "You",
+        removeMember: "Remove",
+        confirmRemoveMember: "Remove this member from the room?",
+        leave: "Leave room",
+        confirmLeave: "Leave this room? You’ll lose access to its content.",
+        premiumRequired: "Creating extra rooms requires Premium.",
+        errors: {
+          nameBlank: "Room name must not be blank.",
+          invalidCode: "This invite code is invalid or has been revoked.",
+          generic: "Something went wrong. Please try again.",
+        },
       },
     },
     topics: {
@@ -961,6 +1057,10 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       resetDemo: "Reset demo data",
       userMenu: "Account menu",
       companion: "Companion",
+    },
+    roomSwitcher: {
+      label: "Active room",
+      manage: "Manage rooms",
     },
     companion: {
       title: "Companion",
@@ -1612,6 +1712,8 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
           "Привяжите Telegram-бота для ежедневных напоминаний.",
         subscriptionDescription: "Ваш тариф, лимиты и продление.",
         dataPrivacyDescription: "Сбросить демо-данные или выйти из аккаунта.",
+        roomsDescription:
+          "Ваша личная комната и общие комнаты, к которым вы присоединились.",
       },
       account: {
         title: "Аккаунт",
@@ -1670,6 +1772,52 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
         signOutButton: "Выйти",
         warning:
           "В обычном режиме эти действия не удаляют ваши данные — только завершают сеанс.",
+      },
+      rooms: {
+        title: "Комнаты",
+        subtitle:
+          "Ваша личная комната и общие комнаты. У каждой комнаты своя цель, материалы, чаты и тесты.",
+        personalBadge: "Личная",
+        ownerBadge: "Владелец",
+        memberBadge: "Участник",
+        empty: "У вас пока нет комнат.",
+        failedToLoad: "Не удалось загрузить комнаты. Попробуйте ещё раз.",
+        createCta: "Новая комната",
+        createTitle: "Создание комнаты",
+        createSubtitle: "Дайте комнате короткое и понятное имя.",
+        createPlaceholder: "например: Учебная группа по биологии",
+        createSubmit: "Создать комнату",
+        cancel: "Отмена",
+        rename: "Переименовать",
+        renameTitle: "Переименовать комнату",
+        renamePlaceholder: "Название комнаты",
+        renameSubmit: "Сохранить",
+        join: "Присоединиться",
+        joinTitle: "Присоединиться к комнате",
+        joinSubtitle: "Введите код приглашения, которым поделился владелец.",
+        joinPlaceholder: "Код приглашения",
+        joinSubmit: "Войти",
+        invite: "Пригласить",
+        inviteTitle: "Ссылка-приглашение",
+        inviteSubtitle:
+          "Поделитесь этим кодом с теми, кого хотите добавить в комнату.",
+        inviteCreate: "Создать приглашение",
+        inviteRevoke: "Отозвать",
+        inviteCopy: "Копировать",
+        inviteCopied: "Скопировано",
+        members: "Участники",
+        membersTitle: "Участники",
+        you: "Вы",
+        removeMember: "Удалить",
+        confirmRemoveMember: "Удалить этого участника из комнаты?",
+        leave: "Покинуть комнату",
+        confirmLeave: "Покинуть комнату? Вы потеряете доступ к её содержимому.",
+        premiumRequired: "Создание дополнительных комнат доступно в Премиум.",
+        errors: {
+          nameBlank: "Название комнаты не должно быть пустым.",
+          invalidCode: "Код приглашения недействителен или отозван.",
+          generic: "Что-то пошло не так. Попробуйте ещё раз.",
+        },
       },
     },
     topics: {
@@ -1763,6 +1911,10 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       userMenu: "Меню аккаунта",
       companion: "Компаньон",
     },
+    roomSwitcher: {
+      label: "Активная комната",
+      manage: "Управление комнатами",
+    },
     companion: {
       title: "Компаньон",
       subtitle: "Ваш ИИ-наставник по всем загруженным материалам.",
@@ -1817,8 +1969,10 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       disclaimer: "Ilm AI может ошибаться. Проверяйте важные ответы.",
       copy: "Копировать",
       copied: "Скопировано",
-      selectionLabel: "\u0412\u044B\u0434\u0435\u043B\u0435\u043D\u043D\u044B\u0439 \u0444\u0440\u0430\u0433\u043C\u0435\u043D\u0442",
-      selectionRemove: "\u0423\u0431\u0440\u0430\u0442\u044C \u0432\u044B\u0434\u0435\u043B\u0435\u043D\u0438\u0435",
+      selectionLabel:
+        "\u0412\u044B\u0434\u0435\u043B\u0435\u043D\u043D\u044B\u0439 \u0444\u0440\u0430\u0433\u043C\u0435\u043D\u0442",
+      selectionRemove:
+        "\u0423\u0431\u0440\u0430\u0442\u044C \u0432\u044B\u0434\u0435\u043B\u0435\u043D\u0438\u0435",
     },
     chat: {
       title: "Чат по вашим материалам",
@@ -1961,9 +2115,12 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       wsSourceSegment: "{start}–{end}",
       wsSourcePlay: "Воспроизвести фрагмент",
       wsSourceCited: "Цитируемые фрагменты",
-      wsSourceMaterials: "\u041C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u044B",
-      wsSourceMaterialsHint: "\u041C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u044B, \u0438\u0441\u043F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u043D\u043D\u044B\u0435 \u0434\u043B\u044F \u044D\u0442\u043E\u0433\u043E \u0443\u0440\u043E\u043A\u0430.",
-      wsSourceBack: "\u0412\u0441\u0435 \u043C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u044B",
+      wsSourceMaterials:
+        "\u041C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u044B",
+      wsSourceMaterialsHint:
+        "\u041C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u044B, \u0438\u0441\u043F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u043D\u043D\u044B\u0435 \u0434\u043B\u044F \u044D\u0442\u043E\u0433\u043E \u0443\u0440\u043E\u043A\u0430.",
+      wsSourceBack:
+        "\u0412\u0441\u0435 \u043C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u044B",
       wsSourceCitationCount: "{count} \u0446\u0438\u0442\u0430\u0442",
       wsModePractice: "Практика",
       wsModeExam: "Экзамен",
@@ -2420,6 +2577,7 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
         subscriptionDescription: "Tarifingiz, limitlar va yangilanish.",
         dataPrivacyDescription:
           "Demo ma’lumotlarini tiklash yoki hisobdan chiqish.",
+        roomsDescription: "Shaxsiy xonangiz va siz qo‘shilgan umumiy xonalar.",
       },
       account: {
         title: "Hisob",
@@ -2479,6 +2637,52 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
         signOutButton: "Chiqish",
         warning:
           "Haqiqiy rejimda bu amallar ma’lumotlarni o‘chirmaydi — faqat seansni tugatadi.",
+      },
+      rooms: {
+        title: "Xonalar",
+        subtitle:
+          "Shaxsiy xonangiz va umumiy xonalar. Har bir xonaning o‘z maqsadi, materiallari, suhbatlari va testlari bo‘ladi.",
+        personalBadge: "Shaxsiy",
+        ownerBadge: "Egasi",
+        memberBadge: "A’zo",
+        empty: "Hozircha xonalaringiz yo‘q.",
+        failedToLoad: "Xonalarni yuklab bo‘lmadi. Qayta urinib ko‘ring.",
+        createCta: "Yangi xona",
+        createTitle: "Xona yaratish",
+        createSubtitle: "Xonaga qisqa va aniq nom bering.",
+        createPlaceholder: "masalan: Biologiya o‘quv guruhi",
+        createSubmit: "Xona yaratish",
+        cancel: "Bekor qilish",
+        rename: "Qayta nomlash",
+        renameTitle: "Xonani qayta nomlash",
+        renamePlaceholder: "Xona nomi",
+        renameSubmit: "Saqlash",
+        join: "Xonaga qo‘shilish",
+        joinTitle: "Xonaga qo‘shilish",
+        joinSubtitle: "Xona egasi ulashgan taklif kodini kiriting.",
+        joinPlaceholder: "Taklif kodi",
+        joinSubmit: "Qo‘shilish",
+        invite: "Taklif qilish",
+        inviteTitle: "Taklif havolasi",
+        inviteSubtitle:
+          "Bu kodni xonaga qo‘shmoqchi bo‘lgan odamlar bilan ulashing.",
+        inviteCreate: "Taklif yaratish",
+        inviteRevoke: "Bekor qilish",
+        inviteCopy: "Nusxalash",
+        inviteCopied: "Nusxalandi",
+        members: "A’zolar",
+        membersTitle: "A’zolar",
+        you: "Siz",
+        removeMember: "Olib tashlash",
+        confirmRemoveMember: "Ushbu a’zoni xonadan olib tashlaysizmi?",
+        leave: "Xonadan chiqish",
+        confirmLeave: "Xonadan chiqasizmi? Uning mazmuniga kirish yo‘qoladi.",
+        premiumRequired: "Qo‘shimcha xonalar yaratish Premium talab qiladi.",
+        errors: {
+          nameBlank: "Xona nomi bo‘sh bo‘lmasligi kerak.",
+          invalidCode: "Taklif kodi yaroqsiz yoki bekor qilingan.",
+          generic: "Nimadir xato ketdi. Qayta urinib ko‘ring.",
+        },
       },
     },
     topics: {
@@ -2573,6 +2777,10 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       resetDemo: "Demo ma’lumotlarini tiklash",
       userMenu: "Hisob menyusi",
       companion: "Hamroh",
+    },
+    roomSwitcher: {
+      label: "Faol xona",
+      manage: "Xonalarni boshqarish",
     },
     companion: {
       title: "Hamroh",

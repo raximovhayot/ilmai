@@ -43,7 +43,7 @@ import {
   PromptInputTools,
 } from "@/components/ai-elements/prompt-input"
 import { useApi } from "@/hooks/use-api"
-import { listRooms } from "@/lib/rooms"
+import { useActiveRoom } from "@/lib/active-room"
 import {
   uploadMaterialFile,
   getMaterial,
@@ -131,6 +131,7 @@ export function CompanionClient({
   const errors = dict.errors
   const router = useRouter()
   const { authenticated, run } = useApi()
+  const { activeRoomId } = useActiveRoom()
 
   const activeId = activeSessionId ?? null
   const [input, setInput] = React.useState("")
@@ -232,21 +233,6 @@ export function CompanionClient({
     }
   }, [authenticated, activeId, run])
 
-  const [spaceId, setSpaceId] = React.useState<string | null>(null)
-
-  React.useEffect(() => {
-    if (!authenticated) return
-    let cancelled = false
-    void run(() => listRooms())
-      .then((rooms) => {
-        if (!cancelled && rooms.length > 0) setSpaceId(rooms[0].id)
-      })
-      .catch(() => {})
-    return () => {
-      cancelled = true
-    }
-  }, [authenticated, run])
-
   const attachmentBlocking = attachments.some((a) => a.status !== "READY")
 
   const clearAttachments = React.useCallback(() => {
@@ -264,7 +250,7 @@ export function CompanionClient({
         router.push("/login")
         return
       }
-      if (!spaceId) return
+      if (!activeRoomId) return
       for (const file of files) {
         const localId = crypto.randomUUID()
         setAttachments((prev) => [
@@ -273,7 +259,9 @@ export function CompanionClient({
         ])
         void (async () => {
           try {
-            const created = await run(() => uploadMaterialFile(spaceId, file))
+            const created = await run(() =>
+              uploadMaterialFile(activeRoomId, file)
+            )
             if (!created) {
               removeAttachment(localId)
               return
@@ -307,7 +295,7 @@ export function CompanionClient({
         })()
       }
     },
-    [authenticated, spaceId, run, router, errors, removeAttachment]
+    [authenticated, activeRoomId, run, router, errors, removeAttachment]
   )
 
   const send = React.useCallback(
@@ -321,7 +309,9 @@ export function CompanionClient({
 
       if (!activeId) {
         try {
-          const created = await run(() => createSession(text.slice(0, 60)))
+          const created = await run(() =>
+            createSession(text.slice(0, 60), "WEB", activeRoomId)
+          )
           if (!created) return
           pendingPromptRef.current = text
           setInput("")
@@ -341,6 +331,7 @@ export function CompanionClient({
     [
       authenticated,
       activeId,
+      activeRoomId,
       isBusy,
       attachmentBlocking,
       quizBlocking,

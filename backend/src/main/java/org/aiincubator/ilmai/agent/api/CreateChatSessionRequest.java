@@ -7,6 +7,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.aiincubator.ilmai.agent.ChatChannel;
 
+import java.util.UUID;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -17,4 +19,6 @@ public class CreateChatSessionRequest {
     private String title;
 
     private ChatChannel channel;
+
+    private UUID roomId;
 }

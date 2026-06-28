@@ -86,10 +86,13 @@ class ChatSessionServiceTest {
     @Test
     void createPersistsSessionForCurrentUserWithDefaults() {
         UUID userId = UUID.randomUUID();
+        UUID personalRoomId = UUID.randomUUID();
+        when(roomsApi.findPersonalForUser(userId))
+                .thenReturn(Optional.of(new RoomDto(personalRoomId, userId, "Personal", true)));
         when(repository.save(any(ChatSession.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         ChatSessionResponse response = service.create(
-                new CurrentUser(userId), new CreateChatSessionRequest("  Algebra  ", null));
+                new CurrentUser(userId), new CreateChatSessionRequest("  Algebra  ", null, null));
 
         assertThat(response.getChannel()).isEqualTo(ChatChannel.WEB);
         assertThat(response.getTitle()).isEqualTo("Algebra");
@@ -98,6 +101,39 @@ class ChatSessionServiceTest {
         verify(repository).save(captor.capture());
         assertThat(captor.getValue().getUserId()).isEqualTo(userId);
         assertThat(captor.getValue().getChannel()).isEqualTo(ChatChannel.WEB);
+        assertThat(captor.getValue().getRoomId()).isEqualTo(personalRoomId);
+        verify(roomsApi, never()).requireMember(any(CurrentUser.class), any(UUID.class));
+    }
+
+    @Test
+    void createStampsRequestedRoomAfterMembershipCheck() {
+        UUID userId = UUID.randomUUID();
+        UUID roomId = UUID.randomUUID();
+        CurrentUser currentUser = new CurrentUser(userId);
+        when(roomsApi.requireMember(currentUser, roomId))
+                .thenReturn(new RoomDto(roomId, UUID.randomUUID(), "Shared", false));
+        when(repository.save(any(ChatSession.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.create(currentUser, new CreateChatSessionRequest(null, ChatChannel.WEB, roomId));
+
+        ArgumentCaptor<ChatSession> captor = ArgumentCaptor.forClass(ChatSession.class);
+        verify(repository).save(captor.capture());
+        assertThat(captor.getValue().getRoomId()).isEqualTo(roomId);
+        verify(roomsApi).requireMember(currentUser, roomId);
+        verify(roomsApi, never()).findPersonalForUser(any(UUID.class));
+    }
+
+    @Test
+    void createRejectsRoomWhenCallerIsNotMember() {
+        UUID userId = UUID.randomUUID();
+        UUID roomId = UUID.randomUUID();
+        CurrentUser currentUser = new CurrentUser(userId);
+        when(roomsApi.requireMember(currentUser, roomId)).thenThrow(new IllegalStateException("not a member"));
+
+        assertThatThrownBy(() ->
+                service.create(currentUser, new CreateChatSessionRequest(null, ChatChannel.WEB, roomId)))
+                .isInstanceOf(IllegalStateException.class);
+        verify(repository, never()).save(any(ChatSession.class));
     }
 
     @Test
