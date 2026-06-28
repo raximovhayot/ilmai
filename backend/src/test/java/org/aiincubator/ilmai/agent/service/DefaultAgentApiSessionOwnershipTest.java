@@ -34,7 +34,7 @@ class DefaultAgentApiSessionOwnershipTest {
         UUID userId = UUID.randomUUID();
         UUID sessionId = UUID.randomUUID();
         CurrentUser currentUser = new CurrentUser(userId);
-        when(chatSessionService.requireOwnedSession(currentUser, sessionId))
+        when(chatSessionService.requireOwnedSessionRoomId(currentUser, sessionId))
                 .thenThrow(new ChatSessionException(ChatSessionException.Reason.SESSION_NOT_FOUND));
 
         CoachTurnSupport turnSupport = new CoachTurnSupport(

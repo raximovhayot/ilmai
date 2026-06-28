@@ -1,6 +1,7 @@
 package org.aiincubator.ilmai.agent.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.aiincubator.ilmai.agent.ChatChannel;
 import org.aiincubator.ilmai.agent.api.AgentController;
 import org.aiincubator.ilmai.ai.IlmaiChatClientFactory;
 import org.aiincubator.ilmai.ai.RetrievalApi;
@@ -9,6 +10,8 @@ import org.aiincubator.ilmai.common.CurrentUser;
 import org.aiincubator.ilmai.common.i18n.MessageService;
 import org.aiincubator.ilmai.common.quota.IlmTokenReservation;
 import org.aiincubator.ilmai.common.quota.QuotaService;
+import org.aiincubator.ilmai.rooms.RoomDto;
+import org.aiincubator.ilmai.rooms.RoomsApi;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
@@ -45,6 +48,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -64,12 +68,14 @@ class CoachStreamServiceIntegrationTest {
 
     private final UUID userId = UUID.randomUUID();
     private final UUID sessionId = UUID.randomUUID();
+    private final UUID roomId = UUID.randomUUID();
     private final UUID materialId = UUID.randomUUID();
     private final CurrentUser currentUser = new CurrentUser(userId);
 
     private final QuotaService quotaService = mock(QuotaService.class);
     private final IlmTokenReservation reservation = mock(IlmTokenReservation.class);
     private final ChatSessionService chatSessionService = mock(ChatSessionService.class);
+    private final RoomsApi roomsApi = mock(RoomsApi.class);
     private final ChatMemorySummarizer chatMemorySummarizer = mock(ChatMemorySummarizer.class);
     private final UserFactExtractor userFactExtractor = mock(UserFactExtractor.class);
     private final MessageService messageService = mock(MessageService.class);
@@ -82,7 +88,7 @@ class CoachStreamServiceIntegrationTest {
     @Test
     void streamsNativeToolAndDataFramesInOrderOverSse() throws Exception {
         RetrievalApi retrievalApi = mock(RetrievalApi.class);
-        when(retrievalApi.retrieve(eq(userId), anyString())).thenReturn(List.of(
+        when(retrievalApi.retrieve(eq(userId), eq(roomId), anyString())).thenReturn(List.of(
                 new RetrievedChunkDto(materialId, "Bio Notes", 2, "Photosynthesis is how plants eat light.", 0.95)));
         RetrieveTool retrieveTool = new RetrieveTool(retrievalApi);
 
@@ -188,6 +194,37 @@ class CoachStreamServiceIntegrationTest {
         verify(quotaService, never()).commit(any(), anyInt());
     }
 
+    @Test
+    void rejectsNonMemberBeforeReservingQuotaOrCallingModel() {
+        when(chatSessionService.requireOwnedSessionRoomId(currentUser, sessionId)).thenReturn(roomId);
+        when(roomsApi.requireMember(currentUser, roomId))
+                .thenThrow(new IllegalStateException("not a member"));
+        ObjectProvider<ChatClient> clientProvider = mock(ObjectProvider.class);
+        ObjectProvider<IlmaiChatClientFactory> factoryProvider = mock(ObjectProvider.class);
+        CoachTurnSupport turnSupport = new CoachTurnSupport(
+                quotaService,
+                mock(IlmTokenCostCalculator.class),
+                factoryProvider,
+                chatMemorySummarizer,
+                userFactExtractor,
+                mock(ApplicationEventPublisher.class));
+        CoachStreamService service = new CoachStreamService(
+                clientProvider,
+                chatSessionService,
+                turnSupport,
+                messageService,
+                new UiMessageStreamEmitter(),
+                Runnable::run,
+                mock(ChatTranscriptService.class),
+                roomsApi);
+
+        assertThatThrownBy(() -> service.stream(currentUser, sessionId, "hello", ChatChannel.WEB))
+                .isInstanceOf(IllegalStateException.class);
+
+        verify(quotaService, never()).reserve(any(UUID.class), anyInt());
+        verify(clientProvider, never()).getIfAvailable();
+    }
+
     private ChatClient toolCallingClient(RetrieveTool retrieveTool) {
         ToolCallingManager delegate = DefaultToolCallingManager.builder()
                 .toolCallbackResolver(new StaticToolCallbackResolver(List.of(ToolCallbacks.from(retrieveTool))))
@@ -230,6 +267,9 @@ class CoachStreamServiceIntegrationTest {
             when(quotaService.canSpend(userId, CoachTurnSupport.PER_TURN_ESTIMATE_ILM_TOKENS)).thenReturn(true);
             when(quotaService.reserve(userId, CoachTurnSupport.PER_TURN_ESTIMATE_ILM_TOKENS)).thenReturn(reservation);
         }
+        when(chatSessionService.requireOwnedSessionRoomId(currentUser, sessionId)).thenReturn(roomId);
+        when(roomsApi.requireMember(currentUser, roomId))
+                .thenReturn(new RoomDto(roomId, userId, "Personal", true));
         ObjectProvider<ChatClient> clientProvider = mock(ObjectProvider.class);
         when(clientProvider.getIfAvailable()).thenReturn(client);
         ObjectProvider<IlmaiChatClientFactory> factoryProvider = mock(ObjectProvider.class);
@@ -248,7 +288,8 @@ class CoachStreamServiceIntegrationTest {
                 messageService,
                 new UiMessageStreamEmitter(),
                 Runnable::run,
-                mock(ChatTranscriptService.class));
+                mock(ChatTranscriptService.class),
+                roomsApi);
         AgentController controller = new AgentController(service);
         MockMvc mvc = MockMvcBuilders.standaloneSetup(controller)
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())

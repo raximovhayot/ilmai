@@ -9,6 +9,8 @@ import org.aiincubator.ilmai.agent.domain.ChatMemorySummaryRepository;
 import org.aiincubator.ilmai.agent.domain.ChatSession;
 import org.aiincubator.ilmai.agent.domain.ChatSessionRepository;
 import org.aiincubator.ilmai.common.CurrentUser;
+import org.aiincubator.ilmai.rooms.RoomDto;
+import org.aiincubator.ilmai.rooms.RoomsApi;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,11 +27,13 @@ public class ChatSessionService {
     private final ChatSessionRepository sessions;
     private final ChatMemorySummaryRepository memorySummaries;
     private final ChatSessionMapper chatSessionMapper;
+    private final RoomsApi roomsApi;
 
     @Transactional
     public ChatSessionResponse create(CurrentUser currentUser, CreateChatSessionRequest request) {
         ChatSession session = new ChatSession();
         session.setUserId(currentUser.getUserId());
+        session.setRoomId(personalRoomId(currentUser.getUserId()));
         session.setChannel(resolveChannel(request));
         session.setTitle(normalizeTitle(request));
         return chatSessionMapper.toResponse(sessions.save(session));
@@ -84,9 +88,16 @@ public class ChatSessionService {
     private ChatSession createSession(CurrentUser currentUser, ChatChannel channel) {
         ChatSession session = new ChatSession();
         session.setUserId(currentUser.getUserId());
+        session.setRoomId(personalRoomId(currentUser.getUserId()));
         session.setChannel(channel);
         session.setActive(true);
         return sessions.save(session);
+    }
+
+    private UUID personalRoomId(UUID userId) {
+        return roomsApi.findPersonalForUser(userId)
+                .map(RoomDto::getId)
+                .orElseThrow(() -> new ChatSessionException(ChatSessionException.Reason.SESSION_NOT_FOUND));
     }
 
     private void archiveActive(UUID userId, ChatChannel channel) {
@@ -100,6 +111,11 @@ public class ChatSessionService {
     @Transactional(readOnly = true)
     public UUID requireOwnedSession(CurrentUser currentUser, UUID sessionId) {
         return ownedSession(currentUser, sessionId).getId();
+    }
+
+    @Transactional(readOnly = true)
+    public UUID requireOwnedSessionRoomId(CurrentUser currentUser, UUID sessionId) {
+        return ownedSession(currentUser, sessionId).getRoomId();
     }
 
     private ChatSession ownedSession(CurrentUser currentUser, UUID sessionId) {

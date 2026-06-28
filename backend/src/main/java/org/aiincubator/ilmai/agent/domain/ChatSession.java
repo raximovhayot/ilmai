@@ -34,6 +34,9 @@ public class ChatSession extends DateAuditable {
     @Column(name = "user_id", nullable = false, updatable = false)
     private UUID userId;
 
+    @Column(name = "room_id", nullable = false, updatable = false)
+    private UUID roomId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "channel", nullable = false, length = 16)
     private ChatChannel channel;

@@ -9,6 +9,8 @@ import org.aiincubator.ilmai.agent.domain.ChatMemorySummaryRepository;
 import org.aiincubator.ilmai.agent.domain.ChatSession;
 import org.aiincubator.ilmai.agent.domain.ChatSessionRepository;
 import org.aiincubator.ilmai.common.CurrentUser;
+import org.aiincubator.ilmai.rooms.RoomDto;
+import org.aiincubator.ilmai.rooms.RoomsApi;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
@@ -21,6 +23,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -30,13 +33,20 @@ class ChatSessionServiceTest {
 
     private ChatSessionRepository repository;
     private ChatMemorySummaryRepository memorySummaries;
+    private RoomsApi roomsApi;
     private ChatSessionService service;
 
     @BeforeEach
     void setUp() {
         repository = mock(ChatSessionRepository.class);
         memorySummaries = mock(ChatMemorySummaryRepository.class);
-        service = new ChatSessionService(repository, memorySummaries, Mappers.getMapper(ChatSessionMapper.class));
+        roomsApi = mock(RoomsApi.class);
+        lenient().when(roomsApi.findPersonalForUser(any(UUID.class))).thenAnswer(invocation -> {
+            UUID owner = invocation.getArgument(0);
+            return Optional.of(new RoomDto(UUID.randomUUID(), owner, "Personal", true));
+        });
+        service = new ChatSessionService(
+                repository, memorySummaries, Mappers.getMapper(ChatSessionMapper.class), roomsApi);
     }
 
     @Test

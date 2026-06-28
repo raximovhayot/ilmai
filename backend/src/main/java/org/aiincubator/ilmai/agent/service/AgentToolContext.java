@@ -12,6 +12,7 @@ public final class AgentToolContext {
 
     public static final String CURRENT_USER_KEY = "agent.current_user";
     public static final String RETRIEVAL_CONTEXT_KEY = "agent.retrieval_context";
+    public static final String ROOM_ID_KEY = "agent.room_id";
 
     private AgentToolContext() {
     }
@@ -24,6 +25,11 @@ public final class AgentToolContext {
     public static AgentRetrievalContext retrievalContext(ToolContext toolContext) {
         Object value = contextValue(toolContext, RETRIEVAL_CONTEXT_KEY);
         return value instanceof AgentRetrievalContext ctx ? ctx : null;
+    }
+
+    public static UUID roomId(ToolContext toolContext) {
+        Object value = contextValue(toolContext, ROOM_ID_KEY);
+        return value instanceof UUID roomId ? roomId : null;
     }
 
     public static SerializedPartSink sink(ToolContext toolContext) {

@@ -105,7 +105,7 @@ public class DefaultAgentApi implements AgentApi {
         if (sessionId == null) {
             throw new IllegalArgumentException("sessionId is required");
         }
-        chatSessionService.requireOwnedSession(currentUser, sessionId);
+        UUID roomId = chatSessionService.requireOwnedSessionRoomId(currentUser, sessionId);
         if (!turnSupport.canSpend(currentUser)) {
             log.debug("agent.chat quota-exceeded user={} session={} estimate={}",
                     currentUser.getUserId(), sessionId, CoachTurnSupport.PER_TURN_ESTIMATE_ILM_TOKENS);
@@ -137,7 +137,9 @@ public class DefaultAgentApi implements AgentApi {
                     .advisors(advisor -> advisor
                             .param(ChatMemory.CONVERSATION_ID, sessionId.toString())
                             .param(UserMemoryAdvisor.CURRENT_USER_PARAM, currentUser))
-                    .tools(t -> t.context(Map.of(AgentToolContext.CURRENT_USER_KEY, currentUser)))
+                    .tools(t -> t.context(Map.of(
+                            AgentToolContext.CURRENT_USER_KEY, currentUser,
+                            AgentToolContext.ROOM_ID_KEY, roomId)))
                     .call()
                     .chatResponse();
             String text = extractText(response);

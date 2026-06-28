@@ -33,6 +33,7 @@ public class RetrieveTool {
             @ToolParam(description = "Natural-language query in the user's language.") String query,
             ToolContext toolContext) {
         UUID userId = AgentToolContext.requireUserId(toolContext);
+        UUID roomId = AgentToolContext.roomId(toolContext);
         AgentRetrievalContext turnCtx = AgentToolContext.retrievalContext(toolContext);
         AgentRetrievalContext threadLocalCtx = AgentRetrievalContext.current();
         int priorCalls = priorCallCount(turnCtx, threadLocalCtx);
@@ -42,7 +43,7 @@ public class RetrieveTool {
         }
         List<RetrievedChunkDto> raw = query == null || query.isBlank()
                 ? List.of()
-                : retrievalApi.retrieve(userId, query);
+                : retrievalApi.retrieve(userId, roomId, query);
         List<RetrievedChunk> chunks = raw.stream()
                 .map(dto -> new RetrievedChunk(
                         dto.getMaterialId(),

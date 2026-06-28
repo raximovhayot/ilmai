@@ -86,7 +86,7 @@ class DefaultAgentApiActivityEventTest {
             assertThat(((TextPart) part).getText()).isEqualTo("the answer");
         });
 
-        verify(chatSessionService).requireOwnedSession(currentUser, sessionId);
+        verify(chatSessionService).requireOwnedSessionRoomId(currentUser, sessionId);
         verify(userFactExtractor).extract(currentUser, sessionId);
         verify(chatMemorySummarizer).maintain(currentUser, sessionId);
 

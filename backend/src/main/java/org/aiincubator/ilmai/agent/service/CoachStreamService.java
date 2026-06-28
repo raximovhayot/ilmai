@@ -5,6 +5,7 @@ import org.aiincubator.ilmai.agent.ChatChannel;
 import org.aiincubator.ilmai.common.CurrentUser;
 import org.aiincubator.ilmai.common.i18n.MessageService;
 import org.aiincubator.ilmai.common.quota.IlmTokenReservation;
+import org.aiincubator.ilmai.rooms.RoomsApi;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.ChatClientResponse;
 import org.springframework.ai.chat.memory.ChatMemory;
@@ -42,6 +43,7 @@ public class CoachStreamService {
     private final UiMessageStreamEmitter transport;
     private final Executor coachStreamExecutor;
     private final ChatTranscriptService chatTranscriptService;
+    private final RoomsApi roomsApi;
 
     public CoachStreamService(
             @Qualifier(CoachChatClientConfig.COACH_CHAT_CLIENT) ObjectProvider<ChatClient> coachChatClientProvider,
@@ -50,7 +52,8 @@ public class CoachStreamService {
             MessageService messageService,
             UiMessageStreamEmitter transport,
             @Qualifier(CoachChatClientConfig.COACH_STREAM_EXECUTOR) Executor coachStreamExecutor,
-            ChatTranscriptService chatTranscriptService) {
+            ChatTranscriptService chatTranscriptService,
+            RoomsApi roomsApi) {
         this.coachChatClientProvider = coachChatClientProvider;
         this.chatSessionService = chatSessionService;
         this.turnSupport = turnSupport;
@@ -58,6 +61,7 @@ public class CoachStreamService {
         this.transport = transport;
         this.coachStreamExecutor = coachStreamExecutor;
         this.chatTranscriptService = chatTranscriptService;
+        this.roomsApi = roomsApi;
     }
 
     public SseEmitter stream(CurrentUser currentUser, UUID sessionId, String prompt, ChatChannel channel) {
@@ -73,7 +77,8 @@ public class CoachStreamService {
         }
         log.debug("agent.stream user={} session={} channel={} promptLen={}",
                 currentUser.getUserId(), sessionId, channel, prompt == null ? 0 : prompt.length());
-        chatSessionService.requireOwnedSession(currentUser, sessionId);
+        UUID roomId = chatSessionService.requireOwnedSessionRoomId(currentUser, sessionId);
+        roomsApi.requireMember(currentUser, roomId);
         if (!turnSupport.canSpend(currentUser)) {
             log.debug("agent.stream quota-exceeded user={} session={} estimate={}",
                     currentUser.getUserId(), sessionId, CoachTurnSupport.PER_TURN_ESTIMATE_ILM_TOKENS);
@@ -92,11 +97,11 @@ public class CoachStreamService {
                 writer.text("Coach is not configured.");
             });
         }
-        return streamTurn(client, currentUser, sessionId, prompt == null ? "" : prompt, context);
+        return streamTurn(client, currentUser, sessionId, roomId, prompt == null ? "" : prompt, context);
     }
 
-    private SseEmitter streamTurn(ChatClient client, CurrentUser currentUser, UUID sessionId, String userMessage,
-                                  String context) {
+    private SseEmitter streamTurn(ChatClient client, CurrentUser currentUser, UUID sessionId, UUID roomId,
+                                  String userMessage, String context) {
         boolean topicScoped = context != null && !context.isBlank();
         IlmTokenReservation reservation = turnSupport.reserve(currentUser);
         recordUserTurnQuietly(currentUser, sessionId, userMessage);
@@ -116,6 +121,7 @@ public class CoachStreamService {
                         .advisors(new UiMessageStreamAdvisor(sink, Ordered.HIGHEST_PRECEDENCE + 100)))
                 .tools(t -> t.context(Map.of(
                         AgentToolContext.CURRENT_USER_KEY, currentUser,
+                        AgentToolContext.ROOM_ID_KEY, roomId,
                         AgentToolContext.RETRIEVAL_CONTEXT_KEY, retrievalCtx)))
                 .stream()
                 .chatClientResponse()
