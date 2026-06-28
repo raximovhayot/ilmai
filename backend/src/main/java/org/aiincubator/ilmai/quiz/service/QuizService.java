@@ -11,6 +11,9 @@ import org.aiincubator.ilmai.materials.MaterialsApi;
 import org.aiincubator.ilmai.materials.TopicDto;
 import org.aiincubator.ilmai.profiles.ProfileDto;
 import org.aiincubator.ilmai.profiles.ProfilesApi;
+import org.aiincubator.ilmai.rooms.RoomDto;
+import org.aiincubator.ilmai.rooms.RoomGoalDto;
+import org.aiincubator.ilmai.rooms.RoomsApi;
 import org.aiincubator.ilmai.quiz.QuizAnswerGradedEvent;
 import org.aiincubator.ilmai.quiz.domain.QuizDifficulty;
 import org.aiincubator.ilmai.quiz.domain.QuizQuestion;
@@ -45,6 +48,7 @@ public class QuizService {
     private final QuizSessionRepository sessions;
     private final MaterialsApi materialsApi;
     private final ProfilesApi profilesApi;
+    private final RoomsApi roomsApi;
     private final RetrievalApi retrievalApi;
     private final QuizGenerator quizGenerator;
     private final QuizGrader quizGrader;
@@ -80,14 +84,20 @@ public class QuizService {
             }
         }
 
-        String retrievalQuery = resolveRetrievalQuery(scopeQueryOverride, topic, profile);
-        List<RetrievedChunkDto> chunks = retrievalApi.retrieve(currentUser.getUserId(), retrievalQuery);
+        UUID roomId = roomsApi.findPersonalForUser(currentUser.getUserId())
+                .map(RoomDto::getId)
+                .orElseThrow(() -> new QuizException(QuizException.Reason.QUIZ_MATERIALS_MISSING));
+        String goal = roomsApi.findPersonalGoalForUser(currentUser.getUserId())
+                .map(RoomGoalDto::getGoal).orElse(null);
+        String retrievalQuery = resolveRetrievalQuery(scopeQueryOverride, topic, goal);
+        List<RetrievedChunkDto> chunks = retrievalApi.retrieve(currentUser.getUserId(), roomId, retrievalQuery);
         if (chunks.isEmpty()) {
             chunks = sampleFromMaterials(currentUser.getUserId(), questionCount);
         }
 
         QuizSession session = new QuizSession();
         session.setUserId(currentUser.getUserId());
+        session.setRoomId(roomId);
         session.setTopicId(topic == null ? null : topic.getId());
         session.setDifficulty(difficulty);
         session.setDifficultyLevel(seedDifficultyLevel(difficulty));
@@ -249,14 +259,14 @@ public class QuizService {
         return profile.getLocale();
     }
 
-    private String resolveRetrievalQuery(String scopeQueryOverride, TopicDto topic, ProfileDto profile) {
+    private String resolveRetrievalQuery(String scopeQueryOverride, TopicDto topic, String goal) {
         if (scopeQueryOverride != null && !scopeQueryOverride.isBlank()) {
             return scopeQueryOverride.trim();
         }
         if (topic != null) {
             return topic.getName();
         }
-        return profile.getGoal() != null ? profile.getGoal() : "general review";
+        return goal != null ? goal : "general review";
     }
 
     private UUID resolveCitation(QuestionDraft draft, UUID userId, List<RetrievedChunkDto> chunks) {

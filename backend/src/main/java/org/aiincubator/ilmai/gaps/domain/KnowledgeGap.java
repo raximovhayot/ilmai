@@ -35,6 +35,9 @@ public class KnowledgeGap extends DateAuditable {
     @Column(name = "user_id", nullable = false, updatable = false)
     private UUID userId;
 
+    @Column(name = "room_id", nullable = false, updatable = false)
+    private UUID roomId;
+
     @Column(nullable = false, length = 255)
     private String concept;
 

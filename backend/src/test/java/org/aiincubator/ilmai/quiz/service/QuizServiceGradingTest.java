@@ -10,6 +10,8 @@ import org.aiincubator.ilmai.materials.MaterialStatus;
 import org.aiincubator.ilmai.materials.MaterialsApi;
 import org.aiincubator.ilmai.profiles.ProfileDto;
 import org.aiincubator.ilmai.profiles.ProfilesApi;
+import org.aiincubator.ilmai.rooms.RoomDto;
+import org.aiincubator.ilmai.rooms.RoomsApi;
 import org.aiincubator.ilmai.quiz.QuizAnswerGradedEvent;
 import org.aiincubator.ilmai.quiz.domain.QuestionType;
 import org.aiincubator.ilmai.quiz.domain.QuizDifficulty;
@@ -48,6 +50,7 @@ class QuizServiceGradingTest {
     @Mock QuizSessionRepository sessions;
     @Mock MaterialsApi materialsApi;
     @Mock ProfilesApi profilesApi;
+    @Mock RoomsApi roomsApi;
     @Mock RetrievalApi retrievalApi;
     @Mock QuizGenerator quizGenerator;
     @Mock QuizGrader quizGrader;
@@ -69,8 +72,10 @@ class QuizServiceGradingTest {
 
         when(quotaService.dailyQuizQuota(userId)).thenReturn(0);
         when(profilesApi.require(userId)).thenReturn(profile());
+        when(roomsApi.findPersonalForUser(userId))
+                .thenReturn(Optional.of(new RoomDto(UUID.randomUUID(), userId, "Personal", true)));
         when(materialsApi.hasReadyMaterialsForUser(userId)).thenReturn(true);
-        when(retrievalApi.retrieve(eq(userId), anyString())).thenReturn(List.of(
+        when(retrievalApi.retrieve(eq(userId), any(), anyString())).thenReturn(List.of(
                 new RetrievedChunkDto(ownedMaterial, "Notes", 1, "content", 0.8)));
         when(quizGenerator.generate(any(), any(), anyInt(), anyList())).thenReturn(List.of(
                 new QuestionDraft(QuestionType.MULTIPLE_CHOICE, "c1", "p1",
@@ -252,8 +257,7 @@ class QuizServiceGradingTest {
     }
 
     private ProfileDto profile() {
-        return new ProfileDto(userId, SupportedLocale.EN, "Asia/Tashkent", "general",
-                null, null, null, 0, 0, 0, null);
+        return new ProfileDto(userId, SupportedLocale.EN, "Asia/Tashkent", null, 0, 0, 0, null);
     }
 
     private MaterialDto material(UUID id) {

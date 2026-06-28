@@ -14,6 +14,8 @@ public interface LearningPlanRepository extends JpaRepository<LearningPlan, UUID
 
     List<LearningPlan> findByUserIdAndStatus(UUID userId, PlanStatus status);
 
+    List<LearningPlan> findByRoomIdAndStatus(UUID roomId, PlanStatus status);
+
     List<LearningPlan> findByUserIdAndStatusInOrderByCreatedAtAsc(UUID userId, Collection<PlanStatus> statuses);
 
     Optional<LearningPlan> findByIdAndUserId(UUID id, UUID userId);

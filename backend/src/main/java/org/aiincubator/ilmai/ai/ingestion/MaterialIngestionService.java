@@ -195,6 +195,7 @@ public class MaterialIngestionService {
 
     private void stampMetadata(Map<String, Object> metadata, UUID userId, MaterialDto material, int chunkIndex) {
         metadata.put("user_id", userId.toString());
+        metadata.put("room_id", material.getSpaceId().toString());
         metadata.put("material_id", material.getId().toString());
         metadata.put("material_name", material.getTitle());
         metadata.put("chunk_index", chunkIndex);

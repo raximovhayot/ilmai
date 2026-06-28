@@ -2,8 +2,8 @@ package org.aiincubator.ilmai.agent.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.aiincubator.ilmai.profiles.ProfileDto;
-import org.aiincubator.ilmai.profiles.ProfilesApi;
+import org.aiincubator.ilmai.rooms.RoomGoalDto;
+import org.aiincubator.ilmai.rooms.RoomsApi;
 import org.springframework.ai.chat.model.ToolContext;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
@@ -19,14 +19,14 @@ import java.util.UUID;
 @Slf4j
 public class GoalTool {
 
-    private final ProfilesApi profilesApi;
+    private final RoomsApi roomsApi;
 
     @Tool(description = "Read the current user's learning goal and optional deadline. Returns the goal text, the "
             + "deadline as an ISO date (YYYY-MM-DD), and how many days remain until it. Call this before "
             + "referencing or changing the user's goal. If no goal is set, goalSet is false.")
     public GoalView getGoal(ToolContext toolContext) {
         UUID userId = AgentToolContext.requireUserId(toolContext);
-        return profilesApi.find(userId).map(this::toView).orElseGet(GoalTool::emptyGoal);
+        return roomsApi.findPersonalGoalForUser(userId).map(this::toView).orElseGet(GoalTool::emptyGoal);
     }
 
     @Tool(description = "Set or update the current user's learning goal and optional deadline. Call this when the "
@@ -41,9 +41,10 @@ public class GoalTool {
             ToolContext toolContext) {
         UUID userId = AgentToolContext.requireUserId(toolContext);
         LocalDate targetDate = parseDeadline(deadline);
-        ProfileDto updated = profilesApi.updateGoal(userId, goal, targetDate);
-        log.debug("agent.updateGoal user={} goalSet={} deadline={}", userId, updated.getGoal() != null, targetDate);
-        return toView(updated);
+        GoalView view = roomsApi.applyGoalPatch(userId, goal, targetDate, null)
+                .map(this::toView).orElseGet(GoalTool::emptyGoal);
+        log.debug("agent.updateGoal user={} goalSet={} deadline={}", userId, view.isGoalSet(), targetDate);
+        return view;
     }
 
     private LocalDate parseDeadline(String deadline) {
@@ -57,9 +58,9 @@ public class GoalTool {
         }
     }
 
-    private GoalView toView(ProfileDto profile) {
-        String goal = profile.getGoal();
-        LocalDate targetDate = profile.getTargetDate();
+    private GoalView toView(RoomGoalDto roomGoal) {
+        String goal = roomGoal.getGoal();
+        LocalDate targetDate = roomGoal.getTargetDate();
         String deadline = targetDate != null ? targetDate.toString() : null;
         Long daysUntilDeadline = targetDate != null
                 ? ChronoUnit.DAYS.between(LocalDate.now(), targetDate)

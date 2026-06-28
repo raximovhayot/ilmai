@@ -5,5 +5,9 @@ import java.util.UUID;
 
 public interface RetrievalApi {
 
-    List<RetrievedChunkDto> retrieve(UUID userId, String query);
+    default List<RetrievedChunkDto> retrieve(UUID userId, String query) {
+        return retrieve(userId, null, query);
+    }
+
+    List<RetrievedChunkDto> retrieve(UUID userId, UUID roomId, String query);
 }

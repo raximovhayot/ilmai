@@ -1,8 +1,8 @@
 package org.aiincubator.ilmai.agent.service;
 
 import org.aiincubator.ilmai.common.CurrentUser;
-import org.aiincubator.ilmai.profiles.ProfileDto;
-import org.aiincubator.ilmai.profiles.ProfilesApi;
+import org.aiincubator.ilmai.rooms.RoomGoalDto;
+import org.aiincubator.ilmai.rooms.RoomsApi;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.model.ToolContext;
@@ -33,11 +33,11 @@ class GoalToolTest {
     }
 
     @Test
-    void getGoalReadsProfileForSecurityContextUser() {
-        ProfilesApi profilesApi = mock(ProfilesApi.class);
+    void getGoalReadsRoomGoalForSecurityContextUser() {
+        RoomsApi roomsApi = mock(RoomsApi.class);
         LocalDate deadline = LocalDate.now().plusDays(10);
-        when(profilesApi.find(userA)).thenReturn(Optional.of(profile(userA, "Pass IELTS", deadline)));
-        GoalTool tool = new GoalTool(profilesApi);
+        when(roomsApi.findPersonalGoalForUser(userA)).thenReturn(Optional.of(roomGoal("Pass IELTS", deadline)));
+        GoalTool tool = new GoalTool(roomsApi);
 
         authenticate(userA);
         GoalView view = tool.getGoal(new ToolContext(Map.of(AgentToolContext.CURRENT_USER_KEY, new CurrentUser(userA))));
@@ -46,14 +46,14 @@ class GoalToolTest {
         assertThat(view.getGoal()).isEqualTo("Pass IELTS");
         assertThat(view.getDeadline()).isEqualTo(deadline.toString());
         assertThat(view.getDaysUntilDeadline()).isEqualTo(10L);
-        verify(profilesApi).find(userA);
+        verify(roomsApi).findPersonalGoalForUser(userA);
     }
 
     @Test
-    void getGoalReturnsUnsetWhenNoProfile() {
-        ProfilesApi profilesApi = mock(ProfilesApi.class);
-        when(profilesApi.find(any())).thenReturn(Optional.empty());
-        GoalTool tool = new GoalTool(profilesApi);
+    void getGoalReturnsUnsetWhenNoRoomGoal() {
+        RoomsApi roomsApi = mock(RoomsApi.class);
+        when(roomsApi.findPersonalGoalForUser(any())).thenReturn(Optional.empty());
+        GoalTool tool = new GoalTool(roomsApi);
 
         authenticate(userA);
         GoalView view = tool.getGoal(new ToolContext(Map.of(AgentToolContext.CURRENT_USER_KEY, new CurrentUser(userA))));
@@ -66,57 +66,57 @@ class GoalToolTest {
 
     @Test
     void updateGoalWritesViaSecurityContextUserNotArguments() {
-        ProfilesApi profilesApi = mock(ProfilesApi.class);
+        RoomsApi roomsApi = mock(RoomsApi.class);
         LocalDate deadline = LocalDate.now().plusDays(30);
-        when(profilesApi.updateGoal(any(), any(), any()))
-                .thenReturn(profile(userB, "Learn Spanish", deadline));
-        GoalTool tool = new GoalTool(profilesApi);
+        when(roomsApi.applyGoalPatch(any(), any(), any(), any()))
+                .thenReturn(Optional.of(roomGoal("Learn Spanish", deadline)));
+        GoalTool tool = new GoalTool(roomsApi);
 
         authenticate(userB);
         GoalView view = tool.updateGoal("Learn Spanish", deadline.toString(), new ToolContext(Map.of(AgentToolContext.CURRENT_USER_KEY, new CurrentUser(userB))));
 
         assertThat(view.isGoalSet()).isTrue();
         assertThat(view.getGoal()).isEqualTo("Learn Spanish");
-        verify(profilesApi).updateGoal(userB, "Learn Spanish", deadline);
+        verify(roomsApi).applyGoalPatch(userB, "Learn Spanish", deadline, null);
     }
 
     @Test
     void updateGoalWithBlankDeadlinePassesNullDeadline() {
-        ProfilesApi profilesApi = mock(ProfilesApi.class);
-        when(profilesApi.updateGoal(any(), any(), any()))
-                .thenReturn(profile(userA, "Finish course", null));
-        GoalTool tool = new GoalTool(profilesApi);
+        RoomsApi roomsApi = mock(RoomsApi.class);
+        when(roomsApi.applyGoalPatch(any(), any(), any(), any()))
+                .thenReturn(Optional.of(roomGoal("Finish course", null)));
+        GoalTool tool = new GoalTool(roomsApi);
 
         authenticate(userA);
         GoalView view = tool.updateGoal("Finish course", "  ", new ToolContext(Map.of(AgentToolContext.CURRENT_USER_KEY, new CurrentUser(userA))));
 
         assertThat(view.getDeadline()).isNull();
-        verify(profilesApi).updateGoal(userA, "Finish course", null);
+        verify(roomsApi).applyGoalPatch(userA, "Finish course", null, null);
     }
 
     @Test
     void updateGoalRejectsInvalidDeadlineFormatWithoutWriting() {
-        ProfilesApi profilesApi = mock(ProfilesApi.class);
-        GoalTool tool = new GoalTool(profilesApi);
+        RoomsApi roomsApi = mock(RoomsApi.class);
+        GoalTool tool = new GoalTool(roomsApi);
 
         authenticate(userA);
         assertThatThrownBy(() -> tool.updateGoal("Goal", "next-friday", new ToolContext(Map.of(AgentToolContext.CURRENT_USER_KEY, new CurrentUser(userA)))))
                 .isInstanceOf(IllegalArgumentException.class);
-        verify(profilesApi, never()).updateGoal(any(), any(), any());
+        verify(roomsApi, never()).applyGoalPatch(any(), any(), any(), any());
     }
 
     @Test
     void toolsFailWhenSecurityContextIsAnonymous() {
-        ProfilesApi profilesApi = mock(ProfilesApi.class);
-        GoalTool tool = new GoalTool(profilesApi);
+        RoomsApi roomsApi = mock(RoomsApi.class);
+        GoalTool tool = new GoalTool(roomsApi);
 
         assertThatThrownBy(() -> tool.getGoal(null)).isInstanceOf(IllegalStateException.class);
         assertThatThrownBy(() -> tool.updateGoal("Goal", null, null)).isInstanceOf(IllegalStateException.class);
-        verify(profilesApi, never()).updateGoal(any(), any(), any());
+        verify(roomsApi, never()).applyGoalPatch(any(), any(), any(), any());
     }
 
-    private ProfileDto profile(UUID userId, String goal, LocalDate targetDate) {
-        return new ProfileDto(userId, null, null, goal, targetDate, null, null, 0, 0, 0, null);
+    private RoomGoalDto roomGoal(String goal, LocalDate targetDate) {
+        return new RoomGoalDto(UUID.randomUUID(), goal, targetDate, null);
     }
 
     private void authenticate(UUID userId) {

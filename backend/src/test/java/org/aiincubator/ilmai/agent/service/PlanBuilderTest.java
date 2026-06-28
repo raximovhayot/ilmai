@@ -14,6 +14,8 @@ import org.aiincubator.ilmai.plan.PlanStatus;
 import org.aiincubator.ilmai.plan.PlanStepInput;
 import org.aiincubator.ilmai.profiles.ProfileDto;
 import org.aiincubator.ilmai.profiles.ProfilesApi;
+import org.aiincubator.ilmai.rooms.RoomGoalDto;
+import org.aiincubator.ilmai.rooms.RoomsApi;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -44,6 +46,7 @@ class PlanBuilderTest {
     private final UUID userA = UUID.randomUUID();
 
     @Mock ProfilesApi profilesApi;
+    @Mock RoomsApi roomsApi;
     @Mock MaterialsApi materialsApi;
     @Mock GapsApi gapsApi;
     @Mock Planner planner;
@@ -70,7 +73,9 @@ class PlanBuilderTest {
         when(materialsApi.findReadyForUser(userA)).thenReturn(List.of(material));
         when(planner.isAvailable()).thenReturn(true);
         when(profilesApi.find(userA)).thenReturn(Optional.of(new ProfileDto(
-                userA, SupportedLocale.EN, "Asia/Tashkent", "IELTS", null, null, 30, 0, 0, 0, null)));
+                userA, SupportedLocale.EN, "Asia/Tashkent", null, 0, 0, 0, null)));
+        when(roomsApi.findPersonalGoalForUser(userA))
+                .thenReturn(Optional.of(new RoomGoalDto(UUID.randomUUID(), "IELTS", null, 30)));
         when(gapsApi.refreshAndGet(any())).thenReturn(Optional.empty());
         when(quotaService.canSpend(userA, PlanBuilder.PLAN_BUILD_ESTIMATE_ILM_TOKENS)).thenReturn(true);
         IlmTokenReservation reservation = mock(IlmTokenReservation.class);

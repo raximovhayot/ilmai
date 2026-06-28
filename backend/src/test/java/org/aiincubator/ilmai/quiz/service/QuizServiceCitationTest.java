@@ -10,6 +10,8 @@ import org.aiincubator.ilmai.materials.MaterialStatus;
 import org.aiincubator.ilmai.materials.MaterialsApi;
 import org.aiincubator.ilmai.profiles.ProfileDto;
 import org.aiincubator.ilmai.profiles.ProfilesApi;
+import org.aiincubator.ilmai.rooms.RoomDto;
+import org.aiincubator.ilmai.rooms.RoomsApi;
 import org.aiincubator.ilmai.quiz.domain.QuestionType;
 import org.aiincubator.ilmai.quiz.domain.QuizSession;
 import org.aiincubator.ilmai.quiz.domain.QuizSessionRepository;
@@ -43,6 +45,7 @@ class QuizServiceCitationTest {
     @Mock QuizSessionRepository sessions;
     @Mock MaterialsApi materialsApi;
     @Mock ProfilesApi profilesApi;
+    @Mock RoomsApi roomsApi;
     @Mock RetrievalApi retrievalApi;
     @Mock QuizGenerator quizGenerator;
     @Mock QuizGrader quizGrader;
@@ -62,8 +65,10 @@ class QuizServiceCitationTest {
 
         when(quotaService.dailyQuizQuota(userId)).thenReturn(0);
         when(profilesApi.require(userId)).thenReturn(profile(userId));
+        when(roomsApi.findPersonalForUser(userId))
+                .thenReturn(Optional.of(new RoomDto(UUID.randomUUID(), userId, "Personal", true)));
         when(materialsApi.hasReadyMaterialsForUser(userId)).thenReturn(true);
-        when(retrievalApi.retrieve(eq(userId), anyString())).thenReturn(List.of(
+        when(retrievalApi.retrieve(eq(userId), any(), anyString())).thenReturn(List.of(
                 new RetrievedChunkDto(chunkMaterial, "Notes", 2, "content", 0.9)));
         when(quizGenerator.generate(any(), any(), anyInt(), anyList())).thenReturn(List.of(
                 new QuestionDraft(QuestionType.MULTIPLE_CHOICE, "c1", "p1",
@@ -97,8 +102,10 @@ class QuizServiceCitationTest {
 
         when(quotaService.dailyQuizQuota(userId)).thenReturn(0);
         when(profilesApi.require(userId)).thenReturn(profile(userId));
+        when(roomsApi.findPersonalForUser(userId))
+                .thenReturn(Optional.of(new RoomDto(UUID.randomUUID(), userId, "Personal", true)));
         when(materialsApi.hasReadyMaterialsForUser(userId)).thenReturn(true);
-        when(retrievalApi.retrieve(eq(userId), anyString())).thenReturn(List.of());
+        when(retrievalApi.retrieve(eq(userId), any(), anyString())).thenReturn(List.of());
         when(materialsApi.findReadyForUser(userId)).thenReturn(List.of());
         when(quizGenerator.generate(any(), any(), anyInt(), anyList())).thenReturn(List.of(
                 new QuestionDraft(QuestionType.SHORT_ANSWER, "c", "p",
@@ -121,8 +128,7 @@ class QuizServiceCitationTest {
     }
 
     private ProfileDto profile(UUID userId) {
-        return new ProfileDto(userId, SupportedLocale.EN, "Asia/Tashkent", "general",
-                null, null, null, 0, 0, 0, null);
+        return new ProfileDto(userId, SupportedLocale.EN, "Asia/Tashkent", null, 0, 0, 0, null);
     }
 
     private MaterialDto material(UUID id) {

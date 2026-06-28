@@ -4,7 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.aiincubator.ilmai.agent.domain.ChatMemorySummaryRepository;
 import org.aiincubator.ilmai.ai.IlmaiChatClientFactory;
 import org.aiincubator.ilmai.common.i18n.MessageService;
-import org.aiincubator.ilmai.profiles.ProfilesApi;
+import org.aiincubator.ilmai.rooms.RoomsApi;
 import org.aiincubator.ilmai.streaks.StreaksApi;
 import org.aiincubator.ilmai.agent.UserMemoryApi;
 import org.springframework.ai.chat.client.ChatClient;
@@ -61,8 +61,8 @@ public class CoachChatClientConfig {
     }
 
     @Bean
-    UserMemoryAdvisor userMemoryAdvisor(UserMemoryApi userMemoryApi, ProfilesApi profilesApi, StreaksApi streaksApi) {
-        return new UserMemoryAdvisor(userMemoryApi, profilesApi, streaksApi);
+    UserMemoryAdvisor userMemoryAdvisor(UserMemoryApi userMemoryApi, RoomsApi roomsApi, StreaksApi streaksApi) {
+        return new UserMemoryAdvisor(userMemoryApi, roomsApi, streaksApi);
     }
 
     @Bean

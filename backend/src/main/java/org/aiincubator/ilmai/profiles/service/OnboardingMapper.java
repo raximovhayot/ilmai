@@ -9,5 +9,8 @@ import org.mapstruct.Mapping;
 public interface OnboardingMapper {
 
     @Mapping(target = "telegramLinked", ignore = true)
+    @Mapping(target = "goal", ignore = true)
+    @Mapping(target = "targetDate", ignore = true)
+    @Mapping(target = "dailyStudyMinutes", ignore = true)
     OnboardingResponse toResponse(Profile profile);
 }

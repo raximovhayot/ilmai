@@ -34,7 +34,7 @@ class RetrieveToolUserIsolationTest {
         perUser.put(userA, List.of(new RetrievedChunkDto(materialA, "A's notes", 0, "secret of A", 0.91)));
         perUser.put(userB, List.of(new RetrievedChunkDto(materialB, "B's notes", 0, "secret of B", 0.88)));
 
-        RetrievalApi retrievalApi = (userId, query) -> perUser.getOrDefault(userId, List.of());
+        RetrievalApi retrievalApi = (userId, roomId, query) -> perUser.getOrDefault(userId, List.of());
         RetrieveTool tool = new RetrieveTool(retrievalApi);
 
         AgentRetrievalContext.begin();
@@ -58,7 +58,7 @@ class RetrieveToolUserIsolationTest {
 
     @Test
     void retrieveFailsWhenToolContextIsMissing() {
-        RetrievalApi retrievalApi = (userId, query) -> List.of();
+        RetrievalApi retrievalApi = (userId, roomId, query) -> List.of();
         RetrieveTool tool = new RetrieveTool(retrievalApi);
 
         assertThatThrownBy(() -> tool.retrieve("question", null))
@@ -68,7 +68,7 @@ class RetrieveToolUserIsolationTest {
     @Test
     void retrieveRecordsCallIntoAgentRetrievalContext() {
         UUID materialId = UUID.randomUUID();
-        RetrievalApi retrievalApi = (userId, query) -> List.of(
+        RetrievalApi retrievalApi = (userId, roomId, query) -> List.of(
                 new RetrievedChunkDto(materialId, "Notes", 3, "snippet", 0.7));
         RetrieveTool tool = new RetrieveTool(retrievalApi);
 
@@ -87,7 +87,7 @@ class RetrieveToolUserIsolationTest {
     void retrieveStopsQueryingAfterPerTurnCapReached() {
         UUID materialId = UUID.randomUUID();
         int[] calls = {0};
-        RetrievalApi retrievalApi = (userId, query) -> {
+        RetrievalApi retrievalApi = (userId, roomId, query) -> {
             calls[0]++;
             return List.of(new RetrievedChunkDto(materialId, "Notes", 0, "snippet", 0.7));
         };
@@ -106,7 +106,7 @@ class RetrieveToolUserIsolationTest {
 
     @Test
     void emptyQueryShortCircuitsToEmptyResult() {
-        RetrievalApi retrievalApi = (userId, query) -> {
+        RetrievalApi retrievalApi = (userId, roomId, query) -> {
             throw new AssertionError("RetrievalApi must not be called for blank query");
         };
         RetrieveTool tool = new RetrieveTool(retrievalApi);

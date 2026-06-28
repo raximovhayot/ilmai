@@ -2,12 +2,13 @@ package org.aiincubator.ilmai.profiles.service;
 
 import lombok.RequiredArgsConstructor;
 import org.aiincubator.ilmai.common.CurrentUser;
-import org.aiincubator.ilmai.profiles.GoalUpdatedEvent;
 import org.aiincubator.ilmai.profiles.OnboardingCompletedEvent;
 import org.aiincubator.ilmai.profiles.domain.Profile;
 import org.aiincubator.ilmai.profiles.domain.ProfileRepository;
 import org.aiincubator.ilmai.profiles.payload.OnboardingRequest;
 import org.aiincubator.ilmai.profiles.payload.OnboardingResponse;
+import org.aiincubator.ilmai.rooms.RoomGoalDto;
+import org.aiincubator.ilmai.rooms.RoomsApi;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,33 +22,26 @@ public class OnboardingService {
 
     private final ProfileRepository profiles;
     private final OnboardingMapper onboardingMapper;
+    private final RoomsApi roomsApi;
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional(readOnly = true)
     public OnboardingResponse get(CurrentUser currentUser) {
-        return onboardingMapper.toResponse(require(currentUser.getUserId()));
+        UUID userId = currentUser.getUserId();
+        OnboardingResponse response = onboardingMapper.toResponse(require(userId));
+        applyRoomGoal(response, roomsApi.findPersonalGoalForUser(userId).orElse(null));
+        return response;
     }
 
     @Transactional
     public OnboardingResponse submit(CurrentUser currentUser, OnboardingRequest req) {
-        Profile profile = require(currentUser.getUserId());
         UUID userId = currentUser.getUserId();
-        boolean goalChanged = false;
-        if (req.getGoal() != null) {
-            String trimmed = req.getGoal().trim();
-            profile.setGoal(trimmed.isEmpty() ? null : trimmed);
-            goalChanged = true;
+        Profile profile = require(userId);
+        if (req.getTargetDate() != null && req.getTargetDate().isBefore(LocalDate.now())) {
+            throw new ProfileException(ProfileException.Reason.PROFILE_INVALID_TARGET_DATE);
         }
-        if (req.getTargetDate() != null) {
-            if (req.getTargetDate().isBefore(LocalDate.now())) {
-                throw new ProfileException(ProfileException.Reason.PROFILE_INVALID_TARGET_DATE);
-            }
-            profile.setTargetDate(req.getTargetDate());
-            goalChanged = true;
-        }
-        if (req.getDailyStudyMinutes() != null) {
-            profile.setDailyStudyMinutes(req.getDailyStudyMinutes());
-        }
+        RoomGoalDto goal = roomsApi.applyGoalPatch(userId, req.getGoal(), req.getTargetDate(),
+                req.getDailyStudyMinutes()).orElse(null);
         if (req.getDailyReminder() != null) {
             profile.setDailyReminder(req.getDailyReminder());
         }
@@ -57,13 +51,21 @@ public class OnboardingService {
                     && !Boolean.TRUE.equals(profile.getOnboardingPassed());
             profile.setOnboardingPassed(req.getOnboardingPassed());
         }
-        if (goalChanged) {
-            eventPublisher.publishEvent(new GoalUpdatedEvent(userId));
-        }
         if (onboardingJustCompleted) {
             eventPublisher.publishEvent(new OnboardingCompletedEvent(userId));
         }
-        return onboardingMapper.toResponse(profile);
+        OnboardingResponse response = onboardingMapper.toResponse(profile);
+        applyRoomGoal(response, goal != null ? goal : roomsApi.findPersonalGoalForUser(userId).orElse(null));
+        return response;
+    }
+
+    private void applyRoomGoal(OnboardingResponse response, RoomGoalDto goal) {
+        if (goal == null) {
+            return;
+        }
+        response.setGoal(goal.getGoal());
+        response.setTargetDate(goal.getTargetDate());
+        response.setDailyStudyMinutes(goal.getDailyStudyMinutes());
     }
 
     private Profile require(UUID userId) {

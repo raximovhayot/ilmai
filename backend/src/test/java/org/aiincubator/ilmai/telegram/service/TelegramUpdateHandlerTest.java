@@ -357,7 +357,7 @@ class TelegramUpdateHandlerTest {
     }
 
     private ProfileDto profile(UUID userId) {
-        return new ProfileDto(userId, SupportedLocale.EN, "Asia/Tashkent", null, null, null, null, 0, 0, 0, null);
+        return new ProfileDto(userId, SupportedLocale.EN, "Asia/Tashkent", null, 0, 0, 0, null);
     }
 
     private Update update(long chatId, String text) {

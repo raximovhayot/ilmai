@@ -26,7 +26,7 @@ public class DefaultRetrievalApi implements RetrievalApi {
     private final RetrievalProperties properties;
 
     @Override
-    public List<RetrievedChunkDto> retrieve(UUID userId, String query) {
+    public List<RetrievedChunkDto> retrieve(UUID userId, UUID roomId, String query) {
         if (userId == null || query == null || query.isBlank()) {
             return List.of();
         }
@@ -36,7 +36,10 @@ public class DefaultRetrievalApi implements RetrievalApi {
         }
         try {
             FilterExpressionBuilder b = new FilterExpressionBuilder();
-            Filter.Expression filter = b.eq("user_id", userId.toString()).build();
+            FilterExpressionBuilder.Op userMatch = b.eq("user_id", userId.toString());
+            Filter.Expression filter = roomId == null
+                    ? userMatch.build()
+                    : b.and(userMatch, b.eq("room_id", roomId.toString())).build();
             SearchRequest sr = SearchRequest.builder()
                     .query(query)
                     .topK(properties.getTopK())
@@ -60,7 +63,7 @@ public class DefaultRetrievalApi implements RetrievalApi {
             }
             return out;
         } catch (RuntimeException ex) {
-            log.warn("vector retrieval failed for user {}: {}", userId, ex.toString());
+            log.warn("vector retrieval failed for user {} room {}: {}", userId, roomId, ex.toString());
             return List.of();
         }
     }

@@ -6,8 +6,8 @@ import org.aiincubator.ilmai.materials.domain.Material;
 import org.aiincubator.ilmai.materials.domain.MaterialRepository;
 import org.aiincubator.ilmai.materials.MaterialStatus;
 import org.aiincubator.ilmai.materials.domain.Topic;
-import org.aiincubator.ilmai.spaces.SpaceDto;
-import org.aiincubator.ilmai.spaces.SpacesApi;
+import org.aiincubator.ilmai.rooms.RoomDto;
+import org.aiincubator.ilmai.rooms.RoomsApi;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -38,7 +38,7 @@ class MaterialReingestSchedulerTest {
 
     @Mock MaterialRepository materials;
     @Mock ApplicationEventPublisher publisher;
-    @Mock SpacesApi spacesApi;
+    @Mock RoomsApi roomsApi;
 
     private MaterialReingestProperties properties;
     private MaterialReingestScheduler scheduler;
@@ -50,7 +50,7 @@ class MaterialReingestSchedulerTest {
         properties.setMaxAttempts(3);
         properties.setMinFailureAge(Duration.ofMinutes(5));
         properties.setBatchSize(20);
-        scheduler = new MaterialReingestScheduler(materials, publisher, properties, spacesApi);
+        scheduler = new MaterialReingestScheduler(materials, publisher, properties, roomsApi);
     }
 
     @Test
@@ -61,7 +61,7 @@ class MaterialReingestSchedulerTest {
         when(materials.findRetryCandidates(
                 eq(MaterialStatus.FAILED), eq(3), any(OffsetDateTime.class), any(Pageable.class)))
                 .thenReturn(List.of(failed));
-        when(spacesApi.findById(spaceId)).thenReturn(Optional.of(new SpaceDto(spaceId, userId, "My private space")));
+        when(roomsApi.findById(spaceId)).thenReturn(Optional.of(new RoomDto(spaceId, userId, "My private space", true)));
 
         scheduler.retryFailed();
 
@@ -93,7 +93,7 @@ class MaterialReingestSchedulerTest {
         when(materials.findRetryCandidates(
                 eq(MaterialStatus.FAILED), eq(3), any(OffsetDateTime.class), any(Pageable.class)))
                 .thenReturn(List.of(a, b));
-        when(spacesApi.findById(spaceId)).thenReturn(Optional.of(new SpaceDto(spaceId, userId, "My private space")));
+        when(roomsApi.findById(spaceId)).thenReturn(Optional.of(new RoomDto(spaceId, userId, "My private space", true)));
 
         scheduler.retryFailed();
 
@@ -108,12 +108,12 @@ class MaterialReingestSchedulerTest {
     private Material newFailedMaterial(UUID spaceId, int currentRetryCount) {
         Topic topic = new Topic();
         topic.setId(UUID.randomUUID());
-        topic.setSpaceId(spaceId);
+        topic.setRoomId(spaceId);
         topic.setName("Cloud");
 
         Material material = new Material();
         material.setId(UUID.randomUUID());
-        material.setSpaceId(spaceId);
+        material.setRoomId(spaceId);
         material.setTopic(topic);
         material.setTitle("notes.txt");
         material.setStatus(MaterialStatus.FAILED);

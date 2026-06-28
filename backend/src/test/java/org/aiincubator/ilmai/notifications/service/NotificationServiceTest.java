@@ -164,7 +164,7 @@ class NotificationServiceTest {
     }
 
     private ProfileDto profile(String timezone, LocalTime reminder) {
-        return new ProfileDto(userId, SupportedLocale.EN, timezone, null, null, reminder, null, 0, 0, 0, null);
+        return new ProfileDto(userId, SupportedLocale.EN, timezone, reminder, 0, 0, 0, null);
     }
 
     private LearningPlanDto plan(PlanStepDto... steps) {

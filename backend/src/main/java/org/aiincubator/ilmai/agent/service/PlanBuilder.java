@@ -16,6 +16,8 @@ import org.aiincubator.ilmai.plan.PlanApi;
 import org.aiincubator.ilmai.plan.PlanStepInput;
 import org.aiincubator.ilmai.profiles.ProfileDto;
 import org.aiincubator.ilmai.profiles.ProfilesApi;
+import org.aiincubator.ilmai.rooms.RoomGoalDto;
+import org.aiincubator.ilmai.rooms.RoomsApi;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -37,6 +39,7 @@ public class PlanBuilder {
     static final int MAX_WEAK_CONCEPTS = 5;
 
     private final ProfilesApi profilesApi;
+    private final RoomsApi roomsApi;
     private final MaterialsApi materialsApi;
     private final GapsApi gapsApi;
     private final Planner planner;
@@ -60,10 +63,11 @@ public class PlanBuilder {
         }
 
         ProfileDto profile = profilesApi.find(userId).orElse(null);
+        RoomGoalDto roomGoal = roomsApi.findPersonalGoalForUser(userId).orElse(null);
         LocalDate today = LocalDate.now();
-        LocalDate targetDate = profile == null ? null : profile.getTargetDate();
-        Integer dailyStudyMinutes = profile == null ? null : profile.getDailyStudyMinutes();
-        String goal = profile == null ? null : profile.getGoal();
+        LocalDate targetDate = roomGoal == null ? null : roomGoal.getTargetDate();
+        Integer dailyStudyMinutes = roomGoal == null ? null : roomGoal.getDailyStudyMinutes();
+        String goal = roomGoal == null ? null : roomGoal.getGoal();
         String resolvedLanguage = resolveLanguage(language, profile);
         Integer daysUntilDeadline = daysUntilDeadline(today, targetDate);
         int planDays = resolvePlanDays(days, daysUntilDeadline);

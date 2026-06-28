@@ -9,11 +9,11 @@ import java.util.UUID;
 
 public interface TopicRepository extends JpaRepository<Topic, UUID> {
 
-    List<Topic> findAllBySpaceIdInOrderByCreatedAtAsc(Collection<UUID> spaceIds);
+    List<Topic> findAllByRoomIdInOrderByCreatedAtAsc(Collection<UUID> spaceIds);
 
-    Optional<Topic> findByIdAndSpaceIdIn(UUID id, Collection<UUID> spaceIds);
+    Optional<Topic> findByIdAndRoomIdIn(UUID id, Collection<UUID> spaceIds);
 
-    boolean existsBySpaceIdAndNameIgnoreCase(UUID spaceId, String name);
+    boolean existsByRoomIdAndNameIgnoreCase(UUID spaceId, String name);
 
-    boolean existsBySpaceIdAndNameIgnoreCaseAndIdNot(UUID spaceId, String name, UUID id);
+    boolean existsByRoomIdAndNameIgnoreCaseAndIdNot(UUID spaceId, String name, UUID id);
 }

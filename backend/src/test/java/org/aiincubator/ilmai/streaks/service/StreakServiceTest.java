@@ -228,7 +228,7 @@ class StreakServiceTest {
     }
 
     private ProfileDto profile(String timezone) {
-        return new ProfileDto(userId, SupportedLocale.EN, timezone, null, null, null, null, 0, 0, 0, null);
+        return new ProfileDto(userId, SupportedLocale.EN, timezone, null, 0, 0, 0, null);
     }
 
     private Streak streak(int current, int longest, String lastDay, String brokenAt) {

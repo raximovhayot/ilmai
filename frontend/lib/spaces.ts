@@ -6,7 +6,7 @@ export type SpaceResponse = {
 }
 
 export async function listSpaces(): Promise<SpaceResponse[]> {
-  const data = await apiFetch<SpaceResponse[]>("/spaces", {
+  const data = await apiFetch<SpaceResponse[]>("/rooms", {
     cache: "no-store",
   })
   return data ?? []

@@ -16,19 +16,19 @@ import java.util.UUID;
 
 public interface MaterialRepository extends JpaRepository<Material, UUID> {
 
-    List<Material> findAllByTopicIdAndSpaceIdInOrderByCreatedAtDesc(UUID topicId, Collection<UUID> spaceIds);
+    List<Material> findAllByTopicIdAndRoomIdInOrderByCreatedAtDesc(UUID topicId, Collection<UUID> spaceIds);
 
-    List<Material> findAllBySpaceIdInOrderByCreatedAtDesc(Collection<UUID> spaceIds);
+    List<Material> findAllByRoomIdInOrderByCreatedAtDesc(Collection<UUID> spaceIds);
 
-    Slice<Material> findByTopicIsNullAndSpaceIdInOrderByCreatedAtDesc(Collection<UUID> spaceIds, Pageable pageable);
+    Slice<Material> findByTopicIsNullAndRoomIdInOrderByCreatedAtDesc(Collection<UUID> spaceIds, Pageable pageable);
 
-    List<Material> findAllBySpaceIdInAndStatusOrderByCreatedAtDesc(Collection<UUID> spaceIds, MaterialStatus status);
+    List<Material> findAllByRoomIdInAndStatusOrderByCreatedAtDesc(Collection<UUID> spaceIds, MaterialStatus status);
 
-    Optional<Material> findByIdAndSpaceIdIn(UUID id, Collection<UUID> spaceIds);
+    Optional<Material> findByIdAndRoomIdIn(UUID id, Collection<UUID> spaceIds);
 
-    long countBySpaceIdInAndStatus(Collection<UUID> spaceIds, MaterialStatus status);
+    long countByRoomIdInAndStatus(Collection<UUID> spaceIds, MaterialStatus status);
 
-    long countBySpaceIdIn(Collection<UUID> spaceIds);
+    long countByRoomIdIn(Collection<UUID> spaceIds);
 
     List<Material> findAllByTopicId(UUID topicId);
 

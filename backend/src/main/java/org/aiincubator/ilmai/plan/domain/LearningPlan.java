@@ -40,6 +40,9 @@ public class LearningPlan extends DateAuditable {
     @Column(name = "user_id", nullable = false, updatable = false)
     private UUID userId;
 
+    @Column(name = "room_id", nullable = false, updatable = false)
+    private UUID roomId;
+
     @Column(name = "goal_id", nullable = false, updatable = false)
     private UUID goalId;
 

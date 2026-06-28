@@ -1,8 +1,8 @@
 package org.aiincubator.ilmai.agent.service;
 
 import org.aiincubator.ilmai.common.CurrentUser;
-import org.aiincubator.ilmai.profiles.ProfileDto;
-import org.aiincubator.ilmai.profiles.ProfilesApi;
+import org.aiincubator.ilmai.rooms.RoomGoalDto;
+import org.aiincubator.ilmai.rooms.RoomsApi;
 import org.aiincubator.ilmai.streaks.StreakDto;
 import org.aiincubator.ilmai.streaks.StreaksApi;
 import org.aiincubator.ilmai.agent.UserFactDto;
@@ -38,13 +38,13 @@ class UserMemoryAdvisorTest {
     @Test
     void injectsFactsIntoSystemMessage() {
         UserMemoryApi userMemoryApi = mock(UserMemoryApi.class);
-        ProfilesApi profilesApi = mock(ProfilesApi.class);
+        RoomsApi roomsApi = mock(RoomsApi.class);
         StreaksApi streaksApi = mock(StreaksApi.class);
-        when(profilesApi.find(any())).thenReturn(Optional.empty());
+        when(roomsApi.findPersonalGoalForUser(any())).thenReturn(Optional.empty());
         when(userMemoryApi.recentFacts(any(), anyInt())).thenReturn(List.of(
                 fact("prefers worked examples"),
                 fact("is preparing for IELTS")));
-        UserMemoryAdvisor advisor = new UserMemoryAdvisor(userMemoryApi, profilesApi, streaksApi);
+        UserMemoryAdvisor advisor = new UserMemoryAdvisor(userMemoryApi, roomsApi, streaksApi);
 
         ScriptedCallAdvisorChain chain = new ScriptedCallAdvisorChain(List.of("ok"));
         advisor.adviseCall(request("You are the Coach.", currentUser), chain);
@@ -60,15 +60,14 @@ class UserMemoryAdvisorTest {
     @Test
     void injectsGoalFromProfileAndStreakFromStreaks() {
         UserMemoryApi userMemoryApi = mock(UserMemoryApi.class);
-        ProfilesApi profilesApi = mock(ProfilesApi.class);
+        RoomsApi roomsApi = mock(RoomsApi.class);
         StreaksApi streaksApi = mock(StreaksApi.class);
         when(userMemoryApi.recentFacts(any(), anyInt())).thenReturn(List.of());
-        when(profilesApi.find(any())).thenReturn(Optional.of(new ProfileDto(
-                userId, null, null, "Pass IELTS", LocalDate.parse("2026-07-01"),
-                null, null, 0, 0, 0, null)));
+        when(roomsApi.findPersonalGoalForUser(any())).thenReturn(Optional.of(new RoomGoalDto(
+                UUID.randomUUID(), "Pass IELTS", LocalDate.parse("2026-07-01"), null)));
         when(streaksApi.getStreak(userId)).thenReturn(
                 new StreakDto(userId, 4, 9, LocalDate.parse("2026-05-31"), null));
-        UserMemoryAdvisor advisor = new UserMemoryAdvisor(userMemoryApi, profilesApi, streaksApi);
+        UserMemoryAdvisor advisor = new UserMemoryAdvisor(userMemoryApi, roomsApi, streaksApi);
 
         ScriptedCallAdvisorChain chain = new ScriptedCallAdvisorChain(List.of("ok"));
         advisor.adviseCall(request("base", currentUser), chain);
@@ -81,25 +80,25 @@ class UserMemoryAdvisorTest {
     @Test
     void passesThroughWhenNoCurrentUser() {
         UserMemoryApi userMemoryApi = mock(UserMemoryApi.class);
-        ProfilesApi profilesApi = mock(ProfilesApi.class);
+        RoomsApi roomsApi = mock(RoomsApi.class);
         StreaksApi streaksApi = mock(StreaksApi.class);
-        UserMemoryAdvisor advisor = new UserMemoryAdvisor(userMemoryApi, profilesApi, streaksApi);
+        UserMemoryAdvisor advisor = new UserMemoryAdvisor(userMemoryApi, roomsApi, streaksApi);
 
         ScriptedCallAdvisorChain chain = new ScriptedCallAdvisorChain(List.of("ok"));
         advisor.adviseCall(request("base only", null), chain);
 
         assertThat(systemText(chain.requests().get(0))).isEqualTo("base only");
-        verifyNoInteractions(userMemoryApi, profilesApi, streaksApi);
+        verifyNoInteractions(userMemoryApi, roomsApi, streaksApi);
     }
 
     @Test
     void passesThroughWhenNothingToInject() {
         UserMemoryApi userMemoryApi = mock(UserMemoryApi.class);
-        ProfilesApi profilesApi = mock(ProfilesApi.class);
+        RoomsApi roomsApi = mock(RoomsApi.class);
         StreaksApi streaksApi = mock(StreaksApi.class);
-        when(profilesApi.find(any())).thenReturn(Optional.empty());
+        when(roomsApi.findPersonalGoalForUser(any())).thenReturn(Optional.empty());
         when(userMemoryApi.recentFacts(any(), anyInt())).thenReturn(List.of());
-        UserMemoryAdvisor advisor = new UserMemoryAdvisor(userMemoryApi, profilesApi, streaksApi);
+        UserMemoryAdvisor advisor = new UserMemoryAdvisor(userMemoryApi, roomsApi, streaksApi);
 
         ScriptedCallAdvisorChain chain = new ScriptedCallAdvisorChain(List.of("ok"));
         advisor.adviseCall(request("base only", currentUser), chain);
@@ -110,13 +109,13 @@ class UserMemoryAdvisorTest {
     @Test
     void capsBlockAtMaxCharsKeepingNewestFacts() {
         UserMemoryApi userMemoryApi = mock(UserMemoryApi.class);
-        ProfilesApi profilesApi = mock(ProfilesApi.class);
+        RoomsApi roomsApi = mock(RoomsApi.class);
         StreaksApi streaksApi = mock(StreaksApi.class);
-        when(profilesApi.find(any())).thenReturn(Optional.empty());
+        when(roomsApi.findPersonalGoalForUser(any())).thenReturn(Optional.empty());
         when(userMemoryApi.recentFacts(any(), anyInt())).thenReturn(List.of(
                 fact("newest fact kept"),
                 fact("older fact dropped due to the tight character budget")));
-        UserMemoryAdvisor advisor = new UserMemoryAdvisor(userMemoryApi, profilesApi, streaksApi, 0, 20, 70);
+        UserMemoryAdvisor advisor = new UserMemoryAdvisor(userMemoryApi, roomsApi, streaksApi, 0, 20, 70);
 
         ScriptedCallAdvisorChain chain = new ScriptedCallAdvisorChain(List.of("ok"));
         advisor.adviseCall(request("", currentUser), chain);

@@ -14,7 +14,6 @@ import org.aiincubator.ilmai.common.domain.DateAuditable;
 import org.aiincubator.ilmai.common.i18n.SupportedLocale;
 import org.hibernate.proxy.HibernateProxy;
 
-import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.util.Objects;
@@ -25,7 +24,7 @@ import java.util.UUID;
 @Getter
 @Setter
 @NoArgsConstructor
-@ToString(of = {"userId", "locale", "goal"})
+@ToString(of = {"userId", "locale"})
 public class Profile extends DateAuditable {
 
     @Id
@@ -39,17 +38,8 @@ public class Profile extends DateAuditable {
     @Column(nullable = false, length = 64)
     private String timezone = "UTC";
 
-    @Column(length = 500)
-    private String goal;
-
-    @Column(name = "target_date")
-    private LocalDate targetDate;
-
     @Column(name = "daily_reminder")
     private LocalTime dailyReminder;
-
-    @Column(name = "daily_study_minutes")
-    private Integer dailyStudyMinutes;
 
     @Column(name = "sessions_count", nullable = false)
     private int sessionsCount;

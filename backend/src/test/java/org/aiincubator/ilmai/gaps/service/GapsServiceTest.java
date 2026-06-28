@@ -10,6 +10,8 @@ import org.aiincubator.ilmai.materials.MaterialsApi;
 import org.aiincubator.ilmai.quiz.QuizApi;
 import org.aiincubator.ilmai.quiz.QuizQuestionDto;
 import org.aiincubator.ilmai.quiz.QuizSessionDto;
+import org.aiincubator.ilmai.rooms.RoomDto;
+import org.aiincubator.ilmai.rooms.RoomsApi;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -29,12 +31,14 @@ import static org.mockito.Mockito.when;
 class GapsServiceTest {
 
     private final UUID user = UUID.randomUUID();
+    private final UUID room = UUID.randomUUID();
     private final OffsetDateTime now = OffsetDateTime.now();
 
     private QuizApi quizApi;
     private KnowledgeGapRepository repository;
     private GapsMapper gapsMapper;
     private MaterialsApi materialsApi;
+    private RoomsApi roomsApi;
     private GapsService service;
     private List<KnowledgeGap> store;
 
@@ -44,11 +48,14 @@ class GapsServiceTest {
         repository = mock(KnowledgeGapRepository.class);
         gapsMapper = mock(GapsMapper.class);
         materialsApi = mock(MaterialsApi.class);
-        service = new GapsService(quizApi, repository, gapsMapper, materialsApi);
+        roomsApi = mock(RoomsApi.class);
+        service = new GapsService(quizApi, repository, gapsMapper, materialsApi, roomsApi);
 
         store = new ArrayList<>();
+        when(roomsApi.findPersonalForUser(user))
+                .thenReturn(Optional.of(new RoomDto(room, user, "Personal", true)));
         when(quizApi.findIncorrectQuestionsForUser(any())).thenReturn(List.of());
-        when(repository.findByUserIdAndConcept(any(), any())).thenReturn(Optional.empty());
+        when(repository.findByRoomIdAndConcept(any(), any())).thenReturn(Optional.empty());
         when(repository.save(any(KnowledgeGap.class))).thenAnswer(invocation -> {
             KnowledgeGap gap = invocation.getArgument(0);
             store.add(gap);

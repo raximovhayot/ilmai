@@ -19,6 +19,8 @@ import org.aiincubator.ilmai.plan.PlanStepDto;
 import org.aiincubator.ilmai.profiles.ProfileDto;
 import org.aiincubator.ilmai.profiles.ProfilesApi;
 import org.aiincubator.ilmai.quiz.QuizApi;
+import org.aiincubator.ilmai.rooms.RoomGoalDto;
+import org.aiincubator.ilmai.rooms.RoomsApi;
 import org.aiincubator.ilmai.quiz.WeeklyQuizStats;
 import org.aiincubator.ilmai.streaks.StreaksApi;
 import org.springframework.beans.factory.annotation.Value;
@@ -46,6 +48,7 @@ public class DigestService {
     private static final int NEW_USER_ACTIVITY_DAYS = 7;
 
     private final ProfilesApi profilesApi;
+    private final RoomsApi roomsApi;
     private final QuizApi quizApi;
     private final StreaksApi streaksApi;
     private final GapsApi gapsApi;
@@ -58,6 +61,7 @@ public class DigestService {
     private final int sendHour;
 
     public DigestService(ProfilesApi profilesApi,
+                         RoomsApi roomsApi,
                          QuizApi quizApi,
                          StreaksApi streaksApi,
                          GapsApi gapsApi,
@@ -69,6 +73,7 @@ public class DigestService {
                          Clock clock,
                          @Value("${digest.send-hour:19}") int sendHour) {
         this.profilesApi = profilesApi;
+        this.roomsApi = roomsApi;
         this.quizApi = quizApi;
         this.streaksApi = streaksApi;
         this.gapsApi = gapsApi;
@@ -128,8 +133,9 @@ public class DigestService {
         Integer avgScore = quiz.getAnswered() > 0
                 ? Math.round((quiz.getCorrect() * 100f) / quiz.getAnswered())
                 : null;
-        Integer daysUntilDeadline = profile != null && profile.getTargetDate() != null
-                ? (int) ChronoUnit.DAYS.between(localToday, profile.getTargetDate())
+        RoomGoalDto roomGoal = roomsApi.findPersonalGoalForUser(userId).orElse(null);
+        Integer daysUntilDeadline = roomGoal != null && roomGoal.getTargetDate() != null
+                ? (int) ChronoUnit.DAYS.between(localToday, roomGoal.getTargetDate())
                 : null;
 
         WeeklyDigest digest = new WeeklyDigest();
@@ -151,7 +157,7 @@ public class DigestService {
         digest.setFocusNextWeek(List.of());
 
         if (digest.getVariant() == DigestVariant.FULL) {
-            narrate(userId, profile, digest, topGaps);
+            narrate(userId, profile, roomGoal, digest, topGaps);
         }
 
         WeeklyDigest saved = weeklyDigests.save(digest);
@@ -169,10 +175,11 @@ public class DigestService {
         return saved;
     }
 
-    private void narrate(UUID userId, ProfileDto profile, WeeklyDigest digest, List<String> topGaps) {
+    private void narrate(UUID userId, ProfileDto profile, RoomGoalDto roomGoal, WeeklyDigest digest,
+                         List<String> topGaps) {
         DigestNarrationInput input = DigestNarrationInput.builder()
                 .language(languageOf(profile))
-                .goal(profile == null ? null : profile.getGoal())
+                .goal(roomGoal == null ? null : roomGoal.getGoal())
                 .daysUntilDeadline(digest.getDaysUntilDeadline())
                 .activeDays(digest.getActiveDays())
                 .quizzes(digest.getQuizzes())

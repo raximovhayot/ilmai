@@ -149,6 +149,7 @@ class TelegramQuizPollIntegrationTest {
         return transactionTemplate.execute(status -> {
             QuizSession session = new QuizSession();
             session.setUserId(userId);
+            session.setRoomId(UUID.randomUUID());
             session.setDifficulty(QuizDifficulty.SOLID);
             session.setDifficultyLevel(2);
             session.setLocale(SupportedLocale.EN);

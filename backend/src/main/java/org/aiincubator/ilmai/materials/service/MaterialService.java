@@ -17,8 +17,8 @@ import org.aiincubator.ilmai.materials.domain.TopicRepository;
 import org.aiincubator.ilmai.materials.payload.MaterialResponse;
 import org.aiincubator.ilmai.materials.payload.SpaceContentsResponse;
 import org.aiincubator.ilmai.materials.payload.TopicResponse;
-import org.aiincubator.ilmai.spaces.SpaceDto;
-import org.aiincubator.ilmai.spaces.SpacesApi;
+import org.aiincubator.ilmai.rooms.RoomDto;
+import org.aiincubator.ilmai.rooms.RoomsApi;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Slice;
@@ -61,7 +61,7 @@ public class MaterialService {
     private final BlobStorage storage;
     private final ApplicationEventPublisher publisher;
     private final QuotaService quotaService;
-    private final SpacesApi spacesApi;
+    private final RoomsApi roomsApi;
     private final TopicMapper topicMapper;
 
     @Transactional
@@ -69,20 +69,18 @@ public class MaterialService {
         if (file == null || file.isEmpty()) {
             throw new MaterialException(MaterialException.Reason.MATERIAL_UNSUPPORTED_TYPE, "");
         }
+        roomsApi.requireOwner(currentUser, spaceId);
         List<UUID> spaceIds = requireSpaceIds(currentUser);
-        if (!spaceIds.contains(spaceId)) {
-            throw new MaterialException(MaterialException.Reason.MATERIAL_SPACE_NOT_FOUND);
-        }
 
         Topic topic = null;
         if (topicId != null) {
-            topic = topics.findByIdAndSpaceIdIn(topicId, List.of(spaceId))
+            topic = topics.findByIdAndRoomIdIn(topicId, List.of(spaceId))
                     .orElseThrow(() -> new MaterialException(MaterialException.Reason.MATERIAL_TOPIC_NOT_FOUND));
         }
 
         int quota = quotaService.materialUploadQuota(currentUser.getUserId());
         if (quota > 0) {
-            long owned = materials.countBySpaceIdIn(spaceIds);
+            long owned = materials.countByRoomIdIn(spaceIds);
             if (owned >= quota) {
                 throw new MaterialException(MaterialException.Reason.MATERIAL_UPLOAD_LIMIT, quota);
             }
@@ -93,7 +91,7 @@ public class MaterialService {
         validateSize(file.getSize(), maxBytes);
 
         Material material = new Material();
-        material.setSpaceId(spaceId);
+        material.setRoomId(spaceId);
         material.setTopic(topic);
         material.setStatus(MaterialStatus.PENDING);
         material.setContentType(file.getContentType());
@@ -118,14 +116,14 @@ public class MaterialService {
         if (content == null || content.length == 0) {
             throw new MaterialException(MaterialException.Reason.MATERIAL_UNSUPPORTED_TYPE, "");
         }
-        SpaceDto primary = spacesApi.findPrimaryForUser(currentUser.getUserId())
+        RoomDto primary = roomsApi.findPersonalForUser(currentUser.getUserId())
                 .orElseThrow(() -> new MaterialException(MaterialException.Reason.MATERIAL_SPACE_NOT_FOUND));
         UUID spaceId = primary.getId();
         List<UUID> spaceIds = requireSpaceIds(currentUser);
 
         int quota = quotaService.materialUploadQuota(currentUser.getUserId());
         if (quota > 0) {
-            long owned = materials.countBySpaceIdIn(spaceIds);
+            long owned = materials.countByRoomIdIn(spaceIds);
             if (owned >= quota) {
                 throw new MaterialException(MaterialException.Reason.MATERIAL_UPLOAD_LIMIT, quota);
             }
@@ -136,7 +134,7 @@ public class MaterialService {
         validateSize(content.length, maxBytes);
 
         Material material = new Material();
-        material.setSpaceId(spaceId);
+        material.setRoomId(spaceId);
         material.setStatus(MaterialStatus.PENDING);
         material.setContentType(contentType);
         material.setSizeBytes((long) content.length);
@@ -160,11 +158,11 @@ public class MaterialService {
         List<UUID> spaceIds = requireSpaceIds(currentUser);
         List<Material> found;
         if (topicId != null) {
-            topics.findByIdAndSpaceIdIn(topicId, spaceIds)
+            topics.findByIdAndRoomIdIn(topicId, spaceIds)
                     .orElseThrow(() -> new MaterialException(MaterialException.Reason.MATERIAL_TOPIC_NOT_FOUND));
-            found = materials.findAllByTopicIdAndSpaceIdInOrderByCreatedAtDesc(topicId, spaceIds);
+            found = materials.findAllByTopicIdAndRoomIdInOrderByCreatedAtDesc(topicId, spaceIds);
         } else {
-            found = materials.findAllBySpaceIdInOrderByCreatedAtDesc(spaceIds);
+            found = materials.findAllByRoomIdInOrderByCreatedAtDesc(spaceIds);
         }
         return found.stream()
                 .map(materialMapper::toResponse)
@@ -176,10 +174,10 @@ public class MaterialService {
         List<UUID> spaceIds = requireSpaceIds(currentUser);
         int safePage = Math.max(page, 0);
         int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
-        Slice<Material> slice = materials.findByTopicIsNullAndSpaceIdInOrderByCreatedAtDesc(
+        Slice<Material> slice = materials.findByTopicIsNullAndRoomIdInOrderByCreatedAtDesc(
                 spaceIds, PageRequest.of(safePage, safeSize));
         List<TopicResponse> topicList = safePage == 0
-                ? topics.findAllBySpaceIdInOrderByCreatedAtAsc(spaceIds).stream()
+                ? topics.findAllByRoomIdInOrderByCreatedAtAsc(spaceIds).stream()
                         .map(topicMapper::toResponse)
                         .toList()
                 : List.of();
@@ -198,12 +196,13 @@ public class MaterialService {
     @Transactional
     public MaterialResponse move(CurrentUser currentUser, UUID materialId, UUID targetTopicId) {
         List<UUID> spaceIds = requireSpaceIds(currentUser);
-        Material material = materials.findByIdAndSpaceIdIn(materialId, spaceIds)
+        Material material = materials.findByIdAndRoomIdIn(materialId, spaceIds)
                 .orElseThrow(() -> new MaterialException(MaterialException.Reason.MATERIAL_NOT_FOUND));
+        roomsApi.requireOwner(currentUser, material.getRoomId());
         if (targetTopicId == null) {
             material.setTopic(null);
         } else {
-            Topic topic = topics.findByIdAndSpaceIdIn(targetTopicId, List.of(material.getSpaceId()))
+            Topic topic = topics.findByIdAndRoomIdIn(targetTopicId, List.of(material.getRoomId()))
                     .orElseThrow(() -> new MaterialException(MaterialException.Reason.MATERIAL_TOPIC_NOT_FOUND));
             material.setTopic(topic);
         }
@@ -213,7 +212,7 @@ public class MaterialService {
     @Transactional(readOnly = true)
     public MaterialResponse get(CurrentUser currentUser, UUID materialId) {
         List<UUID> spaceIds = requireSpaceIds(currentUser);
-        return materials.findByIdAndSpaceIdIn(materialId, spaceIds)
+        return materials.findByIdAndRoomIdIn(materialId, spaceIds)
                 .map(materialMapper::toResponse)
                 .orElseThrow(() -> new MaterialException(MaterialException.Reason.MATERIAL_NOT_FOUND));
     }
@@ -221,9 +220,9 @@ public class MaterialService {
     @Transactional(readOnly = true)
     public RawMaterial openRaw(CurrentUser currentUser, UUID materialId) {
         List<UUID> spaceIds = requireSpaceIds(currentUser);
-        Material material = materials.findByIdAndSpaceIdIn(materialId, spaceIds)
+        Material material = materials.findByIdAndRoomIdIn(materialId, spaceIds)
                 .orElseThrow(() -> new MaterialException(MaterialException.Reason.MATERIAL_NOT_FOUND));
-        String storageKey = MaterialStorageKeys.forCoordinates(material.getSpaceId(), material.getId());
+        String storageKey = MaterialStorageKeys.forCoordinates(material.getRoomId(), material.getId());
         try (InputStream in = storage.open(storageKey)) {
             byte[] content = in.readAllBytes();
             return new RawMaterial(content, material.getContentType(), material.getTitle());
@@ -235,8 +234,9 @@ public class MaterialService {
     @Transactional
     public void delete(CurrentUser currentUser, UUID materialId) {
         List<UUID> spaceIds = requireSpaceIds(currentUser);
-        Material material = materials.findByIdAndSpaceIdIn(materialId, spaceIds)
+        Material material = materials.findByIdAndRoomIdIn(materialId, spaceIds)
                 .orElseThrow(() -> new MaterialException(MaterialException.Reason.MATERIAL_NOT_FOUND));
+        roomsApi.requireOwner(currentUser, material.getRoomId());
         deleteInternal(material, currentUser.getUserId());
     }
 
@@ -249,7 +249,7 @@ public class MaterialService {
 
     private void deleteInternal(Material material, UUID userId) {
         UUID deletedId = material.getId();
-        String storageKey = MaterialStorageKeys.forCoordinates(material.getSpaceId(), deletedId);
+        String storageKey = MaterialStorageKeys.forCoordinates(material.getRoomId(), deletedId);
         materials.delete(material);
         try {
             storage.delete(storageKey);
@@ -259,7 +259,7 @@ public class MaterialService {
     }
 
     private List<UUID> requireSpaceIds(CurrentUser currentUser) {
-        List<UUID> spaceIds = spacesApi.findSpaceIdsForUser(currentUser.getUserId());
+        List<UUID> spaceIds = roomsApi.findRoomIdsForUser(currentUser.getUserId());
         if (spaceIds.isEmpty()) {
             throw new MaterialException(MaterialException.Reason.MATERIAL_SPACE_NOT_FOUND);
         }

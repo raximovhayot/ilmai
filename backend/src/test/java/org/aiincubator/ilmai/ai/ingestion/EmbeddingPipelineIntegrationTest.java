@@ -11,8 +11,8 @@ import org.aiincubator.ilmai.materials.domain.MaterialRepository;
 import org.aiincubator.ilmai.materials.MaterialStatus;
 import org.aiincubator.ilmai.materials.MaterialStorageKeys;
 import org.aiincubator.ilmai.materials.MaterialUploadedEvent;
-import org.aiincubator.ilmai.spaces.domain.Space;
-import org.aiincubator.ilmai.spaces.domain.SpaceRepository;
+import org.aiincubator.ilmai.rooms.domain.Room;
+import org.aiincubator.ilmai.rooms.domain.RoomRepository;
 import org.aiincubator.ilmai.materials.domain.Topic;
 import org.aiincubator.ilmai.materials.domain.TopicRepository;
 import org.junit.jupiter.api.Test;
@@ -35,7 +35,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class EmbeddingPipelineIntegrationTest extends AbstractEmbeddingIntegrationTest {
 
     @Autowired UserRepository users;
-    @Autowired SpaceRepository spaces;
+    @Autowired RoomRepository rooms;
     @Autowired TopicRepository topics;
     @Autowired MaterialRepository materials;
     @Autowired MaterialIngestionService ingestion;
@@ -47,7 +47,7 @@ class EmbeddingPipelineIntegrationTest extends AbstractEmbeddingIntegrationTest 
     void embedAndRetrieveRoundTrip() {
         UUID materialId = transactionTemplate.execute(status -> {
             User user = persistUser("learner@example.com");
-            Space space = persistSpace(user, "My Space");
+            Room space = persistSpace(user, "My Space");
             Topic topic = persistTopic(space, "Cloud Computing");
             Material material = persistMaterial(topic, "AWS notes",
                     "Amazon Web Services provides cloud computing services including S3 for object storage.");
@@ -56,7 +56,7 @@ class EmbeddingPipelineIntegrationTest extends AbstractEmbeddingIntegrationTest 
         assertThat(materialId).isNotNull();
 
         Material material = materials.findById(materialId).orElseThrow();
-        UUID userId = spaces.findById(material.getSpaceId()).orElseThrow().getUserId();
+        UUID userId = rooms.findById(material.getRoomId()).orElseThrow().getOwnerId();
 
         ingestion.onMaterialUploaded(new MaterialUploadedEvent(materialId, userId));
 
@@ -75,6 +75,7 @@ class EmbeddingPipelineIntegrationTest extends AbstractEmbeddingIntegrationTest 
         assertThat(hits).isNotEmpty();
         assertThat(hits).allSatisfy(doc -> {
             assertThat(doc.getMetadata()).containsEntry("user_id", userId.toString());
+            assertThat(doc.getMetadata()).containsEntry("room_id", material.getRoomId().toString());
             assertThat(doc.getMetadata()).containsEntry("material_id", materialId.toString());
             assertThat(doc.getMetadata()).containsEntry("material_name", "AWS notes");
         });
@@ -87,23 +88,24 @@ class EmbeddingPipelineIntegrationTest extends AbstractEmbeddingIntegrationTest 
         return users.saveAndFlush(user);
     }
 
-    private Space persistSpace(User user, String name) {
-        Space space = new Space();
-        space.setUserId(user.getId());
+    private Room persistSpace(User user, String name) {
+        Room space = new Room();
+        space.setOwnerId(user.getId());
         space.setName(name);
-        return spaces.saveAndFlush(space);
+        space.setPersonal(true);
+        return rooms.saveAndFlush(space);
     }
 
-    private Topic persistTopic(Space space, String name) {
+    private Topic persistTopic(Room space, String name) {
         Topic topic = new Topic();
-        topic.setSpaceId(space.getId());
+        topic.setRoomId(space.getId());
         topic.setName(name);
         return topics.saveAndFlush(topic);
     }
 
     private Material persistMaterial(Topic topic, String title, String content) {
         Material material = new Material();
-        material.setSpaceId(topic.getSpaceId());
+        material.setRoomId(topic.getRoomId());
         material.setTopic(topic);
         material.setTitle(title);
         material.setContentType("text/plain; charset=utf-8");
@@ -112,7 +114,7 @@ class EmbeddingPipelineIntegrationTest extends AbstractEmbeddingIntegrationTest 
         material.setStatus(MaterialStatus.PENDING);
         material = materials.saveAndFlush(material);
         try {
-            ((InMemoryBlobStorage) storage).put(MaterialStorageKeys.forCoordinates(material.getSpaceId(), material.getId()),
+            ((InMemoryBlobStorage) storage).put(MaterialStorageKeys.forCoordinates(material.getRoomId(), material.getId()),
                     new ByteArrayInputStream(bytes), bytes.length, "text/plain");
         } catch (IOException ex) {
             throw new RuntimeException(ex);

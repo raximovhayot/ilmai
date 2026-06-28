@@ -12,7 +12,9 @@ import org.aiincubator.ilmai.plan.domain.PlanStep;
 import org.aiincubator.ilmai.plan.payload.LearningPlanResponse;
 import org.aiincubator.ilmai.plan.payload.PlanStepResponse;
 import org.aiincubator.ilmai.plan.service.PlanService;
-import org.aiincubator.ilmai.profiles.GoalUpdatedEvent;
+import org.aiincubator.ilmai.rooms.RoomGoalUpdatedEvent;
+import org.aiincubator.ilmai.rooms.domain.Room;
+import org.aiincubator.ilmai.rooms.domain.RoomRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -65,6 +67,9 @@ class PlanApiIntegrationTest {
     private UserRepository users;
 
     @Autowired
+    private RoomRepository rooms;
+
+    @Autowired
     private ApplicationEventPublisher events;
 
     @Autowired
@@ -98,7 +103,7 @@ class PlanApiIntegrationTest {
     }
 
     @Test
-    void savingDistinctGoalsKeepsBothActiveAsSeparatePlans() {
+    void savingAnotherPlanSupersedesThePreviousOneInTheSameRoom() {
         UUID user = seedUser();
 
         planApi.savePlan(new CurrentUser(user), "First goal", null, List.of(
@@ -106,13 +111,16 @@ class PlanApiIntegrationTest {
         planApi.savePlan(new CurrentUser(user), "Second goal", null, List.of(
                 new PlanStepInput(1, LocalDate.now(), "New step", PlanActivity.QUIZ, List.of(), null)));
 
-        assertThat(plans.findByUserIdAndStatus(user, PlanStatus.ACTIVE)).hasSize(2);
-        assertThat(plans.findByUserIdAndStatus(user, PlanStatus.SUPERSEDED)).isEmpty();
+        assertThat(plans.findByUserIdAndStatus(user, PlanStatus.ACTIVE)).hasSize(1);
+        assertThat(plans.findByUserIdAndStatus(user, PlanStatus.SUPERSEDED)).hasSize(1);
 
         List<LearningPlanResponse> all = planService.listPlansResponse(new CurrentUser(user));
-        assertThat(all).extracting(LearningPlanResponse::getGoal)
-                .containsExactlyInAnyOrder("First goal", "Second goal");
-        assertThat(all).extracting(LearningPlanResponse::getGoalId).doesNotContainNull();
+        assertThat(all).singleElement()
+                .satisfies(p -> assertThat(p.getGoal()).isEqualTo("Second goal"));
+        UUID roomId = rooms.findFirstByOwnerIdAndPersonalTrueOrderByCreatedAtAsc(user).orElseThrow().getId();
+        assertThat(plans.findByRoomIdAndStatus(roomId, PlanStatus.ACTIVE))
+                .singleElement()
+                .satisfies(p -> assertThat(p.getGoalId()).isEqualTo(roomId));
     }
 
     @Test
@@ -262,7 +270,7 @@ class PlanApiIntegrationTest {
         planApi.savePlan(new CurrentUser(user), "IELTS", null, List.of(
                 new PlanStepInput(1, LocalDate.now(), "Read", PlanActivity.READ, List.of(), null)));
 
-        events.publishEvent(new GoalUpdatedEvent(user));
+        events.publishEvent(new RoomGoalUpdatedEvent(user, UUID.randomUUID()));
 
         assertThat(planApi.getActivePlan(new CurrentUser(user)).orElseThrow().isReplanNeeded()).isTrue();
     }
@@ -293,7 +301,13 @@ class PlanApiIntegrationTest {
             User user = new User();
             user.setUsername("user-" + UUID.randomUUID() + "@example.com");
             user.setStatus(UserStatus.ACTIVE);
-            return users.saveAndFlush(user).getId();
+            UUID userId = users.saveAndFlush(user).getId();
+            Room room = new Room();
+            room.setOwnerId(userId);
+            room.setName("Personal");
+            room.setPersonal(true);
+            rooms.saveAndFlush(room);
+            return userId;
         });
     }
 }

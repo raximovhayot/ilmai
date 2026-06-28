@@ -9,7 +9,7 @@ import org.aiincubator.ilmai.materials.TopicDto;
 import org.aiincubator.ilmai.materials.domain.Material;
 import org.aiincubator.ilmai.materials.domain.MaterialRepository;
 import org.aiincubator.ilmai.materials.domain.TopicRepository;
-import org.aiincubator.ilmai.spaces.SpacesApi;
+import org.aiincubator.ilmai.rooms.RoomsApi;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,28 +23,28 @@ public class DefaultMaterialsApi implements MaterialsApi {
 
     private final MaterialRepository materials;
     private final TopicRepository topics;
-    private final SpacesApi spacesApi;
+    private final RoomsApi roomsApi;
     private final MaterialsApiMapper mapper;
     private final MaterialService materialService;
 
     @Override
     @Transactional(readOnly = true)
     public boolean hasReadyMaterialsForUser(UUID userId) {
-        List<UUID> spaceIds = spacesApi.findSpaceIdsForUser(userId);
+        List<UUID> spaceIds = roomsApi.findRoomIdsForUser(userId);
         if (spaceIds.isEmpty()) {
             return false;
         }
-        return materials.countBySpaceIdInAndStatus(spaceIds, MaterialStatus.READY) > 0;
+        return materials.countByRoomIdInAndStatus(spaceIds, MaterialStatus.READY) > 0;
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<MaterialDto> findReadyForUser(UUID userId) {
-        List<UUID> spaceIds = spacesApi.findSpaceIdsForUser(userId);
+        List<UUID> spaceIds = roomsApi.findRoomIdsForUser(userId);
         if (spaceIds.isEmpty()) {
             return List.of();
         }
-        return materials.findAllBySpaceIdInAndStatusOrderByCreatedAtDesc(spaceIds, MaterialStatus.READY)
+        return materials.findAllByRoomIdInAndStatusOrderByCreatedAtDesc(spaceIds, MaterialStatus.READY)
                 .stream()
                 .map(mapper::toDto)
                 .toList();
@@ -53,11 +53,11 @@ public class DefaultMaterialsApi implements MaterialsApi {
     @Override
     @Transactional(readOnly = true)
     public Optional<MaterialDto> findOwnedByUser(UUID materialId, UUID userId) {
-        List<UUID> spaceIds = spacesApi.findSpaceIdsForUser(userId);
+        List<UUID> spaceIds = roomsApi.findRoomIdsForUser(userId);
         if (spaceIds.isEmpty()) {
             return Optional.empty();
         }
-        return materials.findByIdAndSpaceIdIn(materialId, spaceIds).map(mapper::toDto);
+        return materials.findByIdAndRoomIdIn(materialId, spaceIds).map(mapper::toDto);
     }
 
     @Override
@@ -93,21 +93,21 @@ public class DefaultMaterialsApi implements MaterialsApi {
     @Override
     @Transactional(readOnly = true)
     public Optional<TopicDto> findTopicOwnedByUser(UUID topicId, UUID userId) {
-        List<UUID> spaceIds = spacesApi.findSpaceIdsForUser(userId);
+        List<UUID> spaceIds = roomsApi.findRoomIdsForUser(userId);
         if (spaceIds.isEmpty()) {
             return Optional.empty();
         }
-        return topics.findByIdAndSpaceIdIn(topicId, spaceIds).map(mapper::toDto);
+        return topics.findByIdAndRoomIdIn(topicId, spaceIds).map(mapper::toDto);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<TopicDto> findAllTopicsByUser(UUID userId) {
-        List<UUID> spaceIds = spacesApi.findSpaceIdsForUser(userId);
+        List<UUID> spaceIds = roomsApi.findRoomIdsForUser(userId);
         if (spaceIds.isEmpty()) {
             return List.of();
         }
-        return topics.findAllBySpaceIdInOrderByCreatedAtAsc(spaceIds)
+        return topics.findAllByRoomIdInOrderByCreatedAtAsc(spaceIds)
                 .stream()
                 .map(mapper::toDto)
                 .toList();

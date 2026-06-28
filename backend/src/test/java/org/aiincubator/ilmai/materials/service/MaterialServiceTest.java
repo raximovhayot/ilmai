@@ -14,7 +14,8 @@ import org.aiincubator.ilmai.materials.MaterialStatus;
 import org.aiincubator.ilmai.materials.domain.Topic;
 import org.aiincubator.ilmai.materials.domain.TopicRepository;
 import org.aiincubator.ilmai.materials.payload.MaterialResponse;
-import org.aiincubator.ilmai.spaces.SpacesApi;
+import org.aiincubator.ilmai.rooms.RoomsApi;
+import org.aiincubator.ilmai.rooms.service.RoomException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -51,14 +52,14 @@ class MaterialServiceTest {
     @Mock BlobStorage storage;
     @Mock ApplicationEventPublisher publisher;
     @Mock QuotaService quotaService;
-    @Mock SpacesApi spacesApi;
+    @Mock RoomsApi roomsApi;
 
     private MaterialService materialService;
 
     @BeforeEach
     void setUp() {
         materialService = new MaterialService(
-                materials, topics, Mappers.getMapper(MaterialMapper.class), storage, publisher, quotaService, spacesApi,
+                materials, topics, Mappers.getMapper(MaterialMapper.class), storage, publisher, quotaService, roomsApi,
                 Mappers.getMapper(TopicMapper.class));
         lenient().when(quotaService.materialUploadMaxBytes(any())).thenReturn(25L * 1024 * 1024);
     }
@@ -69,7 +70,7 @@ class MaterialServiceTest {
         UUID spaceId = UUID.randomUUID();
         Topic topic = newTopic(spaceId);
         stubSpaceIds(userId, spaceId);
-        when(topics.findByIdAndSpaceIdIn(topic.getId(), List.of(spaceId))).thenReturn(Optional.of(topic));
+        when(topics.findByIdAndRoomIdIn(topic.getId(), List.of(spaceId))).thenReturn(Optional.of(topic));
         when(materials.save(any(Material.class))).thenAnswer(inv -> {
             Material m = inv.getArgument(0);
             m.setId(UUID.randomUUID());
@@ -92,7 +93,7 @@ class MaterialServiceTest {
         verify(materials).save(captor.capture());
         Material saved = captor.getValue();
         assertThat(saved.getStatus()).isEqualTo(MaterialStatus.PENDING);
-        assertThat(saved.getSpaceId()).isEqualTo(spaceId);
+        assertThat(saved.getRoomId()).isEqualTo(spaceId);
         assertThat(saved.getTopic()).isEqualTo(topic);
 
         String expectedKey = spaceId + "/" + saved.getId();
@@ -123,24 +124,24 @@ class MaterialServiceTest {
         ArgumentCaptor<Material> captor = ArgumentCaptor.forClass(Material.class);
         verify(materials).save(captor.capture());
         assertThat(captor.getValue().getTopic()).isNull();
-        assertThat(captor.getValue().getSpaceId()).isEqualTo(spaceId);
-        verify(topics, never()).findByIdAndSpaceIdIn(any(), any());
+        assertThat(captor.getValue().getRoomId()).isEqualTo(spaceId);
+        verify(topics, never()).findByIdAndRoomIdIn(any(), any());
     }
 
     @Test
     void upload_rejectsWhenSpaceNotOwned() {
         UUID userId = UUID.randomUUID();
-        UUID callerSpace = UUID.randomUUID();
         UUID otherSpace = UUID.randomUUID();
-        stubSpaceIds(userId, callerSpace);
+        CurrentUser caller = new CurrentUser(userId);
+        when(roomsApi.requireOwner(caller, otherSpace))
+                .thenThrow(new RoomException(RoomException.Reason.NOT_OWNER));
 
         MultipartFile file = new MockMultipartFile("file", "n.txt", "text/plain", "x".getBytes());
 
-        assertThatThrownBy(() -> materialService.upload(
-                new CurrentUser(userId), otherSpace, null, file))
-                .isInstanceOf(MaterialException.class)
-                .extracting(e -> ((MaterialException) e).getReason())
-                .isEqualTo(MaterialException.Reason.MATERIAL_SPACE_NOT_FOUND);
+        assertThatThrownBy(() -> materialService.upload(caller, otherSpace, null, file))
+                .isInstanceOf(RoomException.class)
+                .extracting(e -> ((RoomException) e).getReason())
+                .isEqualTo(RoomException.Reason.NOT_OWNER);
         verify(materials, never()).save(any(Material.class));
     }
 
@@ -150,7 +151,7 @@ class MaterialServiceTest {
         UUID spaceId = UUID.randomUUID();
         UUID topicId = UUID.randomUUID();
         stubSpaceIds(userId, spaceId);
-        when(topics.findByIdAndSpaceIdIn(topicId, List.of(spaceId))).thenReturn(Optional.empty());
+        when(topics.findByIdAndRoomIdIn(topicId, List.of(spaceId))).thenReturn(Optional.empty());
 
         MultipartFile file = new MockMultipartFile("file", "n.txt", "text/plain", "x".getBytes());
 
@@ -168,7 +169,7 @@ class MaterialServiceTest {
         UUID spaceId = UUID.randomUUID();
         Topic topic = newTopic(spaceId);
         stubSpaceIds(userId, spaceId);
-        when(topics.findByIdAndSpaceIdIn(topic.getId(), List.of(spaceId))).thenReturn(Optional.of(topic));
+        when(topics.findByIdAndRoomIdIn(topic.getId(), List.of(spaceId))).thenReturn(Optional.of(topic));
 
         MultipartFile file = new MockMultipartFile(
                 "file", "icon.gif", "image/gif", "fake-gif".getBytes());
@@ -187,9 +188,9 @@ class MaterialServiceTest {
         UUID spaceId = UUID.randomUUID();
         Topic topic = newTopic(spaceId);
         stubSpaceIds(userId, spaceId);
-        when(topics.findByIdAndSpaceIdIn(topic.getId(), List.of(spaceId))).thenReturn(Optional.of(topic));
+        when(topics.findByIdAndRoomIdIn(topic.getId(), List.of(spaceId))).thenReturn(Optional.of(topic));
         when(quotaService.materialUploadQuota(userId)).thenReturn(5);
-        when(materials.countBySpaceIdIn(List.of(spaceId))).thenReturn(5L);
+        when(materials.countByRoomIdIn(List.of(spaceId))).thenReturn(5L);
 
         MultipartFile file = new MockMultipartFile(
                 "file", "notes.txt", "text/plain", "x".getBytes());
@@ -209,7 +210,7 @@ class MaterialServiceTest {
         UUID spaceId = UUID.randomUUID();
         Topic topic = newTopic(spaceId);
         stubSpaceIds(userId, spaceId);
-        when(topics.findByIdAndSpaceIdIn(topic.getId(), List.of(spaceId))).thenReturn(Optional.of(topic));
+        when(topics.findByIdAndRoomIdIn(topic.getId(), List.of(spaceId))).thenReturn(Optional.of(topic));
         when(quotaService.materialUploadQuota(userId)).thenReturn(0);
         when(materials.save(any(Material.class))).thenAnswer(inv -> {
             Material m = inv.getArgument(0);
@@ -226,7 +227,7 @@ class MaterialServiceTest {
                 new CurrentUser(userId), spaceId, topic.getId(), file);
 
         assertThat(response.getStatus()).isEqualTo("PENDING");
-        verify(materials, never()).countBySpaceIdIn(any());
+        verify(materials, never()).countByRoomIdIn(any());
     }
 
     @Test
@@ -235,7 +236,7 @@ class MaterialServiceTest {
         UUID spaceId = UUID.randomUUID();
         Topic topic = newTopic(spaceId);
         stubSpaceIds(userId, spaceId);
-        when(topics.findByIdAndSpaceIdIn(topic.getId(), List.of(spaceId))).thenReturn(Optional.of(topic));
+        when(topics.findByIdAndRoomIdIn(topic.getId(), List.of(spaceId))).thenReturn(Optional.of(topic));
         when(materials.save(any(Material.class))).thenAnswer(inv -> {
             Material m = inv.getArgument(0);
             m.setId(UUID.randomUUID());
@@ -262,7 +263,7 @@ class MaterialServiceTest {
         UUID spaceId = UUID.randomUUID();
         Topic topic = newTopic(spaceId);
         stubSpaceIds(userId, spaceId);
-        when(topics.findByIdAndSpaceIdIn(topic.getId(), List.of(spaceId))).thenReturn(Optional.of(topic));
+        when(topics.findByIdAndRoomIdIn(topic.getId(), List.of(spaceId))).thenReturn(Optional.of(topic));
         when(materials.save(any(Material.class))).thenAnswer(inv -> {
             Material m = inv.getArgument(0);
             m.setId(UUID.randomUUID());
@@ -287,7 +288,7 @@ class MaterialServiceTest {
         UUID spaceId = UUID.randomUUID();
         Topic topic = newTopic(spaceId);
         stubSpaceIds(userId, spaceId);
-        when(topics.findByIdAndSpaceIdIn(topic.getId(), List.of(spaceId))).thenReturn(Optional.of(topic));
+        when(topics.findByIdAndRoomIdIn(topic.getId(), List.of(spaceId))).thenReturn(Optional.of(topic));
         when(materials.save(any(Material.class))).thenAnswer(inv -> {
             Material m = inv.getArgument(0);
             m.setId(UUID.randomUUID());
@@ -315,8 +316,8 @@ class MaterialServiceTest {
         Material a = newMaterial(spaceId, topic, "A");
         Material b = newMaterial(spaceId, topic, "B");
         stubSpaceIds(userId, spaceId);
-        when(topics.findByIdAndSpaceIdIn(topic.getId(), List.of(spaceId))).thenReturn(Optional.of(topic));
-        when(materials.findAllByTopicIdAndSpaceIdInOrderByCreatedAtDesc(topic.getId(), List.of(spaceId)))
+        when(topics.findByIdAndRoomIdIn(topic.getId(), List.of(spaceId))).thenReturn(Optional.of(topic));
+        when(materials.findAllByTopicIdAndRoomIdInOrderByCreatedAtDesc(topic.getId(), List.of(spaceId)))
                 .thenReturn(List.of(a, b));
 
         assertThat(materialService.list(new CurrentUser(userId), topic.getId()))
@@ -332,13 +333,13 @@ class MaterialServiceTest {
         Material a = newMaterial(spaceId, topic, "A");
         Material b = newMaterial(spaceId, null, "B");
         stubSpaceIds(userId, spaceId);
-        when(materials.findAllBySpaceIdInOrderByCreatedAtDesc(List.of(spaceId)))
+        when(materials.findAllByRoomIdInOrderByCreatedAtDesc(List.of(spaceId)))
                 .thenReturn(List.of(a, b));
 
         assertThat(materialService.list(new CurrentUser(userId), null))
                 .extracting(MaterialResponse::getTitle)
                 .containsExactly("A", "B");
-        verify(topics, never()).findByIdAndSpaceIdIn(any(), any());
+        verify(topics, never()).findByIdAndRoomIdIn(any(), any());
     }
 
     @Test
@@ -347,7 +348,7 @@ class MaterialServiceTest {
         UUID spaceId = UUID.randomUUID();
         UUID topicId = UUID.randomUUID();
         stubSpaceIds(userId, spaceId);
-        when(topics.findByIdAndSpaceIdIn(topicId, List.of(spaceId))).thenReturn(Optional.empty());
+        when(topics.findByIdAndRoomIdIn(topicId, List.of(spaceId))).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> materialService.list(new CurrentUser(userId), topicId))
                 .isInstanceOf(MaterialException.class)
@@ -362,7 +363,7 @@ class MaterialServiceTest {
         Topic topic = newTopic(spaceId);
         Material material = newMaterial(spaceId, topic, "Cloud notes");
         stubSpaceIds(userId, spaceId);
-        when(materials.findByIdAndSpaceIdIn(material.getId(), List.of(spaceId)))
+        when(materials.findByIdAndRoomIdIn(material.getId(), List.of(spaceId)))
                 .thenReturn(Optional.of(material));
 
         MaterialResponse response = materialService.get(new CurrentUser(userId), material.getId());
@@ -377,7 +378,7 @@ class MaterialServiceTest {
         UUID spaceId = UUID.randomUUID();
         UUID materialId = UUID.randomUUID();
         stubSpaceIds(userId, spaceId);
-        when(materials.findByIdAndSpaceIdIn(materialId, List.of(spaceId))).thenReturn(Optional.empty());
+        when(materials.findByIdAndRoomIdIn(materialId, List.of(spaceId))).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> materialService.get(new CurrentUser(userId), materialId))
                 .isInstanceOf(MaterialException.class)
@@ -392,7 +393,7 @@ class MaterialServiceTest {
         Topic topic = newTopic(spaceId);
         Material material = newMaterial(spaceId, topic, "Cloud notes");
         stubSpaceIds(userId, spaceId);
-        when(materials.findByIdAndSpaceIdIn(material.getId(), List.of(spaceId)))
+        when(materials.findByIdAndRoomIdIn(material.getId(), List.of(spaceId)))
                 .thenReturn(Optional.of(material));
 
         materialService.delete(new CurrentUser(userId), material.getId());
@@ -408,7 +409,7 @@ class MaterialServiceTest {
         Topic topic = newTopic(spaceId);
         Material material = newMaterial(spaceId, topic, "Cloud notes");
         stubSpaceIds(userId, spaceId);
-        when(materials.findByIdAndSpaceIdIn(material.getId(), List.of(spaceId)))
+        when(materials.findByIdAndRoomIdIn(material.getId(), List.of(spaceId)))
                 .thenReturn(Optional.of(material));
 
         materialService.delete(new CurrentUser(userId), material.getId());
@@ -426,7 +427,7 @@ class MaterialServiceTest {
         UUID spaceId = UUID.randomUUID();
         UUID materialId = UUID.randomUUID();
         stubSpaceIds(userId, spaceId);
-        when(materials.findByIdAndSpaceIdIn(materialId, List.of(spaceId))).thenReturn(Optional.empty());
+        when(materials.findByIdAndRoomIdIn(materialId, List.of(spaceId))).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> materialService.delete(new CurrentUser(userId), materialId))
                 .isInstanceOf(MaterialException.class)
@@ -460,9 +461,9 @@ class MaterialServiceTest {
         Topic target = newTopic(spaceId);
         Material material = newMaterial(spaceId, null, "Loose note");
         stubSpaceIds(userId, spaceId);
-        when(materials.findByIdAndSpaceIdIn(material.getId(), List.of(spaceId)))
+        when(materials.findByIdAndRoomIdIn(material.getId(), List.of(spaceId)))
                 .thenReturn(Optional.of(material));
-        when(topics.findByIdAndSpaceIdIn(target.getId(), List.of(spaceId)))
+        when(topics.findByIdAndRoomIdIn(target.getId(), List.of(spaceId)))
                 .thenReturn(Optional.of(target));
 
         MaterialResponse response = materialService.move(new CurrentUser(userId), material.getId(), target.getId());
@@ -478,14 +479,14 @@ class MaterialServiceTest {
         Topic topic = newTopic(spaceId);
         Material material = newMaterial(spaceId, topic, "Note");
         stubSpaceIds(userId, spaceId);
-        when(materials.findByIdAndSpaceIdIn(material.getId(), List.of(spaceId)))
+        when(materials.findByIdAndRoomIdIn(material.getId(), List.of(spaceId)))
                 .thenReturn(Optional.of(material));
 
         MaterialResponse response = materialService.move(new CurrentUser(userId), material.getId(), null);
 
         assertThat(response.getTopicId()).isNull();
         assertThat(material.getTopic()).isNull();
-        verify(topics, never()).findByIdAndSpaceIdIn(any(), any());
+        verify(topics, never()).findByIdAndRoomIdIn(any(), any());
     }
 
     @Test
@@ -494,7 +495,7 @@ class MaterialServiceTest {
         UUID spaceId = UUID.randomUUID();
         UUID materialId = UUID.randomUUID();
         stubSpaceIds(userId, spaceId);
-        when(materials.findByIdAndSpaceIdIn(materialId, List.of(spaceId))).thenReturn(Optional.empty());
+        when(materials.findByIdAndRoomIdIn(materialId, List.of(spaceId))).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> materialService.move(new CurrentUser(userId), materialId, null))
                 .isInstanceOf(MaterialException.class)
@@ -509,9 +510,9 @@ class MaterialServiceTest {
         UUID topicId = UUID.randomUUID();
         Material material = newMaterial(spaceId, null, "Note");
         stubSpaceIds(userId, spaceId);
-        when(materials.findByIdAndSpaceIdIn(material.getId(), List.of(spaceId)))
+        when(materials.findByIdAndRoomIdIn(material.getId(), List.of(spaceId)))
                 .thenReturn(Optional.of(material));
-        when(topics.findByIdAndSpaceIdIn(topicId, List.of(spaceId))).thenReturn(Optional.empty());
+        when(topics.findByIdAndRoomIdIn(topicId, List.of(spaceId))).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> materialService.move(new CurrentUser(userId), material.getId(), topicId))
                 .isInstanceOf(MaterialException.class)
@@ -520,13 +521,13 @@ class MaterialServiceTest {
     }
 
     private void stubSpaceIds(UUID userId, UUID spaceId) {
-        when(spacesApi.findSpaceIdsForUser(userId)).thenReturn(List.of(spaceId));
+        when(roomsApi.findRoomIdsForUser(userId)).thenReturn(List.of(spaceId));
     }
 
     private Topic newTopic(UUID spaceId) {
         Topic topic = new Topic();
         topic.setId(UUID.randomUUID());
-        topic.setSpaceId(spaceId);
+        topic.setRoomId(spaceId);
         topic.setName("Cloud");
         return topic;
     }
@@ -534,7 +535,7 @@ class MaterialServiceTest {
     private Material newMaterial(UUID spaceId, Topic topic, String title) {
         Material material = new Material();
         material.setId(UUID.randomUUID());
-        material.setSpaceId(spaceId);
+        material.setRoomId(spaceId);
         material.setTopic(topic);
         material.setTitle(title);
         material.setStatus(MaterialStatus.READY);

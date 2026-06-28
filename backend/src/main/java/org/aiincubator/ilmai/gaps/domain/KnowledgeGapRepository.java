@@ -12,5 +12,5 @@ public interface KnowledgeGapRepository extends JpaRepository<KnowledgeGap, UUID
 
     List<KnowledgeGap> findAllByUserIdOrderByMissCountDescLastSeenAtDesc(UUID userId);
 
-    Optional<KnowledgeGap> findByUserIdAndConcept(UUID userId, String concept);
+    Optional<KnowledgeGap> findByRoomIdAndConcept(UUID roomId, String concept);
 }

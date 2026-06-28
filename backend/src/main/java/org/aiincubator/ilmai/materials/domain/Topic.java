@@ -28,8 +28,8 @@ public class Topic extends DateAuditable {
     @UuidGenerator(algorithm = UuidVersion7Strategy.class)
     private UUID id;
 
-    @Column(name = "space_id", nullable = false, updatable = false)
-    private UUID spaceId;
+    @Column(name = "room_id", nullable = false, updatable = false)
+    private UUID roomId;
 
     @Column(nullable = false, length = 120)
     private String name;

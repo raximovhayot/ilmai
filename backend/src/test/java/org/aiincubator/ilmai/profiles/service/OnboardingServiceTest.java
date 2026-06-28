@@ -1,12 +1,13 @@
 package org.aiincubator.ilmai.profiles.service;
 
 import org.aiincubator.ilmai.common.CurrentUser;
-import org.aiincubator.ilmai.profiles.GoalUpdatedEvent;
 import org.aiincubator.ilmai.profiles.OnboardingCompletedEvent;
 import org.aiincubator.ilmai.profiles.domain.Profile;
 import org.aiincubator.ilmai.profiles.domain.ProfileRepository;
 import org.aiincubator.ilmai.profiles.payload.OnboardingRequest;
 import org.aiincubator.ilmai.profiles.payload.OnboardingResponse;
+import org.aiincubator.ilmai.rooms.RoomGoalDto;
+import org.aiincubator.ilmai.rooms.RoomsApi;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
 
@@ -29,40 +30,45 @@ class OnboardingServiceTest {
     private final CurrentUser currentUser = new CurrentUser(userId);
 
     private final ProfileRepository profiles = mock(ProfileRepository.class);
+    private final RoomsApi roomsApi = mock(RoomsApi.class);
     private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
     private final OnboardingService service =
-            new OnboardingService(profiles, new OnboardingMapperImpl(), eventPublisher);
+            new OnboardingService(profiles, new OnboardingMapperImpl(), roomsApi, eventPublisher);
+
+    private RoomGoalDto roomGoal(String goal, LocalDate targetDate, Integer dailyStudyMinutes) {
+        return new RoomGoalDto(UUID.randomUUID(), goal, targetDate, dailyStudyMinutes);
+    }
 
     @Test
-    void submitPersistsProvidedFields() {
+    void submitWritesGoalToRoomAndReturnsIt() {
         Profile profile = profileFor(userId);
         when(profiles.findById(userId)).thenReturn(Optional.of(profile));
-
         LocalDate target = LocalDate.now().plusDays(60);
+        when(roomsApi.applyGoalPatch(userId, "Pass IELTS", target, 45))
+                .thenReturn(Optional.of(roomGoal("Pass IELTS", target, 45)));
+
         OnboardingResponse response = service.submit(currentUser,
                 new OnboardingRequest("Pass IELTS", target, 45, LocalTime.of(19, 0), null));
 
-        assertThat(profile.getGoal()).isEqualTo("Pass IELTS");
-        assertThat(profile.getTargetDate()).isEqualTo(target);
-        assertThat(profile.getDailyStudyMinutes()).isEqualTo(45);
+        verify(roomsApi).applyGoalPatch(userId, "Pass IELTS", target, 45);
         assertThat(profile.getDailyReminder()).isEqualTo(LocalTime.of(19, 0));
         assertThat(response.getGoal()).isEqualTo("Pass IELTS");
+        assertThat(response.getTargetDate()).isEqualTo(target);
         assertThat(response.getDailyStudyMinutes()).isEqualTo(45);
         assertThat(response.isTelegramLinked()).isFalse();
     }
 
     @Test
-    void submitWithEmptyRequestLeavesExistingValuesUnchanged() {
+    void submitWithEmptyRequestReturnsExistingRoomGoal() {
         Profile profile = profileFor(userId);
-        profile.setGoal("Existing goal");
-        profile.setDailyStudyMinutes(30);
         when(profiles.findById(userId)).thenReturn(Optional.of(profile));
+        when(roomsApi.applyGoalPatch(userId, null, null, null))
+                .thenReturn(Optional.of(roomGoal("Existing goal", null, 30)));
 
         OnboardingResponse response = service.submit(currentUser, new OnboardingRequest());
 
-        assertThat(profile.getGoal()).isEqualTo("Existing goal");
-        assertThat(profile.getDailyStudyMinutes()).isEqualTo(30);
         assertThat(response.getGoal()).isEqualTo("Existing goal");
+        assertThat(response.getDailyStudyMinutes()).isEqualTo(30);
     }
 
     @Test
@@ -73,14 +79,15 @@ class OnboardingServiceTest {
         OnboardingRequest req = new OnboardingRequest(null, LocalDate.now().minusDays(1), null, null, null);
         assertThatThrownBy(() -> service.submit(currentUser, req))
                 .isInstanceOf(ProfileException.class);
+        verify(roomsApi, never()).applyGoalPatch(any(), any(), any(), any());
     }
 
     @Test
-    void getReturnsCurrentProfileValuesWithTelegramPlaceholder() {
+    void getReturnsRoomGoalValuesWithTelegramPlaceholder() {
         Profile profile = profileFor(userId);
-        profile.setGoal("Learn SQL");
-        profile.setDailyStudyMinutes(20);
         when(profiles.findById(userId)).thenReturn(Optional.of(profile));
+        when(roomsApi.findPersonalGoalForUser(userId))
+                .thenReturn(Optional.of(roomGoal("Learn SQL", null, 20)));
 
         OnboardingResponse response = service.get(currentUser);
 
@@ -124,26 +131,6 @@ class OnboardingServiceTest {
         OnboardingResponse response = service.get(currentUser);
 
         assertThat(response.getOnboardingPassed()).isNull();
-    }
-
-    @Test
-    void submitPublishesGoalUpdatedEventWhenGoalChanges() {
-        Profile profile = profileFor(userId);
-        when(profiles.findById(userId)).thenReturn(Optional.of(profile));
-
-        service.submit(currentUser, new OnboardingRequest("Pass IELTS", null, null, null, null));
-
-        verify(eventPublisher).publishEvent(any(GoalUpdatedEvent.class));
-    }
-
-    @Test
-    void submitDoesNotPublishGoalUpdatedEventWhenGoalUnchanged() {
-        Profile profile = profileFor(userId);
-        when(profiles.findById(userId)).thenReturn(Optional.of(profile));
-
-        service.submit(currentUser, new OnboardingRequest(null, null, 30, null, null));
-
-        verify(eventPublisher, never()).publishEvent(any(GoalUpdatedEvent.class));
     }
 
     @Test

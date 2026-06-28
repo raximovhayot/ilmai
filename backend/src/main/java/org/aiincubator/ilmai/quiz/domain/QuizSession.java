@@ -43,6 +43,9 @@ public class QuizSession extends DateAuditable {
     @Column(name = "user_id", nullable = false, updatable = false)
     private UUID userId;
 
+    @Column(name = "room_id", nullable = false, updatable = false)
+    private UUID roomId;
+
     @Column(name = "topic_id")
     private UUID topicId;
 

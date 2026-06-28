@@ -7,8 +7,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.aiincubator.ilmai.materials.domain.Material;
 import org.aiincubator.ilmai.materials.domain.MaterialRepository;
 import org.aiincubator.ilmai.materials.MaterialStatus;
-import org.aiincubator.ilmai.spaces.SpaceDto;
-import org.aiincubator.ilmai.spaces.SpacesApi;
+import org.aiincubator.ilmai.rooms.RoomDto;
+import org.aiincubator.ilmai.rooms.RoomsApi;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.ApplicationEventPublisher;
@@ -31,7 +31,7 @@ public class MaterialReingestScheduler {
     private final MaterialRepository materials;
     private final ApplicationEventPublisher publisher;
     private final MaterialReingestProperties properties;
-    private final SpacesApi spacesApi;
+    private final RoomsApi roomsApi;
 
     @Scheduled(
             fixedDelayString = "${ingestion.retry.fixed-delay:PT1M}",
@@ -56,8 +56,8 @@ public class MaterialReingestScheduler {
         material.setRetryCount(attempt);
         material.setStatus(MaterialStatus.PENDING);
         materials.saveAndFlush(material);
-        UUID spaceId = material.getSpaceId();
-        UUID userId = spacesApi.findById(spaceId).map(SpaceDto::getUserId).orElse(null);
+        UUID spaceId = material.getRoomId();
+        UUID userId = roomsApi.findById(spaceId).map(RoomDto::getOwnerId).orElse(null);
         if (userId == null) {
             log.warn("Skipping retry for material {}: space {} not found", material.getId(), spaceId);
             return;

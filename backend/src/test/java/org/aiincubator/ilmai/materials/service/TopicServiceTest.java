@@ -6,8 +6,8 @@ import org.aiincubator.ilmai.materials.domain.MaterialRepository;
 import org.aiincubator.ilmai.materials.domain.Topic;
 import org.aiincubator.ilmai.materials.domain.TopicRepository;
 import org.aiincubator.ilmai.materials.payload.TopicResponse;
-import org.aiincubator.ilmai.spaces.SpaceDto;
-import org.aiincubator.ilmai.spaces.SpacesApi;
+import org.aiincubator.ilmai.rooms.RoomDto;
+import org.aiincubator.ilmai.rooms.RoomsApi;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,21 +35,21 @@ class TopicServiceTest {
     @Mock TopicRepository topics;
     @Mock MaterialRepository materials;
     @Mock MaterialService materialService;
-    @Mock SpacesApi spacesApi;
+    @Mock RoomsApi roomsApi;
 
     private TopicService topicService;
 
     @BeforeEach
     void setUp() {
-        topicService = new TopicService(topics, materials, materialService, spacesApi, Mappers.getMapper(TopicMapper.class));
+        topicService = new TopicService(topics, materials, materialService, roomsApi, Mappers.getMapper(TopicMapper.class));
     }
 
     @Test
     void create_persistsTopicWithTrimmedNameAndCallerSpace() {
         UUID userId = UUID.randomUUID();
-        SpaceDto space = newSpaceDto(userId);
-        when(spacesApi.findPrimaryForUser(userId)).thenReturn(Optional.of(space));
-        when(topics.existsBySpaceIdAndNameIgnoreCase(space.getId(), "AWS Study")).thenReturn(false);
+        RoomDto space = newRoomDto(userId);
+        when(roomsApi.findPersonalForUser(userId)).thenReturn(Optional.of(space));
+        when(topics.existsByRoomIdAndNameIgnoreCase(space.getId(), "AWS Study")).thenReturn(false);
         when(topics.save(any(Topic.class))).thenAnswer(inv -> {
             Topic t = inv.getArgument(0);
             t.setId(UUID.randomUUID());
@@ -61,7 +61,7 @@ class TopicServiceTest {
         ArgumentCaptor<Topic> captor = ArgumentCaptor.forClass(Topic.class);
         verify(topics).save(captor.capture());
         assertThat(captor.getValue().getName()).isEqualTo("AWS Study");
-        assertThat(captor.getValue().getSpaceId()).isEqualTo(space.getId());
+        assertThat(captor.getValue().getRoomId()).isEqualTo(space.getId());
         assertThat(response.getName()).isEqualTo("AWS Study");
         assertThat(response.getSpaceId()).isEqualTo(space.getId());
     }
@@ -74,7 +74,7 @@ class TopicServiceTest {
                 .isInstanceOf(TopicException.class)
                 .extracting(e -> ((TopicException) e).getReason())
                 .isEqualTo(TopicException.Reason.TOPIC_NAME_BLANK);
-        verify(spacesApi, never()).findPrimaryForUser(any(UUID.class));
+        verify(roomsApi, never()).findPersonalForUser(any(UUID.class));
         verify(topics, never()).save(any(Topic.class));
     }
 
@@ -93,7 +93,7 @@ class TopicServiceTest {
     @Test
     void create_throwsWhenUserHasNoSpace() {
         UUID userId = UUID.randomUUID();
-        when(spacesApi.findPrimaryForUser(userId)).thenReturn(Optional.empty());
+        when(roomsApi.findPersonalForUser(userId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> topicService.create(new CurrentUser(userId), "Anything"))
                 .isInstanceOf(TopicException.class)
@@ -104,9 +104,9 @@ class TopicServiceTest {
     @Test
     void create_throwsWhenNameAlreadyTakenCaseInsensitive() {
         UUID userId = UUID.randomUUID();
-        SpaceDto space = newSpaceDto(userId);
-        when(spacesApi.findPrimaryForUser(userId)).thenReturn(Optional.of(space));
-        when(topics.existsBySpaceIdAndNameIgnoreCase(space.getId(), "AWS Study")).thenReturn(true);
+        RoomDto space = newRoomDto(userId);
+        when(roomsApi.findPersonalForUser(userId)).thenReturn(Optional.of(space));
+        when(topics.existsByRoomIdAndNameIgnoreCase(space.getId(), "AWS Study")).thenReturn(true);
 
         assertThatThrownBy(() -> topicService.create(new CurrentUser(userId), "AWS Study"))
                 .isInstanceOf(TopicException.class)
@@ -121,8 +121,8 @@ class TopicServiceTest {
         UUID spaceId = UUID.randomUUID();
         Topic a = newTopic(spaceId, "Cloud");
         Topic b = newTopic(spaceId, "Ottoman History");
-        when(spacesApi.findSpaceIdsForUser(userId)).thenReturn(List.of(spaceId));
-        when(topics.findAllBySpaceIdInOrderByCreatedAtAsc(List.of(spaceId))).thenReturn(List.of(a, b));
+        when(roomsApi.findRoomIdsForUser(userId)).thenReturn(List.of(spaceId));
+        when(topics.findAllByRoomIdInOrderByCreatedAtAsc(List.of(spaceId))).thenReturn(List.of(a, b));
 
         List<TopicResponse> response = topicService.list(new CurrentUser(userId));
 
@@ -135,10 +135,10 @@ class TopicServiceTest {
     @Test
     void list_returnsEmptyWhenUserHasNoSpaces() {
         UUID userId = UUID.randomUUID();
-        when(spacesApi.findSpaceIdsForUser(userId)).thenReturn(List.of());
+        when(roomsApi.findRoomIdsForUser(userId)).thenReturn(List.of());
 
         assertThat(topicService.list(new CurrentUser(userId))).isEmpty();
-        verify(topics, never()).findAllBySpaceIdInOrderByCreatedAtAsc(any());
+        verify(topics, never()).findAllByRoomIdInOrderByCreatedAtAsc(any());
     }
 
     @Test
@@ -146,9 +146,9 @@ class TopicServiceTest {
         UUID userId = UUID.randomUUID();
         UUID spaceId = UUID.randomUUID();
         Topic topic = newTopic(spaceId, "Old");
-        when(spacesApi.findSpaceIdsForUser(userId)).thenReturn(List.of(spaceId));
-        when(topics.findByIdAndSpaceIdIn(topic.getId(), List.of(spaceId))).thenReturn(Optional.of(topic));
-        when(topics.existsBySpaceIdAndNameIgnoreCaseAndIdNot(eq(spaceId), anyString(), eq(topic.getId())))
+        when(roomsApi.findRoomIdsForUser(userId)).thenReturn(List.of(spaceId));
+        when(topics.findByIdAndRoomIdIn(topic.getId(), List.of(spaceId))).thenReturn(Optional.of(topic));
+        when(topics.existsByRoomIdAndNameIgnoreCaseAndIdNot(eq(spaceId), anyString(), eq(topic.getId())))
                 .thenReturn(false);
 
         TopicResponse response = topicService.rename(new CurrentUser(userId), topic.getId(), "  New  ");
@@ -162,8 +162,8 @@ class TopicServiceTest {
         UUID userId = UUID.randomUUID();
         UUID spaceId = UUID.randomUUID();
         UUID topicId = UUID.randomUUID();
-        when(spacesApi.findSpaceIdsForUser(userId)).thenReturn(List.of(spaceId));
-        when(topics.findByIdAndSpaceIdIn(topicId, List.of(spaceId))).thenReturn(Optional.empty());
+        when(roomsApi.findRoomIdsForUser(userId)).thenReturn(List.of(spaceId));
+        when(topics.findByIdAndRoomIdIn(topicId, List.of(spaceId))).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> topicService.rename(new CurrentUser(userId), topicId, "Anything"))
                 .isInstanceOf(TopicException.class)
@@ -176,9 +176,9 @@ class TopicServiceTest {
         UUID userId = UUID.randomUUID();
         UUID spaceId = UUID.randomUUID();
         Topic topic = newTopic(spaceId, "Old");
-        when(spacesApi.findSpaceIdsForUser(userId)).thenReturn(List.of(spaceId));
-        when(topics.findByIdAndSpaceIdIn(topic.getId(), List.of(spaceId))).thenReturn(Optional.of(topic));
-        when(topics.existsBySpaceIdAndNameIgnoreCaseAndIdNot(eq(spaceId), anyString(), eq(topic.getId())))
+        when(roomsApi.findRoomIdsForUser(userId)).thenReturn(List.of(spaceId));
+        when(topics.findByIdAndRoomIdIn(topic.getId(), List.of(spaceId))).thenReturn(Optional.of(topic));
+        when(topics.existsByRoomIdAndNameIgnoreCaseAndIdNot(eq(spaceId), anyString(), eq(topic.getId())))
                 .thenReturn(true);
 
         assertThatThrownBy(() ->
@@ -194,8 +194,8 @@ class TopicServiceTest {
         UUID userId = UUID.randomUUID();
         UUID spaceId = UUID.randomUUID();
         Topic topic = newTopic(spaceId, "Old");
-        when(spacesApi.findSpaceIdsForUser(userId)).thenReturn(List.of(spaceId));
-        when(topics.findByIdAndSpaceIdIn(topic.getId(), List.of(spaceId))).thenReturn(Optional.of(topic));
+        when(roomsApi.findRoomIdsForUser(userId)).thenReturn(List.of(spaceId));
+        when(topics.findByIdAndRoomIdIn(topic.getId(), List.of(spaceId))).thenReturn(Optional.of(topic));
 
         topicService.delete(new CurrentUser(userId), topic.getId(), false);
 
@@ -212,8 +212,8 @@ class TopicServiceTest {
         Topic topic = newTopic(spaceId, "Old");
         Material a = new Material();
         Material b = new Material();
-        when(spacesApi.findSpaceIdsForUser(userId)).thenReturn(List.of(spaceId));
-        when(topics.findByIdAndSpaceIdIn(topic.getId(), List.of(spaceId))).thenReturn(Optional.of(topic));
+        when(roomsApi.findRoomIdsForUser(userId)).thenReturn(List.of(spaceId));
+        when(topics.findByIdAndRoomIdIn(topic.getId(), List.of(spaceId))).thenReturn(Optional.of(topic));
         when(materials.findAllByTopicId(topic.getId())).thenReturn(List.of(a, b));
 
         topicService.delete(new CurrentUser(userId), topic.getId(), true);
@@ -228,8 +228,8 @@ class TopicServiceTest {
         UUID userId = UUID.randomUUID();
         UUID spaceId = UUID.randomUUID();
         UUID topicId = UUID.randomUUID();
-        when(spacesApi.findSpaceIdsForUser(userId)).thenReturn(List.of(spaceId));
-        when(topics.findByIdAndSpaceIdIn(topicId, List.of(spaceId))).thenReturn(Optional.empty());
+        when(roomsApi.findRoomIdsForUser(userId)).thenReturn(List.of(spaceId));
+        when(topics.findByIdAndRoomIdIn(topicId, List.of(spaceId))).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> topicService.delete(new CurrentUser(userId), topicId, false))
                 .isInstanceOf(TopicException.class)
@@ -238,14 +238,14 @@ class TopicServiceTest {
         verify(topics, never()).delete(any(Topic.class));
     }
 
-    private SpaceDto newSpaceDto(UUID userId) {
-        return new SpaceDto(UUID.randomUUID(), userId, "My private space");
+    private RoomDto newRoomDto(UUID userId) {
+        return new RoomDto(UUID.randomUUID(), userId, "My private space", true);
     }
 
     private Topic newTopic(UUID spaceId, String name) {
         Topic topic = new Topic();
         topic.setId(UUID.randomUUID());
-        topic.setSpaceId(spaceId);
+        topic.setRoomId(spaceId);
         topic.setName(name);
         return topic;
     }

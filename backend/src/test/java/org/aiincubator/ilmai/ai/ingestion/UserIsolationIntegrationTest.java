@@ -13,8 +13,8 @@ import org.aiincubator.ilmai.materials.MaterialStatus;
 import org.aiincubator.ilmai.materials.MaterialDeletedEvent;
 import org.aiincubator.ilmai.materials.MaterialStorageKeys;
 import org.aiincubator.ilmai.materials.MaterialUploadedEvent;
-import org.aiincubator.ilmai.spaces.domain.Space;
-import org.aiincubator.ilmai.spaces.domain.SpaceRepository;
+import org.aiincubator.ilmai.rooms.domain.Room;
+import org.aiincubator.ilmai.rooms.domain.RoomRepository;
 import org.aiincubator.ilmai.materials.domain.Topic;
 import org.aiincubator.ilmai.materials.domain.TopicRepository;
 import org.junit.jupiter.api.Test;
@@ -37,7 +37,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class UserIsolationIntegrationTest extends AbstractEmbeddingIntegrationTest {
 
     @Autowired UserRepository users;
-    @Autowired SpaceRepository spaces;
+    @Autowired RoomRepository rooms;
     @Autowired TopicRepository topics;
     @Autowired MaterialRepository materials;
     @Autowired MaterialIngestionService ingestion;
@@ -127,18 +127,19 @@ class UserIsolationIntegrationTest extends AbstractEmbeddingIntegrationTest {
             user.setStatus(UserStatus.ACTIVE);
             user = users.saveAndFlush(user);
 
-            Space space = new Space();
-            space.setUserId(user.getId());
+            Room space = new Room();
+            space.setOwnerId(user.getId());
             space.setName(spaceName);
-            space = spaces.saveAndFlush(space);
+            space.setPersonal(true);
+            space = rooms.saveAndFlush(space);
 
             Topic topic = new Topic();
-            topic.setSpaceId(space.getId());
+            topic.setRoomId(space.getId());
             topic.setName(topicName);
             topic = topics.saveAndFlush(topic);
 
             Material material = new Material();
-            material.setSpaceId(topic.getSpaceId());
+            material.setRoomId(topic.getRoomId());
             material.setTopic(topic);
             material.setTitle(title);
             material.setContentType("text/plain; charset=utf-8");
@@ -148,7 +149,7 @@ class UserIsolationIntegrationTest extends AbstractEmbeddingIntegrationTest {
             material = materials.saveAndFlush(material);
 
             try {
-                ((InMemoryBlobStorage) storage).put(MaterialStorageKeys.forCoordinates(material.getSpaceId(), material.getId()),
+                ((InMemoryBlobStorage) storage).put(MaterialStorageKeys.forCoordinates(material.getRoomId(), material.getId()),
                         new ByteArrayInputStream(bytes), bytes.length, "text/plain");
             } catch (IOException ex) {
                 throw new RuntimeException(ex);

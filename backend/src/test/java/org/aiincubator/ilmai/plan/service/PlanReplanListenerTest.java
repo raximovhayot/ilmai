@@ -1,7 +1,7 @@
 package org.aiincubator.ilmai.plan.service;
 
 import org.aiincubator.ilmai.materials.MaterialUploadedEvent;
-import org.aiincubator.ilmai.profiles.GoalUpdatedEvent;
+import org.aiincubator.ilmai.rooms.RoomGoalUpdatedEvent;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -32,7 +32,7 @@ class PlanReplanListenerTest {
     void goalUpdateMarksReplanNeededForTheUser() {
         UUID user = UUID.randomUUID();
 
-        listener.onGoalUpdated(new GoalUpdatedEvent(user));
+        listener.onGoalUpdated(new RoomGoalUpdatedEvent(user, UUID.randomUUID()));
 
         verify(planService).markReplanNeeded(user);
     }

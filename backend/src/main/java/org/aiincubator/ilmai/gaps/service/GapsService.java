@@ -11,6 +11,8 @@ import org.aiincubator.ilmai.materials.MaterialDto;
 import org.aiincubator.ilmai.materials.MaterialsApi;
 import org.aiincubator.ilmai.quiz.QuizApi;
 import org.aiincubator.ilmai.quiz.QuizQuestionDto;
+import org.aiincubator.ilmai.rooms.RoomDto;
+import org.aiincubator.ilmai.rooms.RoomsApi;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,10 +34,14 @@ public class GapsService {
     private final KnowledgeGapRepository gaps;
     private final GapsMapper gapsMapper;
     private final MaterialsApi materialsApi;
+    private final RoomsApi roomsApi;
 
     @Transactional
     public GapsReportResponse refreshAndGet(CurrentUser currentUser) {
         UUID userId = currentUser.getUserId();
+        UUID roomId = roomsApi.findPersonalForUser(userId)
+                .map(RoomDto::getId)
+                .orElseThrow(() -> new GapsException(GapsException.Reason.GAPS_NOT_READY));
         Map<String, ConceptAggregate> aggregates = aggregateFromQuestions(userId);
         if (aggregates.isEmpty()) {
             throw new GapsException(GapsException.Reason.GAPS_NOT_READY);
@@ -44,10 +50,11 @@ public class GapsService {
         for (Map.Entry<String, ConceptAggregate> entry : aggregates.entrySet()) {
             String concept = entry.getKey();
             ConceptAggregate agg = entry.getValue();
-            KnowledgeGap gap = gaps.findByUserIdAndConcept(userId, concept)
+            KnowledgeGap gap = gaps.findByRoomIdAndConcept(roomId, concept)
                     .orElseGet(() -> {
                         KnowledgeGap created = new KnowledgeGap();
                         created.setUserId(userId);
+                        created.setRoomId(roomId);
                         created.setConcept(concept);
                         return created;
                     });

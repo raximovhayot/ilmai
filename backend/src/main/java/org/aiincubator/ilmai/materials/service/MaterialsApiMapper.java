@@ -11,8 +11,9 @@ import org.mapstruct.Mapping;
 public interface MaterialsApiMapper {
 
     @Mapping(target = "topicId", source = "topic.id")
-    @Mapping(target = "spaceId", source = "spaceId")
+    @Mapping(target = "spaceId", source = "roomId")
     MaterialDto toDto(Material material);
 
+    @Mapping(target = "spaceId", source = "roomId")
     TopicDto toDto(Topic topic);
 }

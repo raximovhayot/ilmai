@@ -18,6 +18,8 @@ import org.aiincubator.ilmai.profiles.ProfilesApi;
 import org.aiincubator.ilmai.quiz.QuizApi;
 import org.aiincubator.ilmai.quiz.QuizQuestionDto;
 import org.aiincubator.ilmai.quiz.QuizSessionDto;
+import org.aiincubator.ilmai.rooms.RoomDto;
+import org.aiincubator.ilmai.rooms.RoomsApi;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,7 +30,6 @@ import java.time.ZoneId;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -46,6 +47,7 @@ public class PlanService {
 
     private final LearningPlanRepository learningPlanRepository;
     private final ProfilesApi profilesApi;
+    private final RoomsApi roomsApi;
     private final PlanMapper planMapper;
     private final PlanLessonGenerator lessonGenerator;
     private final QuotaService quotaService;
@@ -54,16 +56,17 @@ public class PlanService {
 
     @Transactional
     public LearningPlan replaceActivePlan(UUID userId, String goal, LocalDate targetDate, List<PlanStepInput> steps) {
-        List<LearningPlan> active = learningPlanRepository.findByUserIdAndStatus(userId, PlanStatus.ACTIVE);
-        UUID goalId = resolveGoalId(active, goal);
+        UUID roomId = roomsApi.findPersonalForUser(userId)
+                .map(RoomDto::getId)
+                .orElseThrow(() -> new PlanException(PlanException.Reason.PLAN_NOT_FOUND));
+        List<LearningPlan> active = learningPlanRepository.findByRoomIdAndStatus(roomId, PlanStatus.ACTIVE);
         for (LearningPlan existing : active) {
-            if (goalId.equals(existing.getGoalId())) {
-                existing.setStatus(PlanStatus.SUPERSEDED);
-            }
+            existing.setStatus(PlanStatus.SUPERSEDED);
         }
         LearningPlan plan = new LearningPlan();
         plan.setUserId(userId);
-        plan.setGoalId(goalId);
+        plan.setRoomId(roomId);
+        plan.setGoalId(roomId);
         plan.setGoal(goal);
         plan.setTargetDate(targetDate);
         plan.setStatus(PlanStatus.ACTIVE);
@@ -75,20 +78,6 @@ public class PlanService {
             }
         }
         return learningPlanRepository.save(plan);
-    }
-
-    private static UUID resolveGoalId(List<LearningPlan> activePlans, String goal) {
-        String normalized = normalizeGoal(goal);
-        for (LearningPlan existing : activePlans) {
-            if (normalized.equals(normalizeGoal(existing.getGoal()))) {
-                return existing.getGoalId();
-            }
-        }
-        return UUID.randomUUID();
-    }
-
-    private static String normalizeGoal(String goal) {
-        return goal == null ? "" : goal.strip().toLowerCase(Locale.ROOT);
     }
 
     @Transactional(readOnly = true)

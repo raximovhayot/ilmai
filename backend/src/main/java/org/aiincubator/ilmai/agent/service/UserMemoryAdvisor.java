@@ -2,8 +2,8 @@ package org.aiincubator.ilmai.agent.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.aiincubator.ilmai.common.CurrentUser;
-import org.aiincubator.ilmai.profiles.ProfileDto;
-import org.aiincubator.ilmai.profiles.ProfilesApi;
+import org.aiincubator.ilmai.rooms.RoomGoalDto;
+import org.aiincubator.ilmai.rooms.RoomsApi;
 import org.aiincubator.ilmai.streaks.StreakDto;
 import org.aiincubator.ilmai.streaks.StreaksApi;
 import org.aiincubator.ilmai.agent.UserFactDto;
@@ -40,20 +40,20 @@ public class UserMemoryAdvisor implements CallAdvisor, StreamAdvisor {
     private static final String FACTS_HEADER = "Known facts about the user:";
 
     private final UserMemoryApi userMemoryApi;
-    private final ProfilesApi profilesApi;
+    private final RoomsApi roomsApi;
     private final StreaksApi streaksApi;
     private final int order;
     private final int maxFacts;
     private final int maxChars;
 
-    public UserMemoryAdvisor(UserMemoryApi userMemoryApi, ProfilesApi profilesApi, StreaksApi streaksApi) {
-        this(userMemoryApi, profilesApi, streaksApi, DEFAULT_ORDER, DEFAULT_MAX_FACTS, DEFAULT_MAX_CHARS);
+    public UserMemoryAdvisor(UserMemoryApi userMemoryApi, RoomsApi roomsApi, StreaksApi streaksApi) {
+        this(userMemoryApi, roomsApi, streaksApi, DEFAULT_ORDER, DEFAULT_MAX_FACTS, DEFAULT_MAX_CHARS);
     }
 
-    public UserMemoryAdvisor(UserMemoryApi userMemoryApi, ProfilesApi profilesApi, StreaksApi streaksApi,
+    public UserMemoryAdvisor(UserMemoryApi userMemoryApi, RoomsApi roomsApi, StreaksApi streaksApi,
                              int order, int maxFacts, int maxChars) {
         this.userMemoryApi = userMemoryApi;
-        this.profilesApi = profilesApi;
+        this.roomsApi = roomsApi;
         this.streaksApi = streaksApi;
         this.order = order;
         this.maxFacts = maxFacts;
@@ -119,8 +119,8 @@ public class UserMemoryAdvisor implements CallAdvisor, StreamAdvisor {
 
     private String buildContextBlock(CurrentUser currentUser) {
         List<String> headerLines = new ArrayList<>();
-        Optional<ProfileDto> profile = safeProfile(currentUser);
-        profile.map(this::goalLine).ifPresent(headerLines::add);
+        Optional<RoomGoalDto> roomGoal = safeRoomGoal(currentUser);
+        roomGoal.map(this::goalLine).filter(line -> line != null).ifPresent(headerLines::add);
         streakLine(currentUser).ifPresent(headerLines::add);
 
         List<String> factLines = new ArrayList<>();
@@ -155,21 +155,21 @@ public class UserMemoryAdvisor implements CallAdvisor, StreamAdvisor {
         return block.toString();
     }
 
-    private Optional<ProfileDto> safeProfile(CurrentUser currentUser) {
+    private Optional<RoomGoalDto> safeRoomGoal(CurrentUser currentUser) {
         try {
-            return profilesApi.find(currentUser.getUserId());
+            return roomsApi.findPersonalGoalForUser(currentUser.getUserId());
         } catch (RuntimeException ex) {
-            log.debug("user-memory: profile lookup failed for {}: {}", currentUser.getUserId(), ex.toString());
+            log.debug("user-memory: room goal lookup failed for {}: {}", currentUser.getUserId(), ex.toString());
             return Optional.empty();
         }
     }
 
-    private String goalLine(ProfileDto profile) {
-        String goal = profile.getGoal();
+    private String goalLine(RoomGoalDto roomGoal) {
+        String goal = roomGoal.getGoal();
         if (goal == null || goal.isBlank()) {
             return null;
         }
-        LocalDate target = profile.getTargetDate();
+        LocalDate target = roomGoal.getTargetDate();
         if (target != null) {
             return GOAL_PREFIX + goal.trim() + " (target date: " + target + ")";
         }

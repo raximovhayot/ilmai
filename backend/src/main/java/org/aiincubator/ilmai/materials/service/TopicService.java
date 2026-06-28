@@ -7,8 +7,8 @@ import org.aiincubator.ilmai.materials.domain.MaterialRepository;
 import org.aiincubator.ilmai.materials.domain.Topic;
 import org.aiincubator.ilmai.materials.domain.TopicRepository;
 import org.aiincubator.ilmai.materials.payload.TopicResponse;
-import org.aiincubator.ilmai.spaces.SpaceDto;
-import org.aiincubator.ilmai.spaces.SpacesApi;
+import org.aiincubator.ilmai.rooms.RoomDto;
+import org.aiincubator.ilmai.rooms.RoomsApi;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,29 +24,29 @@ public class TopicService {
     private final TopicRepository topics;
     private final MaterialRepository materials;
     private final MaterialService materialService;
-    private final SpacesApi spacesApi;
+    private final RoomsApi roomsApi;
     private final TopicMapper topicMapper;
 
     @Transactional
     public TopicResponse create(CurrentUser currentUser, String name) {
         String trimmed = normalizeName(name);
-        SpaceDto space = resolveCallerSpace(currentUser);
-        if (topics.existsBySpaceIdAndNameIgnoreCase(space.getId(), trimmed)) {
+        RoomDto space = resolveCallerSpace(currentUser);
+        if (topics.existsByRoomIdAndNameIgnoreCase(space.getId(), trimmed)) {
             throw new TopicException(TopicException.Reason.TOPIC_NAME_TAKEN, trimmed);
         }
         Topic topic = new Topic();
-        topic.setSpaceId(space.getId());
+        topic.setRoomId(space.getId());
         topic.setName(trimmed);
         return topicMapper.toResponse(topics.save(topic));
     }
 
     @Transactional(readOnly = true)
     public List<TopicResponse> list(CurrentUser currentUser) {
-        List<UUID> spaceIds = spacesApi.findSpaceIdsForUser(currentUser.getUserId());
+        List<UUID> spaceIds = roomsApi.findRoomIdsForUser(currentUser.getUserId());
         if (spaceIds.isEmpty()) {
             return List.of();
         }
-        return topics.findAllBySpaceIdInOrderByCreatedAtAsc(spaceIds).stream()
+        return topics.findAllByRoomIdInOrderByCreatedAtAsc(spaceIds).stream()
                 .map(topicMapper::toResponse)
                 .toList();
     }
@@ -55,7 +55,7 @@ public class TopicService {
     public TopicResponse rename(CurrentUser currentUser, UUID topicId, String name) {
         String trimmed = normalizeName(name);
         Topic topic = loadOwnedTopic(currentUser, topicId);
-        if (topics.existsBySpaceIdAndNameIgnoreCaseAndIdNot(topic.getSpaceId(), trimmed, topic.getId())) {
+        if (topics.existsByRoomIdAndNameIgnoreCaseAndIdNot(topic.getRoomId(), trimmed, topic.getId())) {
             throw new TopicException(TopicException.Reason.TOPIC_NAME_TAKEN, trimmed);
         }
         topic.setName(trimmed);
@@ -75,11 +75,11 @@ public class TopicService {
     }
 
     Topic loadOwnedTopic(CurrentUser currentUser, UUID topicId) {
-        List<UUID> spaceIds = spacesApi.findSpaceIdsForUser(currentUser.getUserId());
+        List<UUID> spaceIds = roomsApi.findRoomIdsForUser(currentUser.getUserId());
         if (spaceIds.isEmpty()) {
             throw new TopicException(TopicException.Reason.TOPIC_NOT_FOUND);
         }
-        return topics.findByIdAndSpaceIdIn(topicId, spaceIds)
+        return topics.findByIdAndRoomIdIn(topicId, spaceIds)
                 .orElseThrow(() -> new TopicException(TopicException.Reason.TOPIC_NOT_FOUND));
     }
 
@@ -91,8 +91,8 @@ public class TopicService {
         return trimmed;
     }
 
-    private SpaceDto resolveCallerSpace(CurrentUser currentUser) {
-        return spacesApi.findPrimaryForUser(currentUser.getUserId())
+    private RoomDto resolveCallerSpace(CurrentUser currentUser) {
+        return roomsApi.findPersonalForUser(currentUser.getUserId())
                 .orElseThrow(() -> new TopicException(TopicException.Reason.SPACE_NOT_FOUND));
     }
 }

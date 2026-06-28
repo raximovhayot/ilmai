@@ -34,8 +34,8 @@ public class Material extends Auditable {
     @UuidGenerator(algorithm = UuidVersion7Strategy.class)
     private UUID id;
 
-    @Column(name = "space_id", nullable = false, updatable = false)
-    private UUID spaceId;
+    @Column(name = "room_id", nullable = false, updatable = false)
+    private UUID roomId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "topic_id")

@@ -9,5 +9,8 @@ import org.mapstruct.Mapping;
 public interface ProfileMapper {
 
     @Mapping(target = "locale", expression = "java(profile.getLocale() != null ? profile.getLocale().name() : null)")
+    @Mapping(target = "goal", ignore = true)
+    @Mapping(target = "targetDate", ignore = true)
+    @Mapping(target = "dailyStudyMinutes", ignore = true)
     ProfileResponse toResponse(Profile profile);
 }

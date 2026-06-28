@@ -118,6 +118,6 @@ class NotificationComposerTest {
     }
 
     private ProfileDto profile(SupportedLocale locale) {
-        return new ProfileDto(userId, locale, "UTC", null, null, null, null, 0, 0, 0, null);
+        return new ProfileDto(userId, locale, "UTC", null, 0, 0, 0, null);
     }
 }
